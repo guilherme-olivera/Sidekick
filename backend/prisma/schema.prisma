@@ -1,0 +1,87 @@
+// Prisma schema for Sidekick
+// Models: User, Workout, MoodCheck
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===== USER MODEL =====
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String?   // null se usar OAuth Strava
+  name          String?
+  avatar        String?   // URL da foto de perfil
+  stravaId      String?   @unique // ID do Strava se conectado via OAuth
+  stravaToken   String?   // Token de acesso Strava
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relações
+  workouts      Workout[]
+  moodChecks    MoodCheck[]
+
+  @@map("users")
+}
+
+// ===== WORKOUT MODEL =====
+model Workout {
+  id            String    @id @default(cuid())
+  userId        String
+  stravaId      String?   @unique // ID da atividade no Strava
+  
+  // Dados básicos
+  title         String
+  description   String?
+  date          DateTime  // Data e hora do treino
+  
+  // Métricas
+  duration      Int       // em segundos
+  distance      Float?    // em km
+  pace          Float?    // velocidade média (km/h)
+  avgHeartRate  Int?      // BPM médio
+  maxHeartRate  Int?      // BPM máximo
+  
+  // Tipo e intensidade
+  type          String    // "run", "cycling", "strength", etc
+  intensity     String?   // "low", "moderate", "high"
+  
+  // Narrativa IA
+  aiNarrative   String?   // Análise gerada pelo Gemini
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relação
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("workouts")
+  @@index([userId])
+  @@index([date])
+}
+
+// ===== MOOD CHECK MODEL =====
+model MoodCheck {
+  id            String    @id @default(cuid())
+  userId        String
+  date          DateTime  @db.Date // Apenas a data, sem hora
+  
+  // Emoção (um por dia)
+  mood          String    // "tired", "sick", "normal", "angry", "sad", "happy"
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relação
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("mood_checks")
+  @@unique([userId, date])  // Um humor por dia por usuário
+  @@index([userId])
+}
+
