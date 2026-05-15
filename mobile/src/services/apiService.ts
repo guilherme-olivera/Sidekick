@@ -127,6 +127,17 @@ export async function apiPost(path: string, body: any = {}) {
   });
 }
 
+export async function apiUpload(path: string, formData: FormData) {
+  const headers = await buildHeaders();
+  // Remove content-type so fetch can set boundary automatically
+  const { 'Content-Type': _ct, ...uploadHeaders } = headers;
+  return safeFetch(path, {
+    method: 'POST',
+    headers: uploadHeaders,
+    body: formData,
+  });
+}
+
 export async function apiPut(path: string, body: any = {}) {
   const headers = await buildHeaders();
   return safeFetch(path, {

@@ -8,22 +8,20 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { useStrava } from '@/src/contexts/StravaContext';
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const { logout } = useAuth();
-  const { isConnected, isConnecting, connectStrava, disconnectStrava, syncActivities } = useStrava();
+  const { isConnected, isConnecting, connect, disconnect, syncActivities, athlete } = useStrava();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   const handleStravaConnect = async () => {
     try {
-      await connectStrava();
+      await connect();
       Alert.alert('Sucesso', 'Conectado ao Strava! Agora você pode sincronizar suas atividades.');
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível conectar ao Strava. Tente novamente.');
@@ -41,7 +39,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await disconnectStrava();
+              await disconnect();
               Alert.alert('Sucesso', 'Desconectado do Strava.');
             } catch (error) {
               Alert.alert('Erro', 'Não foi possível desconectar.');
@@ -106,7 +104,7 @@ export default function SettingsScreen() {
 
             <Text style={[styles.cardDescription, { color: colors.secondaryText }]}>
               {isConnected
-                ? 'Suas atividades do Strava são sincronizadas automaticamente.'
+                ? `Conectado${athlete ? ` como ${athlete.name}` : ''}. Sincronize seus treinos com o Strava.`
                 : 'Conecte sua conta Strava para sincronizar treinos automaticamente.'
               }
             </Text>
@@ -128,7 +126,7 @@ export default function SettingsScreen() {
                     style={[styles.button, styles.secondaryButton]}
                     onPress={handleSyncActivities}
                   >
-                    <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
+                    <Text style={[styles.secondaryButtonText, { color: colors.primary }]}> 
                       Sincronizar Agora
                     </Text>
                   </TouchableOpacity>

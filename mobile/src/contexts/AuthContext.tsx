@@ -1,10 +1,24 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+interface UserProfile {
+  trainingGoal?: string;
+  focusArea?: string;
+  injuryNote?: string;
+  availableTime?: string;
+  trainingMood?: string;
+}
+
 interface User {
   id: string;
   email: string;
   name: string;
+  avatar?: string;
+  planType?: string;
+  stravaAthleteName?: string;
+  stravaAthleteUsername?: string;
+  stravaAthleteProfile?: string;
+  profile?: UserProfile;
 }
 
 interface AuthContextType {
@@ -14,6 +28,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   error: string | null;
 }
 
@@ -30,14 +45,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreToken();
   }, []);
 
+  const refreshUser = async () => {
+    try {
+      const { apiService } = await import("../services/apiService");
+      const response = await apiService.get("/auth/me");
+      if (response.success && response.user) {
+        setUser(response.user);
+        await AsyncStorage.setItem("user", JSON.stringify(response.user));
+      }
+    } catch (err) {
+      console.error("Failed to refresh user:", err);
+    }
+  };
+
   const restoreToken = async () => {
     try {
       const savedToken = await AsyncStorage.getItem("authToken");
       const savedUser = await AsyncStorage.getItem("user");
 
-      if (savedToken && savedUser) {
+      if (savedToken) {
         setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+        await refreshUser();
       }
     } catch (err) {
       console.error("Failed to restore token:", err);
@@ -60,10 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.token && response.user) {
         setToken(response.token);
-        setUser(response.user);
-
         await AsyncStorage.setItem("authToken", response.token);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
+        await refreshUser();
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro ao fazer login";
@@ -120,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        refreshUser,
         error,
       }}
     >

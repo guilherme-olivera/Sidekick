@@ -1,27 +1,11 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { prisma } from "../utils/prisma";
 
 const JWT_SECRET = process.env.JWT_SECRET || "sidekick-dev-secret-key-2026";
 
-// Mock database - em memória
-interface MockUser {
-  id: string;
-  email: string;
-  password: string;
-  name: string;
-}
-
-const mockUsers: MockUser[] = [
-  {
-    id: "user-001",
-    email: "athlete@sidekick.com",
-    password: bcrypt.hashSync("password123", 10),
-    name: "João Atleta",
-  },
-];
-
 /**
- * Registra novo usuário (mock)
+ * Registra novo usuário
  */
 export async function registerUser(
   email: string,
@@ -29,26 +13,27 @@ export async function registerUser(
   name: string
 ): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
-    // Validações
     if (!email || !password || !name) {
       return { success: false, error: "Email, senha e nome são obrigatórios" };
     }
 
-    // Verifica se usuário já existe
-    const existingUser = mockUsers.find((u) => u.email === email);
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existingUser) {
       return { success: false, error: "Este email já está registrado" };
     }
 
-    // Cria novo usuário
-    const newUser: MockUser = {
-      id: `user-${Date.now()}`,
-      email,
-      password: bcrypt.hashSync(password, 10),
-      name,
-    };
+    const hashedPassword = bcrypt.hashSync(password, 10);
 
-    mockUsers.push(newUser);
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+      },
+    });
 
     console.log(`✅ Usuário registrado: ${email}`);
     return { success: true, userId: newUser.id };
@@ -77,22 +62,22 @@ export async function loginUser(
       return { success: false, error: "Email e senha são obrigatórios" };
     }
 
-    // Procura usuário
-    const user = mockUsers.find((u) => u.email === email);
-    if (!user) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || !user.password) {
       return {
         success: false,
         error: "Email ou senha inválidos",
       };
     }
 
-    // Valida senha
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) {
       return { success: false, error: "Email ou senha inválidos" };
     }
 
-    // Gera JWT
     const token = jwt.sign(
       {
         userId: user.id,
@@ -110,7 +95,7 @@ export async function loginUser(
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        name: user.name || "",
       },
     };
   } catch (error) {

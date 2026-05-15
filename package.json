@@ -1,0 +1,18 @@
+{
+  "name": "sidekick-monorepo",
+  "version": "1.0.0",
+  "description": "Sidekick - Full-stack app (Backend + Mobile)",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:mobile\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:mobile": "cd mobile && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../mobile && npm install",
+    "build": "concurrently \"npm run build:backend\" \"npm run build:mobile\"",
+    "build:backend": "cd backend && npm run build",
+    "build:mobile": "cd mobile && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

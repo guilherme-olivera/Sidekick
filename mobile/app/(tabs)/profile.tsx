@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
@@ -6,8 +6,14 @@ import {
   SafeAreaView,
   Text,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/src/contexts/AuthContext";
+import { useStrava } from "@/src/contexts/StravaContext";
+import { apiUpload } from "@/src/services/apiService";
 
 const Colors = {
   dark: "#0a0a0a",
@@ -17,10 +23,97 @@ const Colors = {
   textSecondary: "#b0b0b0",
   primary: "#ff6b6b",
   success: "#51cf66",
+  warning: "#ffa94d",
 };
 
 export default function ProfileScreen() {
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, refreshUser } = useAuth();
+  const { isConnected, athlete, connect, disconnect, syncActivities } = useStrava();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        await uploadAvatar(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert("Erro", "Falha ao selecionar imagem");
+    }
+  };
+
+  const uploadAvatar = async (asset: any) => {
+    try {
+      setUploadingAvatar(true);
+
+      const formData = new FormData();
+      formData.append("avatar", {
+        uri: asset.uri,
+        type: "image/jpeg",
+        name: `avatar_${Date.now()}.jpg`,
+      } as any);
+
+      const response = await apiUpload("/user/avatar", formData);
+      if (response.success) {
+        await refreshUser();
+        Alert.alert("Sucesso", "Avatar atualizado com sucesso!");
+      } else {
+        Alert.alert("Erro", response.error || "Falha ao fazer upload do avatar");
+      }
+    } catch (error) {
+      Alert.alert("Erro", "Erro ao fazer upload do avatar");
+      console.error("Avatar upload error:", error);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleStravaConnect = async () => {
+    try {
+      await connect();
+    } catch (error) {
+      Alert.alert("Erro", "Falha ao conectar Strava");
+    }
+  };
+
+  const handleStravaSync = async () => {
+    try {
+      const result = await syncActivities();
+      Alert.alert(
+        "Sincronização concluída",
+        `Atividades sincronizadas: ${result?.syncedActivities || 0}`
+      );
+    } catch (error) {
+      Alert.alert("Erro", "Falha ao sincronizar com Strava");
+    }
+  };
+
+  const handleStravaDisconnect = () => {
+    Alert.alert(
+      "Desconectar Strava",
+      "Tem certeza que deseja desconectar do Strava?",
+      [
+        { text: "Cancelar", onPress: () => {} },
+        {
+          text: "Desconectar",
+          onPress: async () => {
+            try {
+              await disconnect();
+              Alert.alert("Sucesso", "Desconectado do Strava");
+            } catch (error) {
+              Alert.alert("Erro", "Falha ao desconectar");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleLogout = async () => {
     try {
@@ -38,11 +131,84 @@ export default function ProfileScreen() {
       >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatar}>👤</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handlePickImage}
+            disabled={uploadingAvatar}
+          >
+            {uploadingAvatar ? (
+              <ActivityIndicator color={Colors.primary} size="large" />
+            ) : user?.avatar ? (
+              <Image
+                source={{ uri: user.avatar }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.avatar}>👤</Text>
+            )}
+            <View style={styles.editBadge}>
+              <Text style={styles.editBadgeIcon}>📷</Text>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
+        </View>
+
+        {/* Strava Integration Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Integrações</Text>
+          <View
+            style={[
+              styles.integrationCard,
+              isConnected && styles.integrationConnected,
+            ]}
+          >
+            <View style={styles.integrationHeader}>
+              <Text style={styles.integrationIcon}>⛹️</Text>
+              <View style={styles.integrationInfo}>
+                <Text style={styles.integrationName}>Strava</Text>
+                <Text style={styles.integrationStatus}>
+                  {isConnected
+                    ? `Conectado como ${athlete?.name ?? "Strava"}`
+                    : "Não conectado"}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.statusBadge,
+                  isConnected && styles.statusBadgeConnected,
+                ]}
+              >
+                <Text style={styles.statusDot}>●</Text>
+              </View>
+            </View>
+
+            <View style={styles.integrationActions}>
+              {isConnected ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.actionButtonPrimary]}
+                    onPress={handleStravaSync}
+                  >
+                    <Text style={styles.actionButtonText}>🔄 Sincronizar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.actionButtonDanger]}
+                    onPress={handleStravaDisconnect}
+                  >
+                    <Text style={styles.actionButtonText}>❌ Desconectar</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.actionButtonPrimary]}
+                  onPress={handleStravaConnect}
+                >
+                  <Text style={styles.actionButtonText}>🔗 Conectar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
 
         {/* Stats Section */}
@@ -54,36 +220,6 @@ export default function ProfileScreen() {
             <StatItem label="Calorias" value="2,840" icon="🔥" />
             <StatItem label="Semana Atual" value="5" icon="📅" />
           </View>
-        </View>
-
-        {/* Achievements Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Conquistas</Text>
-          <View style={styles.achievementsContainer}>
-            <AchievementBadge icon="🏅" label="Iniciante" desc="5 treinos" />
-            <AchievementBadge icon="🔥" label="Sequência 5+" desc="5 dias" />
-            <AchievementBadge icon="💪" label="Forte" desc="10km+" />
-          </View>
-        </View>
-
-        {/* Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Configurações</Text>
-          <SettingItem
-            icon="🔔"
-            label="Notificações"
-            value="Ativadas"
-          />
-          <SettingItem
-            icon="🌙"
-            label="Tema"
-            value="Dark Mode"
-          />
-          <SettingItem
-            icon="📊"
-            label="Privacidade"
-            value="Configurar"
-          />
         </View>
 
         {/* Logout Button */}
@@ -125,42 +261,6 @@ function StatItem({ label, value, icon }: StatItemProps) {
   );
 }
 
-interface AchievementBadgeProps {
-  icon: string;
-  label: string;
-  desc: string;
-}
-
-function AchievementBadge({ icon, label, desc }: AchievementBadgeProps) {
-  return (
-    <View style={styles.achievementBadge}>
-      <Text style={styles.achievementIcon}>{icon}</Text>
-      <View style={styles.achievementContent}>
-        <Text style={styles.achievementLabel}>{label}</Text>
-        <Text style={styles.achievementDesc}>{desc}</Text>
-      </View>
-    </View>
-  );
-}
-
-interface SettingItemProps {
-  icon: string;
-  label: string;
-  value: string;
-}
-
-function SettingItem({ icon, label, value }: SettingItemProps) {
-  return (
-    <View style={styles.settingItem}>
-      <View style={styles.settingLeft}>
-        <Text style={styles.settingIcon}>{icon}</Text>
-        <Text style={styles.settingLabel}>{label}</Text>
-      </View>
-      <Text style={styles.settingValue}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -176,18 +276,40 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: Colors.darkCard,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
     borderWidth: 2,
     borderColor: Colors.primary,
+    position: "relative",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 50,
+  },
+  editBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.dark,
+  },
+  editBadgeIcon: {
+    fontSize: 16,
   },
   avatar: {
-    fontSize: 40,
+    fontSize: 48,
   },
   name: {
     fontSize: 24,
@@ -207,6 +329,73 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
     marginBottom: 12,
+  },
+  integrationCard: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  integrationConnected: {
+    borderColor: Colors.success,
+  },
+  integrationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  integrationIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  integrationInfo: {
+    flex: 1,
+  },
+  integrationName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  integrationStatus: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  statusBadge: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.darkBorder,
+  },
+  statusBadgeConnected: {
+    backgroundColor: Colors.success,
+  },
+  statusDot: {
+    fontSize: 12,
+    color: Colors.darkCard,
+  },
+  integrationActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: Colors.darkBorder,
+    alignItems: "center",
+  },
+  actionButtonPrimary: {
+    backgroundColor: Colors.primary,
+  },
+  actionButtonDanger: {
+    backgroundColor: "#8b0000",
+  },
+  actionButtonText: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "600",
   },
   statsGrid: {
     flexDirection: "row",
@@ -236,64 +425,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
   },
-  achievementsContainer: {
-    gap: 12,
-  },
-  achievementBadge: {
-    flexDirection: "row",
-    backgroundColor: Colors.darkCard,
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.darkBorder,
-  },
-  achievementIcon: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  achievementContent: {
-    flex: 1,
-  },
-  achievementLabel: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  achievementDesc: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-  },
-  settingItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: Colors.darkCard,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.darkBorder,
-  },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  settingIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  settingLabel: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  settingValue: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-  },
   logoutButton: {
     backgroundColor: Colors.primary,
     borderRadius: 12,
@@ -318,3 +449,4 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 });
+

@@ -16,16 +16,24 @@ interface Workout {
   maxHeartRate?: number;
   intensity: "low" | "moderate" | "high";
   aiNarrative?: string;
+  description?: string;
+}
+
+interface WorkoutByDay {
+  [dayOfWeek: number]: Workout[]; // 0=Sunday, 1=Monday, ..., 6=Saturday
 }
 
 interface DashboardContextType {
   workouts: Workout[];
+  workoutsByDay: WorkoutByDay;
   currentMood?: string;
   currentMoodEmoji?: string;
   isLoading: boolean;
   setMood: (moodId: string, emoji: string) => void;
   getMoodToday: () => string | undefined;
   loadWorkouts: () => Promise<void>;
+  loadWeeklyWorkouts: (startDate: Date) => Promise<void>;
+  getWorkoutsByDate: (date: Date) => Workout[];
   analyzeWorkout: (workoutId: string) => Promise<void>;
 }
 
@@ -35,6 +43,7 @@ const DashboardContext = createContext<DashboardContextType | undefined>(
 
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [workoutsByDay, setWorkoutsByDay] = useState<WorkoutByDay>({});
   const [currentMood, setCurrentMood] = useState<string | undefined>();
   const [currentMoodEmoji, setCurrentMoodEmoji] = useState<string>("😐");
   const [isLoading, setIsLoading] = useState(false);
@@ -53,17 +62,65 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       const response = await apiService.get('/workouts');
-      const workoutsData = response.workouts.map((workout: any) => ({
+      const workoutsData = (response.workouts || []).map((workout: any) => ({
         ...workout,
         date: new Date(workout.date),
       }));
       setWorkouts(workoutsData);
+      groupWorkoutsByDay(workoutsData);
     } catch (error) {
       console.error('Error loading workouts:', error);
-      // Em caso de erro, mantém workouts vazios ou mostra mensagem
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loadWeeklyWorkouts = async (startDate: Date) => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
+
+      const response = await apiService.get(
+        `/workouts?startDate=${startStr}&endDate=${endStr}`
+      );
+      const workoutsData = (response.workouts || []).map((workout: any) => ({
+        ...workout,
+        date: new Date(workout.date),
+      }));
+      setWorkouts(workoutsData);
+      groupWorkoutsByDay(workoutsData);
+    } catch (error) {
+      console.error('Error loading weekly workouts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const groupWorkoutsByDay = (workoutsList: Workout[]) => {
+    const grouped: WorkoutByDay = {};
+
+    workoutsList.forEach((workout) => {
+      const date = new Date(workout.date);
+      const dayOfWeek = date.getDay();
+
+      if (!grouped[dayOfWeek]) {
+        grouped[dayOfWeek] = [];
+      }
+      grouped[dayOfWeek].push(workout);
+    });
+
+    setWorkoutsByDay(grouped);
+  };
+
+  const getWorkoutsByDate = (date: Date) => {
+    const dayOfWeek = date.getDay();
+    return workoutsByDay[dayOfWeek] || [];
   };
 
   const analyzeWorkout = async (workoutId: string) => {
@@ -100,12 +157,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     <DashboardContext.Provider
       value={{
         workouts,
+        workoutsByDay,
         currentMood,
         currentMoodEmoji,
         isLoading,
         setMood,
         getMoodToday,
         loadWorkouts,
+        loadWeeklyWorkouts,
+        getWorkoutsByDate,
         analyzeWorkout,
       }}
     >

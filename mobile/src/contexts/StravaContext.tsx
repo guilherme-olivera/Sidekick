@@ -1,18 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/apiService';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { Linking as RNLinking, Platform } from 'react-native';
 
 interface StravaContextType {
   isConnected: boolean;
   isConnecting: boolean;
   athlete: {
-    id: number;
+    id: string;
     name: string;
     username: string;
     profile: string;
   } | null;
-  connectStrava: () => Promise<void>;
-  disconnectStrava: () => Promise<void>;
+  connect: () => Promise<void>;
+  disconnect: () => Promise<void>;
   syncActivities: () => Promise<{ syncedActivities: number; totalActivities: number } | null>;
   checkConnectionStatus: () => Promise<void>;
 }
@@ -31,35 +33,75 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
   // Verifica status da conexão ao iniciar
   useEffect(() => {
     checkConnectionStatus();
+
+    const handleUrl = ({ url }: { url: string }) => {
+      processStravaRedirect(url);
+    };
+
+    const subscription = RNLinking.addEventListener('url', handleUrl);
+
+    RNLinking.getInitialURL().then((url) => {
+      if (url) {
+        processStravaRedirect(url);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
+
+  const processStravaRedirect = async (url: string) => {
+    try {
+      const parsed = Linking.parse(url);
+      if (!parsed.path?.startsWith('strava/callback')) {
+        return;
+      }
+
+      const code = parsed.queryParams?.code as string | undefined;
+      if (!code) {
+        return;
+      }
+
+      if (isConnected) {
+        return;
+      }
+
+      setIsConnecting(true);
+      const response = await apiService.post('/strava/callback', { code });
+
+      setIsConnected(true);
+      setAthlete(response.athlete ?? null);
+    } catch (error) {
+      console.error('Error processing Strava redirect:', error);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   const checkConnectionStatus = async () => {
     try {
       const response = await apiService.get('/strava/status');
       setIsConnected(response.isConnected);
-      if (response.isConnected) {
-        // Se conectado, buscar dados do atleta (pode ser implementado depois)
-        setAthlete(null); // Temporário
-      }
+      setAthlete(response.athlete ?? null);
     } catch (error) {
       console.error('Error checking Strava status:', error);
       setIsConnected(false);
+      setAthlete(null);
     }
   };
 
-  const connectStrava = async () => {
+  const connect = async () => {
     try {
       setIsConnecting(true);
 
-      // Busca URL de autorização
       const { authUrl } = await apiService.get('/strava/auth-url');
 
-      // Aqui seria implementada a abertura do navegador ou deep linking
-      // Por enquanto, apenas log da URL
-      console.log('Strava Auth URL:', authUrl);
-
-      // Em produção, isso abriria o navegador ou app Strava
-      // Após autorização, o callback seria processado
+      if (Platform.OS === 'web') {
+        window.open(authUrl, '_blank');
+      } else {
+        await WebBrowser.openBrowserAsync(authUrl);
+      }
 
     } catch (error) {
       console.error('Error connecting to Strava:', error);
@@ -69,15 +111,14 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
     }
   };
 
-  const disconnectStrava = async () => {
+  const disconnect = async () => {
     try {
-      // Por enquanto, apenas limpa o estado local
-      // Em produção, pode ser necessário chamar uma API para limpar tokens
+      await apiService.post('/strava/disconnect');
       setIsConnected(false);
       setAthlete(null);
-      await AsyncStorage.removeItem('strava_connected');
     } catch (error) {
       console.error('Error disconnecting Strava:', error);
+      throw error;
     }
   };
 
@@ -99,8 +140,8 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
     isConnected,
     isConnecting,
     athlete,
-    connectStrava,
-    disconnectStrava,
+    connect,
+    disconnect,
     syncActivities,
     checkConnectionStatus,
   };

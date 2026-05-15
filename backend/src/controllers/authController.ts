@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { loginUser, registerUser } from "../services/authService";
+import { prisma } from "../utils/prisma";
 
 /**
  * POST /api/auth/register
@@ -59,12 +60,36 @@ export async function handleLogin(req: Request, res: Response) {
  */
 export async function handleGetMe(req: any, res: Response) {
   try {
-    // req.userId é adicionado pelo authMiddleware
-    res.json({
-      success: true,
-      userId: req.userId,
-      message: "Autenticado com sucesso",
+    const userId = req.userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+        planType: true,
+        stravaId: true,
+        stravaAthleteName: true,
+        stravaAthleteUsername: true,
+        stravaAthleteProfile: true,
+        profile: {
+          select: {
+            trainingGoal: true,
+            focusArea: true,
+            injuryNote: true,
+            availableTime: true,
+            trainingMood: true,
+          },
+        },
+      },
     });
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Erro ao buscar usuário",

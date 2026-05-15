@@ -1,26 +1,55 @@
 import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 import { analyzeWorkoutWithGemini } from "../services/geminiService";
+import { consumeAiAnalysisQuota } from "../services/usageService";
 
 /**
  * GET /api/workouts
- * Busca treinos do usuário
+ * Busca treinos do usuário com filtro opcional por data
+ * Query params: 
+ *   - date: YYYY-MM-DD (filtra por data específica)
+ *   - startDate: YYYY-MM-DD (início do intervalo)
+ *   - endDate: YYYY-MM-DD (fim do intervalo)
  */
 export const getWorkoutsHandler = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
+    const { date, startDate, endDate } = req.query;
 
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
     }
 
+    let whereClause: any = { userId };
+
+    if (date) {
+      const targetDate = new Date(date as string);
+      const nextDay = new Date(targetDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      whereClause.date = {
+        gte: targetDate,
+        lt: nextDay,
+      };
+    } else if (startDate || endDate) {
+      whereClause.date = {};
+      if (startDate) {
+        whereClause.date.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setDate(end.getDate() + 1);
+        whereClause.date.lt = end;
+      }
+    }
+
     const workouts = await prisma.workout.findMany({
-      where: { userId },
+      where: whereClause,
       orderBy: { date: "desc" },
       take: 50, // últimos 50 treinos
     });
 
-    res.json({ workouts });
+    res.json({ success: true, workouts });
   } catch (error) {
     console.error("Error fetching workouts:", error);
     res.status(500).json({ error: "Failed to fetch workouts" });
@@ -42,7 +71,7 @@ export const getWorkoutByIdHandler = async (req: Request, res: Response) => {
 
     const workout = await prisma.workout.findFirst({
       where: {
-        id,
+        id: String(id),
         userId,
       },
     });
@@ -74,8 +103,15 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
 
     const workout = await prisma.workout.findFirst({
       where: {
-        id,
+        id: String(id),
         userId,
+      },
+      include: {
+        user: {
+          select: {
+            planType: true,
+          },
+        },
       },
     });
 
@@ -83,12 +119,14 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Workout not found" });
     }
 
+    await consumeAiAnalysisQuota(userId, workout.user?.planType);
+
     // Gera análise com Gemini
     const narrative = await analyzeWorkoutWithGemini(workout, mood);
 
     // Atualiza o treino com a narrativa
     const updatedWorkout = await prisma.workout.update({
-      where: { id },
+      where: { id: String(id) },
       data: { aiNarrative: narrative },
     });
 
@@ -145,7 +183,7 @@ export const updateWorkoutHandler = async (req: Request, res: Response) => {
 
     const workout = await prisma.workout.findFirst({
       where: {
-        id,
+        id: String(id),
         userId,
       },
     });
@@ -155,7 +193,7 @@ export const updateWorkoutHandler = async (req: Request, res: Response) => {
     }
 
     const updatedWorkout = await prisma.workout.update({
-      where: { id },
+      where: { id: String(id) },
       data: updateData,
     });
 
@@ -181,7 +219,7 @@ export const deleteWorkoutHandler = async (req: Request, res: Response) => {
 
     const workout = await prisma.workout.findFirst({
       where: {
-        id,
+        id: String(id),
         userId,
       },
     });
@@ -191,7 +229,7 @@ export const deleteWorkoutHandler = async (req: Request, res: Response) => {
     }
 
     await prisma.workout.delete({
-      where: { id },
+      where: { id:String(id) },
     });
 
     res.json({ success: true });

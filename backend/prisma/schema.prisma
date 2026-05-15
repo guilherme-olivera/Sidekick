@@ -2,8 +2,8 @@
 // Models: User, Workout, MoodCheck
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -14,17 +14,25 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  password      String?   // null se usar OAuth Strava
-  name          String?
-  avatar        String?   // URL da foto de perfil
-  stravaId      String?   @unique // ID do Strava se conectado via OAuth
-  stravaToken   String?   // Token de acesso Strava
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  password             String?   // null se usar OAuth Strava
+  name                 String?
+  avatar               String?   // URL da foto de perfil
+  planType             String    @default("free")
+  stravaId             String?   @unique // ID do atleta no Strava
+  stravaAccessToken    String?
+  stravaRefreshToken   String?
+  stravaTokenExpiresAt DateTime?
+  stravaAthleteName    String?
+  stravaAthleteUsername String?
+  stravaAthleteProfile String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Relações
   workouts      Workout[]
   moodChecks    MoodCheck[]
+  profile       UserProfile?
+  usageQuotas   UsageQuota[]
 
   @@map("users")
 }
@@ -83,5 +91,38 @@ model MoodCheck {
   @@map("mood_checks")
   @@unique([userId, date])  // Um humor por dia por usuário
   @@index([userId])
+}
+
+model UserProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  trainingGoal  String?
+  focusArea     String?
+  injuryNote    String?
+  availableTime String?
+  trainingMood  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model UsageQuota {
+  id          String   @id @default(cuid())
+  userId      String
+  feature     String
+  used        Int      @default(0)
+  limit       Int
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feature, periodStart])
+  @@map("usage_quotas")
 }
 

@@ -26,25 +26,27 @@ export const getStravaAuthUrlHandler = async (req: Request, res: Response) => {
  * POST /api/strava/callback
  * Processa callback do OAuth do Strava
  */
-export const stravaCallbackHandler = async (req: Request, res: Response) => {
+export const stravaCallbackHandler = async (req: any, res: Response) => {
   try {
-    const { code, userId } = req.body;
+    const userId = req.userId;
+    const { code } = req.body;
 
     if (!code || !userId) {
-      return res.status(400).json({ error: "Code and userId are required" });
+      return res.status(400).json({ error: "Code and auth token are required" });
     }
 
-    // Troca código por tokens
     const tokenData = await exchangeCodeForTokens(code);
 
-    // Salva ou atualiza tokens do usuário
     await prisma.user.update({
       where: { id: userId },
       data: {
         stravaAccessToken: tokenData.access_token,
         stravaRefreshToken: tokenData.refresh_token,
         stravaTokenExpiresAt: new Date(tokenData.expires_at * 1000),
-        stravaAthleteId: tokenData.athlete.id,
+        stravaId: tokenData.athlete.id.toString(),
+        stravaAthleteName: `${tokenData.athlete.firstname} ${tokenData.athlete.lastname}`,
+        stravaAthleteUsername: tokenData.athlete.username,
+        stravaAthleteProfile: tokenData.athlete.profile,
       },
     });
 
@@ -82,7 +84,7 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
         stravaAccessToken: true,
         stravaRefreshToken: true,
         stravaTokenExpiresAt: true,
-        stravaAthleteId: true,
+        stravaId: true,
       },
     });
 
@@ -92,7 +94,6 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
 
     let accessToken = user.stravaAccessToken;
 
-    // Verifica se token expirou e renova se necessário
     if (user.stravaTokenExpiresAt && user.stravaTokenExpiresAt < new Date()) {
       if (!user.stravaRefreshToken) {
         return res.status(400).json({ error: "Strava refresh token expired" });
@@ -100,7 +101,6 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
 
       const newTokenData = await refreshStravaToken(user.stravaRefreshToken);
 
-      // Atualiza tokens no banco
       await prisma.user.update({
         where: { id: userId },
         data: {
@@ -169,7 +169,10 @@ export const getStravaStatusHandler = async (req: Request, res: Response) => {
       select: {
         stravaAccessToken: true,
         stravaTokenExpiresAt: true,
-        stravaAthleteId: true,
+        stravaId: true,
+        stravaAthleteName: true,
+        stravaAthleteUsername: true,
+        stravaAthleteProfile: true,
       },
     });
 
@@ -183,10 +186,45 @@ export const getStravaStatusHandler = async (req: Request, res: Response) => {
     res.json({
       isConnected,
       isExpired,
-      athleteId: user.stravaAthleteId,
+      athlete: isConnected
+        ? {
+            id: user.stravaId,
+            name: user.stravaAthleteName,
+            username: user.stravaAthleteUsername,
+            profile: user.stravaAthleteProfile,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error checking Strava status:", error);
     res.status(500).json({ error: "Failed to check Strava status" });
+  }
+};
+
+export const disconnectStravaHandler = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        stravaAccessToken: null,
+        stravaRefreshToken: null,
+        stravaTokenExpiresAt: null,
+        stravaId: null,
+        stravaAthleteName: null,
+        stravaAthleteUsername: null,
+        stravaAthleteProfile: null,
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error disconnecting Strava:", error);
+    res.status(500).json({ error: "Failed to disconnect Strava" });
   }
 };

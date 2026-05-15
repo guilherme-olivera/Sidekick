@@ -1,7 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-const { PrismaClient } = require("@prisma/client");
+import path from "path";
+import { prisma } from "./utils/prisma";
 import {
   handleLogin,
   handleRegister,
@@ -12,6 +13,7 @@ import {
   stravaCallbackHandler,
   syncStravaActivitiesHandler,
   getStravaStatusHandler,
+  disconnectStravaHandler,
 } from "./controllers/stravaController";
 import {
   getWorkoutsHandler,
@@ -21,16 +23,28 @@ import {
   updateWorkoutHandler,
   deleteWorkoutHandler,
 } from "./controllers/workoutController";
+import {
+  getUserProfileHandler,
+  updateUserProfileHandler,
+  updateUserAvatarHandler,
+  getUserUsageHandler,
+} from "./controllers/userController";
+import {
+  handleUploadAvatar,
+  handleDeleteAvatar,
+} from "./controllers/avatarController";
 import { authMiddleware } from "./services/authService";
+import { uploadAvatar } from "./middleware/uploadMiddleware";
 
-// Initialize Prisma Client
-const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(cors());
+
+// Servir arquivos estáticos (avatares, etc)
+app.use("/public", express.static(path.join(__dirname, "../public")));
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -44,9 +58,17 @@ app.get("/api/auth/me", authMiddleware, handleGetMe);
 
 // ===== STRAVA INTEGRATION ROUTES =====
 app.get("/api/strava/auth-url", getStravaAuthUrlHandler);
-app.post("/api/strava/callback", stravaCallbackHandler);
+app.post("/api/strava/callback", authMiddleware, stravaCallbackHandler);
 app.post("/api/strava/sync", authMiddleware, syncStravaActivitiesHandler);
+app.post("/api/strava/disconnect", authMiddleware, disconnectStravaHandler);
 app.get("/api/strava/status", authMiddleware, getStravaStatusHandler);
+
+// ===== USER PROFILE ROUTES =====
+app.get("/api/user/profile", authMiddleware, getUserProfileHandler);
+app.put("/api/user/profile", authMiddleware, updateUserProfileHandler);
+app.post("/api/user/avatar", authMiddleware, uploadAvatar.single("avatar"), handleUploadAvatar);
+app.delete("/api/user/avatar", authMiddleware, handleDeleteAvatar);
+app.get("/api/user/usage", authMiddleware, getUserUsageHandler);
 
 // ===== WORKOUT ROUTES =====
 app.get("/api/workouts", authMiddleware, getWorkoutsHandler);
@@ -88,7 +110,7 @@ app.post("/api/test/ai-analysis", async (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Sidekick Backend running on http://localhost:${PORT}`);
-  console.log(`🧠 IA powered by Gemini 1.5 Flash`);
+  console.log(`🧠 IA powered by Gemini`);
   console.log(`💾 Database: PostgreSQL`);
   console.log(`🔐 Auth: JWT (Mock mode)`);
 });
