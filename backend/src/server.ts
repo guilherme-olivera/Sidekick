@@ -37,7 +37,9 @@ import { authMiddleware } from "./services/authService";
 import { uploadAvatar } from "./middleware/uploadMiddleware";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || "0.0.0.0";
+const PUBLIC_URL = process.env.SERVER_URL || `http://${process.env.HOST || 'localhost'}:${PORT}`;
 
 // Middleware
 app.use(express.json());
@@ -57,11 +59,19 @@ app.post("/api/auth/login", handleLogin);
 app.get("/api/auth/me", authMiddleware, handleGetMe);
 
 // ===== STRAVA INTEGRATION ROUTES =====
-app.get("/api/strava/auth-url", getStravaAuthUrlHandler);
+app.get("/api/strava/auth-url", authMiddleware, getStravaAuthUrlHandler);
 app.post("/api/strava/callback", authMiddleware, stravaCallbackHandler);
+app.get("/api/strava/callback", stravaCallbackHandler);
 app.post("/api/strava/sync", authMiddleware, syncStravaActivitiesHandler);
 app.post("/api/strava/disconnect", authMiddleware, disconnectStravaHandler);
 app.get("/api/strava/status", authMiddleware, getStravaStatusHandler);
+
+app.get("/", async (req, res) => {
+  if (req.query.code) {
+    return stravaCallbackHandler(req, res);
+  }
+  res.send("Sidekick Backend is running");
+});
 
 // ===== USER PROFILE ROUTES =====
 app.get("/api/user/profile", authMiddleware, getUserProfileHandler);
@@ -107,9 +117,9 @@ app.post("/api/test/ai-analysis", async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Sidekick Backend running on http://localhost:${PORT}`);
+// Start server (bind to HOST so devices on LAN can reach it)
+app.listen(PORT, HOST as any, () => {
+  console.log(`🚀 Sidekick Backend running on ${PUBLIC_URL}`);
   console.log(`🧠 IA powered by Gemini`);
   console.log(`💾 Database: PostgreSQL`);
   console.log(`🔐 Auth: JWT (Mock mode)`);

@@ -5,16 +5,26 @@ import {
   fetchStravaActivities,
   convertStravaActivityToWorkout,
   refreshStravaToken,
+  verifyStravaState,
 } from "../services/stravaService";
 import { prisma } from "../utils/prisma";
+
+const STRAVA_APP_REDIRECT_URI = process.env.STRAVA_APP_REDIRECT_URI || "sidekick://strava/callback";
 
 /**
  * GET /api/strava/auth-url
  * Retorna URL de autorização do Strava
  */
-export const getStravaAuthUrlHandler = async (req: Request, res: Response) => {
+export const getStravaAuthUrlHandler = async (req: any, res: Response) => {
   try {
-    const authUrl = getStravaAuthUrl();
+    const userId = req.userId;
+    console.log('[StravaController] getStravaAuthUrlHandler request', { userId });
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const authUrl = getStravaAuthUrl(userId);
+    console.log('[StravaController] generated authUrl', authUrl);
     res.json({ authUrl });
   } catch (error) {
     console.error("Error generating Strava auth URL:", error);
@@ -28,16 +38,40 @@ export const getStravaAuthUrlHandler = async (req: Request, res: Response) => {
  */
 export const stravaCallbackHandler = async (req: any, res: Response) => {
   try {
-    const userId = req.userId;
-    const { code } = req.body;
+    const code = (req.method === "GET" ? req.query.code : req.body.code) as string;
+    const state = (req.method === "GET" ? req.query.state : req.body.state) as string;
+    let userId = req.userId;
 
-    if (!code || !userId) {
-      return res.status(400).json({ error: "Code and auth token are required" });
+    console.log('[StravaController] callback request', {
+      method: req.method,
+      path: req.path,
+      code: !!code,
+      state: !!state,
+      userId: req.userId,
+    });
+
+    if (!userId) {
+      if (!state) {
+        console.log('[StravaController] missing state and userId');
+        return res.status(400).json({ error: "Code or state is required" });
+      }
+      const verification = verifyStravaState(state);
+      console.log('[StravaController] state verification', verification);
+      if (!verification.valid || !verification.userId) {
+        return res.status(400).json({ error: verification.error || "Invalid state" });
+      }
+      userId = verification.userId;
     }
 
+    if (!code || !userId) {
+      console.log('[StravaController] missing code or userId after verification', { code: !!code, userId });
+      return res.status(400).json({ error: "Code and user information are required" });
+    }
+
+    console.log('[StravaController] exchanging code for tokens', { userId });
     const tokenData = await exchangeCodeForTokens(code);
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
         stravaAccessToken: tokenData.access_token,
@@ -49,8 +83,9 @@ export const stravaCallbackHandler = async (req: any, res: Response) => {
         stravaAthleteProfile: tokenData.athlete.profile,
       },
     });
+    console.log('[StravaController] saved Strava tokens for user', { userId, stravaId: tokenData.athlete.id });
 
-    res.json({
+    const responsePayload = {
       success: true,
       athlete: {
         id: tokenData.athlete.id,
@@ -58,7 +93,19 @@ export const stravaCallbackHandler = async (req: any, res: Response) => {
         username: tokenData.athlete.username,
         profile: tokenData.athlete.profile,
       },
-    });
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+      },
+    };
+
+    if (req.method === "GET") {
+      const appRedirectUrl = `${STRAVA_APP_REDIRECT_URI}?success=true`;
+      return res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Strava conectado</title><script>window.location.href = ${JSON.stringify(appRedirectUrl)};</script></head><body><h1>Conexão com Strava concluída</h1><p>Se não for redirecionado automaticamente, <a href="${appRedirectUrl}">clique aqui para voltar ao app</a>.</p></body></html>`);
+    }
+
+    res.json(responsePayload);
   } catch (error) {
     console.error("Error processing Strava callback:", error);
     res.status(500).json({ error: "Failed to process Strava callback" });

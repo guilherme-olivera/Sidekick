@@ -52,24 +52,40 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
   }, []);
 
   const processStravaRedirect = async (url: string) => {
+    console.log('[StravaContext] processStravaRedirect', url);
     try {
       const parsed = Linking.parse(url);
+      console.log('[StravaContext] parsed redirect', parsed);
       if (!parsed.path?.startsWith('strava/callback')) {
+        console.log('[StravaContext] redirect path not matching strava/callback');
         return;
       }
 
+      const success = parsed.queryParams?.success === 'true';
       const code = parsed.queryParams?.code as string | undefined;
+      const state = parsed.queryParams?.state as string | undefined;
+      console.log('[StravaContext] redirect params', { success, code, state });
+
+      if (success) {
+        setIsConnecting(true);
+        await checkConnectionStatus();
+        return;
+      }
+
       if (!code) {
+        console.log('[StravaContext] no code found in redirect');
         return;
       }
 
       if (isConnected) {
+        console.log('[StravaContext] already connected, skipping callback');
         return;
       }
 
       setIsConnecting(true);
-      const response = await apiService.post('/strava/callback', { code });
+      const response = await apiService.post('/strava/callback', { code, state });
 
+      console.log('[StravaContext] callback response', response);
       setIsConnected(true);
       setAthlete(response.athlete ?? null);
     } catch (error) {
@@ -94,8 +110,10 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
   const connect = async () => {
     try {
       setIsConnecting(true);
+      console.log('[StravaContext] connect start');
 
       const { authUrl } = await apiService.get('/strava/auth-url');
+      console.log('[StravaContext] authUrl received', authUrl);
 
       if (Platform.OS === 'web') {
         window.open(authUrl, '_blank');
@@ -103,6 +121,8 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
         await WebBrowser.openBrowserAsync(authUrl);
       }
 
+      console.log('[StravaContext] browser opened for Strava auth');
+      await checkConnectionStatus();
     } catch (error) {
       console.error('Error connecting to Strava:', error);
       throw error;

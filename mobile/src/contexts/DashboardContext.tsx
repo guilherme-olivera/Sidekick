@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { apiService } from "../services/apiService";
+import { calendarMockService, CalendarEvent } from "../services/calendarMockService";
 import { useAuth } from "./AuthContext";
 
 interface Workout {
@@ -35,6 +36,12 @@ interface DashboardContextType {
   loadWeeklyWorkouts: (startDate: Date) => Promise<void>;
   getWorkoutsByDate: (date: Date) => Workout[];
   analyzeWorkout: (workoutId: string) => Promise<void>;
+  calendarEvents: CalendarEvent[];
+  loadCalendarEvents: () => Promise<void>;
+  getCalendarEventsByDate: (isoDate: string) => CalendarEvent[];
+  createEvent: (payload: Partial<CalendarEvent>) => Promise<any>;
+  updateEvent: (id: string, payload: Partial<CalendarEvent>) => Promise<any>;
+  deleteEvent: (id: string) => Promise<any>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(
@@ -44,23 +51,45 @@ const DashboardContext = createContext<DashboardContextType | undefined>(
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [workoutsByDay, setWorkoutsByDay] = useState<WorkoutByDay>({});
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [currentMood, setCurrentMood] = useState<string | undefined>();
   const [currentMoodEmoji, setCurrentMoodEmoji] = useState<string>("😐");
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
 
-  // Carrega treinos ao inicializar
+  // Carrega treinos e eventos ao inicializar
   useEffect(() => {
     if (user) {
       loadWorkouts();
+      loadCalendarEvents();
     }
   }, [user]);
+
+  // Toggle para usar mocks locais em vez do backend
+  const USE_LOCAL_MOCKS = true;
 
   const loadWorkouts = async () => {
     if (!user) return;
 
     try {
       setIsLoading(true);
+      if (USE_LOCAL_MOCKS) {
+        const res = await calendarMockService.listAll();
+        const workoutsData = (res.events || []).map((workout: any) => ({
+          id: workout.id,
+          userId: user.id,
+          title: workout.title,
+          type: (workout.type as any) || "run",
+          date: new Date(workout.date),
+          duration: (workout.durationMinutes || 30) * 60,
+          intensity: "moderate" as Workout["intensity"],
+        } as Workout));
+        setWorkouts(workoutsData);
+        groupWorkoutsByDay(workoutsData);
+        await loadCalendarEvents();
+        return;
+      }
+
       const response = await apiService.get('/workouts');
       const workoutsData = (response.workouts || []).map((workout: any) => ({
         ...workout,
@@ -85,6 +114,23 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
       const startStr = startDate.toISOString().split('T')[0];
       const endStr = endDate.toISOString().split('T')[0];
+
+      if (USE_LOCAL_MOCKS) {
+        const res = await calendarMockService.listBetween(startStr, endStr);
+        const workoutsData = (res.events || []).map((workout: any) => ({
+          id: workout.id,
+          userId: user.id,
+          title: workout.title,
+          type: (workout.type as any) || "run",
+          date: new Date(workout.date),
+          duration: (workout.durationMinutes || 30) * 60,
+          intensity: "moderate" as Workout["intensity"],
+        } as Workout));
+        setWorkouts(workoutsData);
+        groupWorkoutsByDay(workoutsData);
+        await loadCalendarEvents();
+        return;
+      }
 
       const response = await apiService.get(
         `/workouts?startDate=${startStr}&endDate=${endStr}`
@@ -143,6 +189,63 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loadCalendarEvents = async () => {
+    if (!user) return;
+
+    if (USE_LOCAL_MOCKS) {
+      const res = await calendarMockService.listAll();
+      setCalendarEvents(res.events || []);
+      return;
+    }
+
+    const response = await apiService.get('/events');
+    setCalendarEvents(response.events || []);
+  };
+
+  const getCalendarEventsByDate = (isoDate: string) => {
+    return calendarEvents.filter((event) => event.date === isoDate);
+  };
+
+  // Calendar CRUD helpers (use local mocks when enabled)
+  const createEvent = async (payload: Partial<CalendarEvent>) => {
+    if (USE_LOCAL_MOCKS) {
+      const res = await calendarMockService.create(payload);
+      await loadWorkouts();
+      await loadCalendarEvents();
+      return res.event;
+    }
+    const res = await apiService.post('/events', payload);
+    await loadWorkouts();
+    await loadCalendarEvents();
+    return res.event;
+  };
+
+  const updateEvent = async (id: string, payload: Partial<CalendarEvent>) => {
+    if (USE_LOCAL_MOCKS) {
+      const res = await calendarMockService.update(id, payload);
+      await loadWorkouts();
+      await loadCalendarEvents();
+      return res.event;
+    }
+    const res = await apiService.put(`/events/${id}`, payload);
+    await loadWorkouts();
+    await loadCalendarEvents();
+    return res.event;
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (USE_LOCAL_MOCKS) {
+      const res = await calendarMockService.remove(id);
+      await loadWorkouts();
+      await loadCalendarEvents();
+      return res;
+    }
+    const res = await apiService.delete(`/events/${id}`);
+    await loadWorkouts();
+    await loadCalendarEvents();
+    return res;
+  };
+
   const setMood = (moodId: string, emoji: string) => {
     setCurrentMood(moodId);
     setCurrentMoodEmoji(emoji);
@@ -167,6 +270,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         loadWeeklyWorkouts,
         getWorkoutsByDate,
         analyzeWorkout,
+        calendarEvents,
+        loadCalendarEvents,
+        getCalendarEventsByDate,
+        createEvent,
+        updateEvent,
+        deleteEvent,
       }}
     >
       {children}

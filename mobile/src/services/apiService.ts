@@ -1,9 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 // API Service for Sidekick Mobile
 // Comunicação com o backend
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+const rawApiBase =
+  ((Constants.expoConfig?.extra as any)?.API_URL as string) ||
+  ((Constants.manifest?.extra as any)?.API_URL as string) ||
+  process.env.EXPO_PUBLIC_API_URL ||
+  'http://192.168.15.11:3000';
+
+let API_BASE_URL = rawApiBase;
+// Ensure protocol is present for React Native fetch to work
+if (!/^https?:\/\//i.test(API_BASE_URL)) {
+  API_BASE_URL = `http://${API_BASE_URL}`;
+}
+// Remove trailing slash if present
+API_BASE_URL = API_BASE_URL.replace(/\/$/, '');
+
+console.log('[apiService] API_BASE_URL =', API_BASE_URL);
 
 interface LoginPayload {
   email: string;
@@ -101,13 +116,32 @@ async function buildHeaders(additionalHeaders: Record<string, string> = {}) {
   };
 }
 
-async function safeFetch(url: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_BASE_URL}${url}`, options);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || response.statusText || 'Request failed');
+function normalizeApiPath(url: string) {
+  if (url.startsWith('/api')) {
+    return url;
   }
-  return data;
+  if (url.startsWith('/')) {
+    return `/api${url}`;
+  }
+  return `/api/${url}`;
+}
+
+async function safeFetch(url: string, options: RequestInit = {}) {
+  const normalizedPath = normalizeApiPath(url);
+  const fullUrl = `${API_BASE_URL}${normalizedPath}`;
+  console.log('[apiService] fetch', fullUrl, options.method, options.headers ? 'headers set' : 'no headers');
+  try {
+    const response = await fetch(fullUrl, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('[apiService] response error', fullUrl, response.status, data);
+      throw new Error(data.error || response.statusText || 'Request failed');
+    }
+    return data;
+  } catch (error) {
+    console.error('[apiService] network error', fullUrl, error);
+    throw error;
+  }
 }
 
 export async function apiGet(path: string) {

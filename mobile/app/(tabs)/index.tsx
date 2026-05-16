@@ -51,13 +51,13 @@ export default function HomeScreen() {
   const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<any[]>([]);
 
   const latestWorkout = workouts[0];
+  const today = new Date();
+  const currentWeekMonday = new Date(today);
+  currentWeekMonday.setDate(today.getDate() - today.getDay() + 1); // Início da semana
 
   useEffect(() => {
-    // Carrega treinos da semana atual ao inicializar
-    const now = new Date();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - now.getDay() + 1); // Início da semana
-    
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - today.getDay() + 1); // Início da semana
     loadWeeklyWorkouts(monday);
   }, []);
 
@@ -90,10 +90,14 @@ export default function HomeScreen() {
     router.push(`/history?workoutId=${workoutId}`);
   };
 
-  const getDayBadgeColor = (dayIndex: number): "empty" | "filled" => {
+  const getDayBadgeColor = (dayIndex: number): "empty" | "filled" | "upcoming" => {
     const dayOfWeek = DAY_NUMBERS[dayIndex];
     const hasWorkout = workoutsByDay[dayOfWeek] && workoutsByDay[dayOfWeek].length > 0;
-    return hasWorkout ? "filled" : "empty";
+    if (!hasWorkout) return "empty";
+
+    const dayDate = new Date(currentWeekMonday);
+    dayDate.setDate(currentWeekMonday.getDate() + dayIndex);
+    return dayDate <= today ? "filled" : "upcoming";
   };
 
   return (
@@ -261,21 +265,22 @@ function StatCard({ label, value }: StatCardProps) {
 
 interface DayBadgeProps {
   day: string;
-  status: "empty" | "filled";
+  status: "empty" | "filled" | "upcoming";
   onPress: () => void;
   hasWorkouts: boolean;
 }
 
 function DayBadge({ day, status, onPress, hasWorkouts }: DayBadgeProps) {
-  const isGreen = status === "filled";
+  const isFilled = status === "filled";
+  const isUpcoming = status === "upcoming";
 
   return (
     <TouchableOpacity
       style={[
         styles.dayBadge,
         {
-          backgroundColor: isGreen ? Colors.success : Colors.darkCard,
-          borderColor: isGreen ? Colors.success : Colors.darkBorder,
+          backgroundColor: isFilled ? Colors.success : isUpcoming ? "#ffb703" : Colors.darkCard,
+          borderColor: isFilled ? Colors.success : isUpcoming ? "#ffb703" : Colors.darkBorder,
         },
       ]}
       onPress={onPress}
@@ -284,12 +289,12 @@ function DayBadge({ day, status, onPress, hasWorkouts }: DayBadgeProps) {
       <Text
         style={[
           styles.dayBadgeDay,
-          { color: isGreen ? Colors.dark : Colors.textSecondary },
+          { color: isFilled || isUpcoming ? Colors.dark : Colors.textSecondary },
         ]}
       >
         {day}
       </Text>
-      {isGreen && <Text style={styles.dayBadgeCheck}>✓</Text>}
+      {(isFilled || isUpcoming) && <Text style={styles.dayBadgeCheck}>✓</Text>}
     </TouchableOpacity>
   );
 }

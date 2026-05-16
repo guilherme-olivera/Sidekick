@@ -1,7 +1,14 @@
 import axios from "axios";
+import jwt from "jsonwebtoken";
 
 const STRAVA_BASE_URL = "https://www.strava.com/api/v3";
 const STRAVA_OAUTH_URL = "https://www.strava.com/oauth/authorize";
+
+const STRAVA_REDIRECT_URI =
+  process.env.STRAVA_REDIRECT_URI ||
+  `${process.env.SERVER_URL || "http://192.168.15.11:3000"}/api/strava/callback`;
+const STRAVA_SCOPE = process.env.STRAVA_SCOPE || "activity:read_all";
+const STRAVA_STATE_SECRET = process.env.JWT_SECRET || "sidekick-dev-secret-key-2026";
 
 interface StravaTokenResponse {
   access_token: string;
@@ -32,13 +39,40 @@ interface StravaActivity {
 /**
  * Gera URL de autorização do Strava
  */
-export function getStravaAuthUrl(): string {
-  const clientId = process.env.STRAVA_CLIENT_ID || "your-strava-client-id";
-  const redirectUri = encodeURIComponent(
-    process.env.STRAVA_REDIRECT_URI || "sidekick://strava/callback"
-  );
+export function createStravaState(userId: string): string {
+  return jwt.sign({ userId }, STRAVA_STATE_SECRET, {
+    expiresIn: "15m",
+  });
+}
 
-  return `${STRAVA_OAUTH_URL}?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=read,activity:read&approval_prompt=force`;
+export function verifyStravaState(state: string): { valid: boolean; userId?: string; error?: string } {
+  try {
+    const decoded = jwt.verify(state, STRAVA_STATE_SECRET) as { userId: string };
+    return { valid: true, userId: decoded.userId };
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : "Invalid state",
+    };
+  }
+}
+
+export function getStravaAuthUrl(userId: string): string {
+  const clientId = process.env.STRAVA_CLIENT_ID || "your-strava-client-id";
+  const redirectUri = encodeURIComponent(STRAVA_REDIRECT_URI);
+  const state = encodeURIComponent(createStravaState(userId));
+  const authUrl = `${STRAVA_OAUTH_URL}?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=${encodeURIComponent(
+    STRAVA_SCOPE
+  )}&approval_prompt=auto&state=${state}`;
+
+  console.log('[StravaService] getStravaAuthUrl', {
+    clientId,
+    redirectUri: STRAVA_REDIRECT_URI,
+    scope: STRAVA_SCOPE,
+    authUrl,
+  });
+
+  return authUrl;
 }
 
 /**

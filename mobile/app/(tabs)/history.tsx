@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
 
@@ -23,12 +24,18 @@ type FilterType = "all" | "run" | "cycling" | "strength";
 
 export default function HistoryScreen() {
   const { workouts } = useDashboard();
+  const { workoutId } = useLocalSearchParams();
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const filteredWorkouts =
-    filter === "all"
-      ? workouts
-      : workouts.filter((w) => w.type === filter);
+  const selectedWorkout = workoutId
+    ? workouts.find((workout) => workout.id === workoutId)
+    : null;
+
+  const filteredWorkouts = selectedWorkout
+    ? [selectedWorkout]
+    : filter === "all"
+    ? workouts
+    : workouts.filter((w) => w.type === filter);
 
   return (
     <SafeAreaView style={styles.container}>
