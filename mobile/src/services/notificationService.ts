@@ -3,7 +3,6 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { CalendarEvent } from './calendarMockService';
-import prefsService from './notificationPrefs';
 
 const STORAGE_KEY = '@sidekick:event_notifications';
 
@@ -41,19 +40,15 @@ async function saveStore(map: StoredMap) {
 }
 
 export async function scheduleEventNotifications(event: CalendarEvent) {
-  const prefs = await prefsService.loadPrefs();
-  if (!prefs.enabled) return;
-
   const ok = await requestPermissions();
   if (!ok) return;
 
-  const baseTime = event.time || prefs.remindTime || '08:00';
-  const eventDate = parseDateTime(event.date, baseTime);
+  const eventDate = parseDateTime(event.date, event.time || '08:00');
+
+  const dayBefore = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
 
   const identifiers: string[] = [];
 
-  // Day-before notification (respect remindBeforeDays)
-  const dayBefore = new Date(eventDate.getTime() - prefs.remindBeforeDays * 24 * 60 * 60 * 1000);
   if (dayBefore > new Date()) {
     const id1 = await Notifications.scheduleNotificationAsync({
       content: {
@@ -66,7 +61,6 @@ export async function scheduleEventNotifications(event: CalendarEvent) {
     identifiers.push(id1);
   }
 
-  // Same-day notification
   if (eventDate > new Date()) {
     const id2 = await Notifications.scheduleNotificationAsync({
       content: {
