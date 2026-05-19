@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { apiService } from "../services/apiService";
 import { calendarMockService, CalendarEvent } from "../services/calendarMockService";
+import notificationService from "../services/notificationService";
 import { useAuth } from "./AuthContext";
 
 interface Workout {
@@ -210,11 +211,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const createEvent = async (payload: Partial<CalendarEvent>) => {
     if (USE_LOCAL_MOCKS) {
       const res = await calendarMockService.create(payload);
+      // schedule notifications for the created event
+      try {
+        if (res.event) await notificationService.scheduleEventNotifications(res.event);
+      } catch (e) {
+        console.warn('Failed scheduling notifications', e);
+      }
       await loadWorkouts();
       await loadCalendarEvents();
       return res.event;
     }
     const res = await apiService.post('/events', payload);
+    try {
+      if (res.event) await notificationService.scheduleEventNotifications(res.event);
+    } catch (e) {
+      console.warn('Failed scheduling notifications', e);
+    }
     await loadWorkouts();
     await loadCalendarEvents();
     return res.event;
@@ -223,11 +235,24 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const updateEvent = async (id: string, payload: Partial<CalendarEvent>) => {
     if (USE_LOCAL_MOCKS) {
       const res = await calendarMockService.update(id, payload);
+      try {
+        // cancel previous notifications and schedule new ones
+        await notificationService.cancelEventNotifications(id);
+        if (res.event) await notificationService.scheduleEventNotifications(res.event);
+      } catch (e) {
+        console.warn('Failed updating notifications', e);
+      }
       await loadWorkouts();
       await loadCalendarEvents();
       return res.event;
     }
     const res = await apiService.put(`/events/${id}`, payload);
+    try {
+      await notificationService.cancelEventNotifications(id);
+      if (res.event) await notificationService.scheduleEventNotifications(res.event);
+    } catch (e) {
+      console.warn('Failed updating notifications', e);
+    }
     await loadWorkouts();
     await loadCalendarEvents();
     return res.event;
@@ -236,11 +261,21 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const deleteEvent = async (id: string) => {
     if (USE_LOCAL_MOCKS) {
       const res = await calendarMockService.remove(id);
+      try {
+        await notificationService.cancelEventNotifications(id);
+      } catch (e) {
+        console.warn('Failed cancelling notifications', e);
+      }
       await loadWorkouts();
       await loadCalendarEvents();
       return res;
     }
     const res = await apiService.delete(`/events/${id}`);
+    try {
+      await notificationService.cancelEventNotifications(id);
+    } catch (e) {
+      console.warn('Failed cancelling notifications', e);
+    }
     await loadWorkouts();
     await loadCalendarEvents();
     return res;
