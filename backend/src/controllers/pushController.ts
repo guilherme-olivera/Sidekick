@@ -16,6 +16,10 @@ export const registerPushTokenHandler = async (req: Request, res: Response) => {
 
 export const broadcastHandler = async (req: Request, res: Response) => {
   try {
+    // Only allow admins to broadcast
+    const isAdmin = (req as any).user?.isAdmin;
+    if (!isAdmin) return res.status(403).json({ error: 'forbidden' });
+
     const { title, body } = req.body;
     if (!title || !body) return res.status(400).json({ error: 'title/body required' });
     const result = await broadcastMessage(title, body, { ts: Date.now() });

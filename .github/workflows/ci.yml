@@ -1,0 +1,42 @@
+name: CI - TypeScript
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          npm ci
+      - name: Run TypeScript check (backend)
+        working-directory: backend
+        run: |
+          npm exec --yes tsc --noEmit
+
+  mobile-tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install mobile deps
+        working-directory: mobile
+        run: |
+          npm ci
+      - name: Run TypeScript check (mobile)
+        working-directory: mobile
+        run: |
+          npm exec --yes tsc --noEmit

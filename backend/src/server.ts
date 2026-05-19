@@ -29,6 +29,7 @@ import {
   updateUserAvatarHandler,
   getUserUsageHandler,
 } from "./controllers/userController";
+import { registerPushTokenHandler, broadcastHandler, listTokensHandler } from './controllers/pushController';
 import {
   handleUploadAvatar,
   handleDeleteAvatar,
@@ -87,6 +88,11 @@ app.post("/api/workouts/:id/analyze", authMiddleware, analyzeWorkoutHandler);
 app.post("/api/workouts", authMiddleware, createWorkoutHandler);
 app.put("/api/workouts/:id", authMiddleware, updateWorkoutHandler);
 app.delete("/api/workouts/:id", authMiddleware, deleteWorkoutHandler);
+
+// ===== PUSH NOTIFICATIONS =====
+app.post('/api/push/register', authMiddleware, registerPushTokenHandler);
+app.post('/api/push/broadcast', authMiddleware, broadcastHandler);
+app.get('/api/push/tokens', authMiddleware, listTokensHandler);
 
 // AI Test endpoint - simulates receiving a workout and returning IA narrative
 app.post("/api/test/ai-analysis", async (req, res) => {
