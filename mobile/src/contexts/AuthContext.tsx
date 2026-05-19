@@ -69,6 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(JSON.parse(savedUser));
         }
         await refreshUser();
+        // register push token when we have a user
+        try {
+          const { registerPushToken } = await import('../services/pushRegistration');
+          await registerPushToken();
+        } catch (e) {
+          console.warn('push register failed on restoreToken', e);
+        }
       }
     } catch (err) {
       console.error("Failed to restore token:", err);
@@ -94,6 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem("authToken", response.token);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
         await refreshUser();
+        // try to register push token after successful login
+        try {
+          const { registerPushToken } = await import('../services/pushRegistration');
+          await registerPushToken();
+        } catch (e) {
+          console.warn('push register failed on login', e);
+        }
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro ao fazer login";
