@@ -21,14 +21,14 @@ async function testGemini() {
     console.log('🔄 Testando Gemini API (gemini-flash-latest) com prompt simples...\n');
 
     const result = await model.generateContent(
-      'Você é um assistente de treinamento de atletismo. Responda brevemente: qual é a importância do aquecimento?'
+      'Você é um assistente de treinamento de atletismo. Responda brevemente: qual é a importância do aquecimento? responda essa pergunta com 3 tipos de humor "Sarcastico", "humorístico" e "como um treinador motivacional".'
     );
 
     const text = result.response.text();
     console.log('✅ Gemini API funcionando corretamente!\n');
     console.log('📝 Resposta do Gemini:\n');
     console.log(text);
-    process.exit(0);
+    return;
   } catch (error) {
     console.error('❌ Falha ao testar Gemini API:');
     console.error(error.message || error);

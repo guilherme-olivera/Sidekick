@@ -19,7 +19,7 @@ export async function analyzeWorkoutWithGemini(
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
 
     // Build context about the workout
     const workoutContext = `

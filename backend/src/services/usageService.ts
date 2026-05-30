@@ -56,13 +56,13 @@ export async function consumeAiAnalysisQuota(userId: string, planType = "free") 
   const { start, end } = getTodayPeriod();
   const limit = FREE_DAILY_LIMIT;
 
-  let quota = await prisma.usageQuota.findUnique({
+  let quota = await prisma.usageQuota.findFirst({
     where: {
-      userId_feature_periodStart: {
-        userId,
-        feature: FEATURE_AI_ANALYSIS,
-        periodStart: start,
-      },
+      userId,
+      feature: FEATURE_AI_ANALYSIS,
+      periodStart: {
+        gte: start
+      }
     },
   });
 

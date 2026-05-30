@@ -45,6 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restoreToken();
   }, []);
 
+  const clearAuthState = async () => {
+    await AsyncStorage.removeItem("authToken");
+    await AsyncStorage.removeItem("user");
+    setToken(null);
+    setUser(null);
+  };
+
   const refreshUser = async () => {
     try {
       const { apiService } = await import("../services/apiService");
@@ -52,10 +59,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.success && response.user) {
         setUser(response.user);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
+        return true;
       }
     } catch (err) {
       console.error("Failed to refresh user:", err);
     }
+
+    await clearAuthState();
+    return false;
   };
 
   const restoreToken = async () => {
@@ -68,10 +79,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (savedUser) {
           setUser(JSON.parse(savedUser));
         }
-        await refreshUser();
+
+        const refreshed = await refreshUser();
+        if (!refreshed) {
+          await clearAuthState();
+        }
       }
     } catch (err) {
       console.error("Failed to restore token:", err);
+      await clearAuthState();
     } finally {
       setIsLoading(false);
     }
@@ -91,9 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.token && response.user) {
         setToken(response.token);
+        setUser(response.user);
         await AsyncStorage.setItem("authToken", response.token);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
-        await refreshUser();
+
+        const refreshed = await refreshUser();
+        if (!refreshed) {
+          throw new Error("Falha ao validar credenciais após login");
+        }
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro ao fazer login";

@@ -9,6 +9,7 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
@@ -53,7 +54,9 @@ export default function HomeScreen() {
   const latestWorkout = workouts[0];
   const today = new Date();
   const currentWeekMonday = new Date(today);
-  currentWeekMonday.setDate(today.getDate() - today.getDay() + 1); // Início da semana
+  const todayDay = today.getDay();
+  const mondayOffset = todayDay === 0 ? -6 : 1 - todayDay;
+  currentWeekMonday.setDate(today.getDate() + mondayOffset);
 
   useEffect(() => {
     const monday = new Date(today);
@@ -69,8 +72,30 @@ export default function HomeScreen() {
     try {
       setAnalyzingWorkoutId(workoutId);
       await analyzeWorkout(workoutId);
+      Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
     } catch (error) {
       console.error("Error analyzing workout:", error);
+      Alert.alert("Erro", "Não foi possível gerar a análise. Tente novamente.");
+    } finally {
+      setAnalyzingWorkoutId(null);
+    }
+  };
+
+  const handleAnalyzeDayWorkout = async (workoutId: string) => {
+    try {
+      setAnalyzingWorkoutId(workoutId);
+      await analyzeWorkout(workoutId);
+      setSelectedDayWorkouts((prev) =>
+        prev.map((item) =>
+          item.id === workoutId
+            ? { ...item, aiNarrative: "Análise gerada. Abra o treino para ver detalhes." }
+            : item
+        )
+      );
+      Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
+    } catch (error) {
+      console.error("Error analyzing workout:", error);
+      Alert.alert("Erro", "Não foi possível gerar a análise. Tente novamente.");
     } finally {
       setAnalyzingWorkoutId(null);
     }
@@ -194,11 +219,11 @@ export default function HomeScreen() {
               <FlatList
                 data={selectedDayWorkouts}
                 renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.workoutItem}
-                    onPress={() => handleWorkoutPress(item.id)}
-                  >
-                    <View style={styles.workoutItemLeft}>
+                  <View style={styles.workoutItem}>
+                    <TouchableOpacity
+                      style={styles.workoutItemLeft}
+                      onPress={() => handleWorkoutPress(item.id)}
+                    >
                       <Text style={styles.workoutIcon}>
                         {item.type === "run"
                           ? "🏃"
@@ -212,10 +237,28 @@ export default function HomeScreen() {
                           {Math.round(item.duration / 60)} min
                           {item.distance ? ` • ${item.distance.toFixed(1)}km` : ""}
                         </Text>
+                        {item.aiNarrative ? (
+                          <Text style={styles.analysisText} numberOfLines={2}>
+                            {item.aiNarrative}
+                          </Text>
+                        ) : (
+                          <Text style={styles.analysisHint}>
+                            Clique em analisar para gerar a análise Gemini.
+                          </Text>
+                        )}
                       </View>
-                    </View>
-                    <Text style={styles.workoutArrow}>›</Text>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.analyzeButton}
+                      onPress={() => handleAnalyzeDayWorkout(item.id)}
+                      disabled={analyzingWorkoutId === item.id}
+                    >
+                      <Text style={styles.analyzeButtonText}>
+                        {item.aiNarrative ? "Reanalisar" : "Analisar"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
@@ -490,6 +533,29 @@ const styles = StyleSheet.create({
   workoutDetails: {
     fontSize: 12,
     color: Colors.textSecondary,
+  },
+  analysisText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: Colors.success,
+  },
+  analysisHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  analyzeButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+    marginLeft: 12,
+  },
+  analyzeButtonText: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "700",
   },
   workoutArrow: {
     fontSize: 18,

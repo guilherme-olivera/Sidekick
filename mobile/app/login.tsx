@@ -15,8 +15,8 @@ import { AuthInput, AuthButton, ErrorMessage, Colors } from "../components/AuthC
 // import { AuthInput, AuthButton, ErrorMessage, Colors } from "./AuthComponents";
 
 export default function LoginScreen({ navigation }: any) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("adm@adm.com");
+  const [password, setPassword] = useState("adm123");
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
 
@@ -95,27 +95,36 @@ export default function LoginScreen({ navigation }: any) {
               disabled={!isFormValid}
             />
 
-            {/* Toggle Auth Mode */}
+            {/* Toggle Auth Mode with inline link */}
             <View style={styles.toggleContainer}>
-              <Text style={styles.toggleText}>
-                {isLogin ? "Não tem conta?" : "Já tem conta?"}
-              </Text>
-              <AuthButton
-                title={isLogin ? "Criar Conta" : "Entrar"}
-                onPress={() => {
-                  setIsLogin(!isLogin);
-                  setError(null);
-                  setName("");
-                }}
-                variant="secondary"
-              />
-            </View>
-
-            {/* Demo Credentials */}
-            <View style={styles.demoContainer}>
-              <Text style={styles.demoTitle}>Demo:</Text>
-              <Text style={styles.demoText}>Email: athlete@sidekick.com</Text>
-              <Text style={styles.demoText}>Senha: password123</Text>
+              {isLogin ? (
+                <Text style={styles.toggleText}>
+                  Não tem conta?{' '}
+                  <Text
+                    style={styles.linkText}
+                    onPress={() => {
+                      setIsLogin(false);
+                      setError(null);
+                      setName("");
+                    }}
+                  >
+                    clique aqui
+                  </Text>
+                </Text>
+              ) : (
+                <Text style={styles.toggleText}>
+                  Já tem conta?{' '}
+                  <Text
+                    style={styles.linkText}
+                    onPress={() => {
+                      setIsLogin(true);
+                      setError(null);
+                    }}
+                  >
+                    clique aqui
+                  </Text>
+                </Text>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -230,6 +239,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 14,
     marginBottom: 12,
+  },
+  linkText: {
+    fontSize: 14,
+    color: Colors.primary,
+    textDecorationLine: 'underline',
   },
   demoContainer: {
     marginTop: 30,

@@ -33,10 +33,29 @@ export default function CalendarScreen() {
 
   useEffect(() => {
     loadWorkouts();
-    loadCalendarEvents();
   }, []);
 
   const selectedDayEvents = selectedDate ? getCalendarEventsByDate(selectedDate) : [];
+
+  const formatCalendarLabel = (isoDate: string) => {
+    const [year, month, day] = isoDate.split('-');
+    const monthNames = [
+      'janeiro',
+      'fevereiro',
+      'março',
+      'abril',
+      'maio',
+      'junho',
+      'julho',
+      'agosto',
+      'setembro',
+      'outubro',
+      'novembro',
+      'dezembro',
+    ];
+    const monthIndex = Number(month) - 1;
+    return `${Number(day)} ${monthNames[monthIndex]}`;
+  };
 
   const startNewEvent = (isoDate: string) => {
     setSelectedDate(isoDate);
@@ -114,7 +133,15 @@ export default function CalendarScreen() {
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
               <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Eventos — {selectedDate}</Text>
+                <View style={styles.modalHeaderRow}>
+                  <View>
+                    <Text style={styles.modalTitle}>{selectedDate ? formatCalendarLabel(selectedDate) : "Selecionar data"}</Text>
+                    <Text style={styles.modalSubtitle}>Eventos e lembretes</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Text style={styles.closeIcon}>✕</Text>
+                  </TouchableOpacity>
+                </View>
 
                 {selectedDayEvents.length > 0 ? (
                   <View style={styles.eventList}>
@@ -141,7 +168,7 @@ export default function CalendarScreen() {
                   </Text>
                 )}
 
-                <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo evento"}</Text>
+                <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
                 <TextInput
                   value={title}
                   onChangeText={setTitle}
@@ -169,11 +196,10 @@ export default function CalendarScreen() {
                   <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                     <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
+                    <Text style={styles.cancelText}>Cancelar</Text>
+                  </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                  <Text style={styles.cancelText}>Fechar</Text>
-                </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -207,15 +233,30 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "92%",
     backgroundColor: "#1a1a1a",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: "#333",
   },
+  modalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 18,
+  },
   modalTitle: {
     color: "#fff",
-    fontWeight: "700",
-    marginBottom: 12,
+    fontWeight: "800",
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    color: "#b0b0b0",
+    fontSize: 12,
+  },
+  closeIcon: {
+    fontSize: 22,
+    color: "#ff6b6b",
   },
   input: {
     backgroundColor: "#0a0a0a",
@@ -306,19 +347,36 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: "#51cf66",
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 10,
+    flex: 1,
+    alignItems: "center",
   },
-  saveText: { color: "#000", fontWeight: "700" },
+  saveText: {
+    color: "#000",
+    fontWeight: "700",
+  },
+  cancelButtonInline: {
+    backgroundColor: "transparent",
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#444",
+    flex: 1,
+    alignItems: "center",
+    marginLeft: 12,
+  },
+  cancelText: {
+    color: "#b0b0b0",
+    fontWeight: "700",
+  },
   deleteButton: {
     backgroundColor: "#ff6b6b",
     padding: 12,
     borderRadius: 8,
   },
-  deleteText: { color: "#fff", fontWeight: "700" },
-  cancelButton: {
-    padding: 12,
-    borderRadius: 8,
+  deleteText: {
+    color: "#fff",
+    fontWeight: "700",
   },
-  cancelText: { color: "#b0b0b0" },
 });

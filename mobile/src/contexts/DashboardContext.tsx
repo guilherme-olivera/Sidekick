@@ -53,6 +53,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [workoutsByDay, setWorkoutsByDay] = useState<WorkoutByDay>({});
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [manualCalendarEvents, setManualCalendarEvents] = useState<CalendarEvent[]>([]);
   const [currentMood, setCurrentMood] = useState<string | undefined>();
   const [currentMoodEmoji, setCurrentMoodEmoji] = useState<string>("😐");
   const [isLoading, setIsLoading] = useState(false);
@@ -62,35 +63,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user) {
       loadWorkouts();
-      loadCalendarEvents();
+      loadManualEvents();
     }
   }, [user]);
 
-  // Toggle para usar mocks locais em vez do backend
-  const USE_LOCAL_MOCKS = true;
+  // Toggle para usar backend para workouts e mock local apenas para lembretes/eventos manuais
+  const USE_LOCAL_WORKOUTS = false;
+  const USE_LOCAL_EVENTS = true;
 
   const loadWorkouts = async () => {
     if (!user) return;
 
     try {
       setIsLoading(true);
-      if (USE_LOCAL_MOCKS) {
-        const res = await calendarMockService.listAll();
-        const workoutsData = (res.events || []).map((workout: any) => ({
-          id: workout.id,
-          userId: user.id,
-          title: workout.title,
-          type: (workout.type as any) || "run",
-          date: new Date(workout.date),
-          duration: (workout.durationMinutes || 30) * 60,
-          intensity: "moderate" as Workout["intensity"],
-        } as Workout));
-        setWorkouts(workoutsData);
-        groupWorkoutsByDay(workoutsData);
-        await loadCalendarEvents();
-        return;
-      }
-
       const response = await apiService.get('/workouts');
       const workoutsData = (response.workouts || []).map((workout: any) => ({
         ...workout,
@@ -98,6 +83,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }));
       setWorkouts(workoutsData);
       groupWorkoutsByDay(workoutsData);
+      await loadCalendarEvents(workoutsData);
     } catch (error) {
       console.error('Error loading workouts:', error);
     } finally {
@@ -116,23 +102,6 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       const startStr = startDate.toISOString().split('T')[0];
       const endStr = endDate.toISOString().split('T')[0];
 
-      if (USE_LOCAL_MOCKS) {
-        const res = await calendarMockService.listBetween(startStr, endStr);
-        const workoutsData = (res.events || []).map((workout: any) => ({
-          id: workout.id,
-          userId: user.id,
-          title: workout.title,
-          type: (workout.type as any) || "run",
-          date: new Date(workout.date),
-          duration: (workout.durationMinutes || 30) * 60,
-          intensity: "moderate" as Workout["intensity"],
-        } as Workout));
-        setWorkouts(workoutsData);
-        groupWorkoutsByDay(workoutsData);
-        await loadCalendarEvents();
-        return;
-      }
-
       const response = await apiService.get(
         `/workouts?startDate=${startStr}&endDate=${endStr}`
       );
@@ -142,6 +111,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       }));
       setWorkouts(workoutsData);
       groupWorkoutsByDay(workoutsData);
+      await loadCalendarEvents(workoutsData);
     } catch (error) {
       console.error('Error loading weekly workouts:', error);
     } finally {
@@ -190,17 +160,51 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loadCalendarEvents = async () => {
+  const loadCalendarEvents = async (workoutsData?: Workout[]) => {
     if (!user) return;
 
-    if (USE_LOCAL_MOCKS) {
+    let manualEvents: CalendarEvent[] = manualCalendarEvents;
+
+    if (USE_LOCAL_EVENTS) {
       const res = await calendarMockService.listAll();
-      setCalendarEvents(res.events || []);
+      manualEvents = res.events || [];
+      setManualCalendarEvents(manualEvents);
+    }
+
+    const sourceWorkouts = workoutsData || workouts;
+    const workoutEvents = sourceWorkouts.map((workout) => {
+      const workoutDate = workout.date instanceof Date ? workout.date : new Date(workout.date);
+      const validDate = !Number.isNaN(workoutDate.getTime()) ? workoutDate : new Date();
+      const isoDate = validDate.toISOString().split('T')[0];
+      const time = validDate.toISOString().split('T')[1].slice(0, 5);
+
+      return {
+        id: workout.id,
+        date: isoDate,
+        title: workout.title,
+        time,
+        type: workout.type,
+        description: workout.aiNarrative || "Treino sincronizado com Strava",
+        source: workout.stravaId ? ("Strava" as const) : ("Sidekick" as const),
+      };
+    });
+
+    setCalendarEvents([...workoutEvents, ...(manualEvents || [])]);
+  };
+
+  const loadManualEvents = async () => {
+    if (!user) return;
+
+    if (USE_LOCAL_EVENTS) {
+      const res = await calendarMockService.listAll();
+      setManualCalendarEvents(res.events || []);
+      await loadCalendarEvents();
       return;
     }
 
-    const response = await apiService.get('/events');
-    setCalendarEvents(response.events || []);
+    // no backend route for manual events yet
+    setManualCalendarEvents([]);
+    await loadCalendarEvents();
   };
 
   const getCalendarEventsByDate = (isoDate: string) => {
@@ -209,16 +213,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Calendar CRUD helpers (use local mocks when enabled)
   const createEvent = async (payload: Partial<CalendarEvent>) => {
-    if (USE_LOCAL_MOCKS) {
+    if (USE_LOCAL_EVENTS) {
       const res = await calendarMockService.create(payload);
-      // schedule notifications for the created event
       try {
         if (res.event) await notificationService.scheduleEventNotifications(res.event);
       } catch (e) {
         console.warn('Failed scheduling notifications', e);
       }
-      await loadWorkouts();
-      await loadCalendarEvents();
+      await loadManualEvents();
       return res.event;
     }
     const res = await apiService.post('/events', payload);
@@ -227,23 +229,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn('Failed scheduling notifications', e);
     }
-    await loadWorkouts();
-    await loadCalendarEvents();
+    await loadManualEvents();
     return res.event;
   };
 
   const updateEvent = async (id: string, payload: Partial<CalendarEvent>) => {
-    if (USE_LOCAL_MOCKS) {
+    if (USE_LOCAL_EVENTS) {
       const res = await calendarMockService.update(id, payload);
       try {
-        // cancel previous notifications and schedule new ones
         await notificationService.cancelEventNotifications(id);
         if (res.event) await notificationService.scheduleEventNotifications(res.event);
       } catch (e) {
         console.warn('Failed updating notifications', e);
       }
-      await loadWorkouts();
-      await loadCalendarEvents();
+      await loadManualEvents();
       return res.event;
     }
     const res = await apiService.put(`/events/${id}`, payload);
@@ -253,21 +252,19 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn('Failed updating notifications', e);
     }
-    await loadWorkouts();
-    await loadCalendarEvents();
+    await loadManualEvents();
     return res.event;
   };
 
   const deleteEvent = async (id: string) => {
-    if (USE_LOCAL_MOCKS) {
+    if (USE_LOCAL_EVENTS) {
       const res = await calendarMockService.remove(id);
       try {
         await notificationService.cancelEventNotifications(id);
       } catch (e) {
         console.warn('Failed cancelling notifications', e);
       }
-      await loadWorkouts();
-      await loadCalendarEvents();
+      await loadManualEvents();
       return res;
     }
     const res = await apiService.delete(`/events/${id}`);
@@ -276,8 +273,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn('Failed cancelling notifications', e);
     }
-    await loadWorkouts();
-    await loadCalendarEvents();
+    await loadManualEvents();
     return res;
   };
 

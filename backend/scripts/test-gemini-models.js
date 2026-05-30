@@ -28,7 +28,7 @@ async function listGeminiModels() {
       if (model.description) console.log(`   ${model.description}\n`);
     }
 
-    process.exit(0);
+    return;
   } catch (error) {
     console.error('❌ Erro ao listar modelos:');
     console.error(error.message || error);

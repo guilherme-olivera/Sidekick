@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { prisma } from "./utils/prisma";
+import bcrypt from "bcryptjs";
 import {
   handleLogin,
   handleRegister,
@@ -118,12 +119,36 @@ app.post("/api/test/ai-analysis", async (req, res) => {
 });
 
 // Start server (bind to HOST so devices on LAN can reach it)
-app.listen(PORT, HOST as any, () => {
-  console.log(`🚀 Sidekick Backend running on ${PUBLIC_URL}`);
-  console.log(`🧠 IA powered by Gemini`);
-  console.log(`💾 Database: PostgreSQL`);
-  console.log(`🔐 Auth: JWT (Mock mode)`);
-});
+async function ensureAdminUser() {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || "adm@adm.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || "adm123";
+
+    const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+    if (!existing) {
+      const hashed = bcrypt.hashSync(adminPassword, 10);
+      await prisma.user.create({ data: { email: adminEmail, password: hashed, name: "Administrator" } });
+      console.log(`🔐 Admin user created: ${adminEmail}`);
+    } else {
+      console.log(`🔐 Admin user exists: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error("Error ensuring admin user:", err);
+  }
+}
+
+async function start() {
+  await ensureAdminUser();
+
+  app.listen(PORT, HOST as any, () => {
+    console.log(`🚀 Sidekick Backend running on ${PUBLIC_URL}`);
+    console.log(`🧠 IA powered by Gemini`);
+    console.log(`💾 Database: PostgreSQL`);
+    console.log(`🔐 Auth: JWT (Mock mode)`);
+  });
+}
+
+start();
 
 // Graceful shutdown
 process.on("SIGINT", async () => {

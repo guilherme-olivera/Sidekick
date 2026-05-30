@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from "react-native";
-import { MockEvent } from "@/src/mocks/germiniMock";
+import { CalendarEvent } from "@/src/services/calendarMockService";
 
 const { width } = Dimensions.get("window");
 const CELL_SIZE = Math.floor((width - 32 - 12) / 7);
@@ -18,7 +18,7 @@ function formatDateYMD(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-export function Calendar({ events, onDayPress }: { events: MockEvent[]; onDayPress?: (isoDate: string) => void }) {
+export function Calendar({ events, onDayPress }: { events: CalendarEvent[]; onDayPress?: (isoDate: string) => void }) {
   const [monthOffset, setMonthOffset] = useState(0);
 
   const today = useMemo(() => new Date(), []);
@@ -44,7 +44,7 @@ export function Calendar({ events, onDayPress }: { events: MockEvent[]; onDayPre
   }, [monthOffset, today]);
 
   const eventMap = useMemo(() => {
-    const map = new Map<string, MockEvent[]>();
+    const map = new Map<string, CalendarEvent[]>();
     events.forEach((e) => {
       const arr = map.get(e.date) || [];
       arr.push(e);
