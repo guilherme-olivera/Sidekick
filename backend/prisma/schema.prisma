@@ -101,6 +101,24 @@ model UserProfile {
   injuryNote    String?
   availableTime String?
   trainingMood  String?
+  
+  // Customização do Sidekick
+  aiGender        String?   // "neutral" | "male" | "female"
+  aiPersonality   String?   // "calm" | "strict" | "tough"
+  aiTone          String?   // "cold" | "serious" | "sarcastic" | "motivational" | "funny"
+  
+  // Metas do Atleta
+  birthday        String?   // "dd/mm/yyyy"
+  goalType        String?   // "distance" | "pace"
+  goalDistance    String?   // "5k" | "10k" | "15k" | "half_marathon" | "marathon" | "custom"
+  goalTargetTime  String?   // ex: "00:45:00"
+  
+  // Detalhes Complementares
+  experienceLevel String?   // "beginner" | "intermediate" | "advanced"
+  weeklyFrequency Int?      // 2 | 3 | 4 | 5
+  
+  isConfigured    Boolean   @default(false)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

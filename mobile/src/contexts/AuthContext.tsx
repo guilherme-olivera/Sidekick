@@ -7,6 +7,16 @@ interface UserProfile {
   injuryNote?: string;
   availableTime?: string;
   trainingMood?: string;
+  aiGender?: string;
+  aiPersonality?: string;
+  aiTone?: string;
+  birthday?: string;
+  goalType?: string;
+  goalDistance?: string;
+  goalTargetTime?: string;
+  experienceLevel?: string;
+  weeklyFrequency?: number;
+  isConfigured?: boolean;
 }
 
 interface User {

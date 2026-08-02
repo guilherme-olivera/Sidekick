@@ -27,6 +27,16 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
             injuryNote: true,
             availableTime: true,
             trainingMood: true,
+            aiGender: true,
+            aiPersonality: true,
+            aiTone: true,
+            birthday: true,
+            goalType: true,
+            goalDistance: true,
+            goalTargetTime: true,
+            experienceLevel: true,
+            weeklyFrequency: true,
+            isConfigured: true,
           },
         },
       },
@@ -48,11 +58,29 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
 export const updateUserProfileHandler = async (req: any, res: Response) => {
   try {
     const userId = req.userId;
-    const { trainingGoal, focusArea, injuryNote, availableTime, trainingMood } = req.body;
+    const {
+      trainingGoal,
+      focusArea,
+      injuryNote,
+      availableTime,
+      trainingMood,
+      aiGender,
+      aiPersonality,
+      aiTone,
+      birthday,
+      goalType,
+      goalDistance,
+      goalTargetTime,
+      experienceLevel,
+      weeklyFrequency,
+      isConfigured,
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: "Usuário não autenticado" });
     }
+
+    const freq = weeklyFrequency !== undefined && weeklyFrequency !== null ? Number(weeklyFrequency) : null;
 
     const profile = await prisma.userProfile.upsert({
       where: { userId },
@@ -63,6 +91,16 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         injuryNote,
         availableTime,
         trainingMood,
+        aiGender,
+        aiPersonality,
+        aiTone,
+        birthday,
+        goalType,
+        goalDistance,
+        goalTargetTime,
+        experienceLevel,
+        weeklyFrequency: freq,
+        isConfigured: isConfigured ?? false,
       },
       update: {
         trainingGoal,
@@ -70,6 +108,16 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         injuryNote,
         availableTime,
         trainingMood,
+        aiGender,
+        aiPersonality,
+        aiTone,
+        birthday,
+        goalType,
+        goalDistance,
+        goalTargetTime,
+        experienceLevel,
+        weeklyFrequency: freq,
+        isConfigured: isConfigured ?? false,
       },
     });
 

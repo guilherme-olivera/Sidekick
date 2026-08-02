@@ -58,20 +58,27 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { token, isLoading } = useAuth();
+  const { token, user, isLoading } = useAuth();
 
   if (isLoading) {
     return null;
   }
 
+  const isConfigured = user?.profile?.isConfigured === true;
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         {token ? (
-          <>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          </>
+          isConfigured ? (
+            <>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            </>
+          ) : (
+            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          )
         ) : (
           <Stack.Screen name="login" options={{ headerShown: false }} />
         )}

@@ -15,6 +15,7 @@ import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { apiUpload, API_BASE_URL, apiService } from "@/src/services/apiService";
+import { router } from "expo-router";
 
 const Colors = {
   dark: "#0a0a0a",
@@ -646,6 +647,17 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Ajustar Sidekick & Metas Button */}
+        <TouchableOpacity
+          style={styles.adjustButton}
+          onPress={() => router.push("/onboarding?edit=true")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.adjustButtonText}>
+            ⚙️ Ajustar Sidekick & Metas
+          </Text>
+        </TouchableOpacity>
+
         {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
@@ -947,6 +959,21 @@ const styles = StyleSheet.create({
   },
   logoutButtonText: {
     color: "#ff6b6b",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  adjustButton: {
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  adjustButtonText: {
+    color: Colors.text,
     fontSize: 16,
     fontWeight: "600",
   },

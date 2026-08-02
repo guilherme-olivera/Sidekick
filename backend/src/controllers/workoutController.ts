@@ -119,10 +119,26 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Workout not found" });
     }
 
+    // Busca o perfil completo do usuário
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { userId },
+    });
+
+    // Busca os treinos recentes (últimos 5 antes deste treino)
+    const recentWorkouts = await prisma.workout.findMany({
+      where: {
+        userId,
+        id: { not: String(id) },
+        date: { lt: workout.date }, // apenas treinos anteriores chronologicamente
+      },
+      orderBy: { date: "desc" },
+      take: 5,
+    });
+
     await consumeAiAnalysisQuota(userId, workout.user?.planType);
 
-    // Gera análise com Gemini
-    const narrative = await analyzeWorkoutWithGemini(workout, mood);
+    // Gera análise com Gemini, passando perfil e histórico
+    const narrative = await analyzeWorkoutWithGemini(workout, mood, userProfile, recentWorkouts);
 
     // Atualiza o treino com a narrativa
     const updatedWorkout = await prisma.workout.update({
