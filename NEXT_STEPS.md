@@ -54,10 +54,9 @@
 ## 4. Próximos passos recomendados
 
 ### Prioridade imediata
-1. Finalizar fluxo de deep link Strava
-2. Estruturar análise IA com Gemini e prompt contextual
-3. Criar perfil do usuário e upload de avatar
-4. Implementar controle de cota/free vs premium
+1. Implementar controle de cota/free vs premium (limite de uso de recursos e controle de acesso).
+2. Refinar a sincronização de atividades do Strava e tratamento de erros (tolerância a falhas).
+3. Configurar fluxo de notificações ativas baseadas em clima e metas de treino.
 
 ### Melhorias de organização
 - Manter apenas um arquivo de roadmap/etapas no root
@@ -65,15 +64,15 @@
 - Evitar documentos de fase duplicados no repo
 
 ## 5. Observações
-- O projeto agora está mais enxuto e com menos dependências inúteis
-- A base de configuração está correta para Expo e backend TypeScript
-- O próximo foco deve ser Strava + IA, deixando a integração completa para depois
+- A customização do companheiro (Sidekick) e o onboarding estão 100% integrados e persistidos no banco.
+- O prompt do Gemini agora personaliza ativamente o feedback com base na idade, nível, metas, histórico recente de treinos e lesões do usuário.
+- O app possui suporte a EAS Build para empacotamento em APK standalone.
 
 ---
 
 ## Ações realizadas no repo
-- Atualizei `mobile/package.json`
-- Atualizei `backend/package.json`
-- Limpei `.gitignore` raiz
-- Consolidei a documentação de fases em `NEXT_STEPS.md`
-- Removi arquivos de fase antigos e `mobile/.gitignore` 
+- Implementado Onboarding de Meta e customização da IA (Sexo, Personalidade, Tom de Voz).
+- Atualizado backend para suportar dados de perfil completos.
+- Integrado histórico recente de treinos e lesões ativas no prompt do Gemini.
+- Adicionado botão de reconfiguração de metas/companheiro no Perfil.
+- Criado arquivo de configuração do EAS (`eas.json`).
