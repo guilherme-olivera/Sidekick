@@ -123,3 +123,69 @@ export const getUserUsageHandler = async (req: any, res: Response) => {
     res.status(500).json({ error: "Falha ao buscar cota de uso" });
   }
 };
+
+export const handleSaveMood = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { mood } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    if (!mood) {
+      return res.status(400).json({ error: "Humor não informado" });
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayDate = new Date(todayStr);
+
+    const moodCheck = await prisma.moodCheck.upsert({
+      where: {
+        userId_date: {
+          userId,
+          date: todayDate,
+        },
+      },
+      create: {
+        userId,
+        date: todayDate,
+        mood,
+      },
+      update: {
+        mood,
+      },
+    });
+
+    res.json({ success: true, moodCheck });
+  } catch (error) {
+    console.error("Error saving mood:", error);
+    res.status(500).json({ error: "Falha ao salvar humor" });
+  }
+};
+
+export const handleGetTodayMood = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayDate = new Date(todayStr);
+
+    const moodCheck = await prisma.moodCheck.findUnique({
+      where: {
+        userId_date: {
+          userId,
+          date: todayDate,
+        },
+      },
+    });
+
+    res.json({ success: true, mood: moodCheck?.mood || null });
+  } catch (error) {
+    console.error("Error fetching today mood:", error);
+    res.status(500).json({ error: "Falha ao buscar humor de hoje" });
+  }
+};

@@ -31,7 +31,7 @@ interface DashboardContextType {
   currentMood?: string;
   currentMoodEmoji?: string;
   isLoading: boolean;
-  setMood: (moodId: string, emoji: string) => void;
+  setMood: (moodId: string, emoji: string) => Promise<void>;
   getMoodToday: () => string | undefined;
   loadWorkouts: () => Promise<void>;
   loadWeeklyWorkouts: (startDate: Date) => Promise<void>;
@@ -64,8 +64,29 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       loadWorkouts();
       loadManualEvents();
+      loadTodayMood();
     }
   }, [user]);
+
+  const loadTodayMood = async () => {
+    try {
+      const response = await apiService.get('/user/mood/today');
+      if (response.success && response.mood) {
+        setCurrentMood(response.mood);
+        const emojiMap: Record<string, string> = {
+          tired: "🫩",
+          sick: "🤢",
+          normal: "😐",
+          angry: "😡",
+          sad: "🥺",
+          happy: "🤣",
+        };
+        setCurrentMoodEmoji(emojiMap[response.mood] || "😐");
+      }
+    } catch (error) {
+      console.error('Error loading today mood:', error);
+    }
+  };
 
   // Toggle para usar backend para workouts e mock local apenas para lembretes/eventos manuais
   const USE_LOCAL_WORKOUTS = false;
@@ -146,7 +167,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         mood: currentMood,
       });
 
-      // Atualiza o treino com a nova narrativa
+      if (!response || response.error) {
+        throw new Error(response?.error || 'Erro desconhecido ao analisar o treino');
+      }
+
+      if (!response.narrative) {
+        throw new Error('Resposta de análise inválida do servidor.');
+      }
+
       setWorkouts(prevWorkouts =>
         prevWorkouts.map(workout =>
           workout.id === workoutId
@@ -186,6 +214,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         type: workout.type,
         description: workout.aiNarrative || "Treino sincronizado com Strava",
         source: workout.stravaId ? ("Strava" as const) : ("Sidekick" as const),
+        isWorkout: true,
       };
     });
 
@@ -277,10 +306,14 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return res;
   };
 
-  const setMood = (moodId: string, emoji: string) => {
+  const setMood = async (moodId: string, emoji: string) => {
     setCurrentMood(moodId);
     setCurrentMoodEmoji(emoji);
-    // Em produção, salvar no backend
+    try {
+      await apiService.post('/user/mood', { mood: moodId });
+    } catch (err) {
+      console.error('Failed to save mood on server:', err);
+    }
   };
 
   const getMoodToday = () => {

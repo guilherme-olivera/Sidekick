@@ -10,7 +10,7 @@ const rawApiBase =
   process.env.EXPO_PUBLIC_API_URL ||
   'http://192.168.15.11:3000';
 
-let API_BASE_URL = rawApiBase;
+export let API_BASE_URL = rawApiBase;
 // Ensure protocol is present for React Native fetch to work
 if (!/^https?:\/\//i.test(API_BASE_URL)) {
   API_BASE_URL = `http://${API_BASE_URL}`;

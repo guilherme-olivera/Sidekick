@@ -6,6 +6,7 @@ import {
   convertStravaActivityToWorkout,
   refreshStravaToken,
   verifyStravaState,
+  fetchStravaStats,
 } from "../services/stravaService";
 import { prisma } from "../utils/prisma";
 
@@ -273,5 +274,55 @@ export const disconnectStravaHandler = async (req: any, res: Response) => {
   } catch (error) {
     console.error("Error disconnecting Strava:", error);
     res.status(500).json({ error: "Failed to disconnect Strava" });
+  }
+};
+
+export const getStravaStatsHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        stravaAccessToken: true,
+        stravaRefreshToken: true,
+        stravaTokenExpiresAt: true,
+        stravaId: true,
+      },
+    });
+
+    if (!user || !user.stravaAccessToken || !user.stravaId) {
+      return res.json({ success: true, isConnected: false, stats: null });
+    }
+
+    let accessToken = user.stravaAccessToken;
+
+    if (user.stravaTokenExpiresAt && user.stravaTokenExpiresAt < new Date()) {
+      if (!user.stravaRefreshToken) {
+        return res.status(400).json({ error: "Strava refresh token expired" });
+      }
+
+      const newTokenData = await refreshStravaToken(user.stravaRefreshToken);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          stravaAccessToken: newTokenData.access_token,
+          stravaRefreshToken: newTokenData.refresh_token,
+          stravaTokenExpiresAt: new Date(newTokenData.expires_at * 1000),
+        },
+      });
+
+      accessToken = newTokenData.access_token;
+    }
+
+    const stats = await fetchStravaStats(accessToken, user.stravaId);
+    res.json({ success: true, isConnected: true, stats });
+  } catch (error) {
+    console.error("Error fetching Strava stats:", error);
+    res.status(500).json({ error: "Failed to fetch Strava stats" });
   }
 };

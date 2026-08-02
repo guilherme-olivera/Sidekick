@@ -136,7 +136,7 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error analyzing workout:", error);
-    res.status(500).json({ error: "Failed to analyze workout" });
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to analyze workout" });
   }
 };
 

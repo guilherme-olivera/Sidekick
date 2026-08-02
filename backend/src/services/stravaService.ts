@@ -214,3 +214,20 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
     throw new Error("Failed to refresh Strava token");
   }
 }
+
+export async function fetchStravaStats(accessToken: string, stravaId: string): Promise<any> {
+  try {
+    const response = await axios.get(
+      `${STRAVA_BASE_URL}/athletes/${stravaId}/stats`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Strava stats fetch error:", error);
+    throw new Error("Failed to fetch Strava athlete stats");
+  }
+}

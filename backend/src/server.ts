@@ -15,6 +15,7 @@ import {
   syncStravaActivitiesHandler,
   getStravaStatusHandler,
   disconnectStravaHandler,
+  getStravaStatsHandler,
 } from "./controllers/stravaController";
 import {
   getWorkoutsHandler,
@@ -29,6 +30,8 @@ import {
   updateUserProfileHandler,
   updateUserAvatarHandler,
   getUserUsageHandler,
+  handleSaveMood,
+  handleGetTodayMood,
 } from "./controllers/userController";
 import {
   handleUploadAvatar,
@@ -66,6 +69,7 @@ app.get("/api/strava/callback", stravaCallbackHandler);
 app.post("/api/strava/sync", authMiddleware, syncStravaActivitiesHandler);
 app.post("/api/strava/disconnect", authMiddleware, disconnectStravaHandler);
 app.get("/api/strava/status", authMiddleware, getStravaStatusHandler);
+app.get("/api/strava/stats", authMiddleware, getStravaStatsHandler);
 
 app.get("/", async (req, res) => {
   if (req.query.code) {
@@ -80,6 +84,8 @@ app.put("/api/user/profile", authMiddleware, updateUserProfileHandler);
 app.post("/api/user/avatar", authMiddleware, uploadAvatar.single("avatar"), handleUploadAvatar);
 app.delete("/api/user/avatar", authMiddleware, handleDeleteAvatar);
 app.get("/api/user/usage", authMiddleware, getUserUsageHandler);
+app.post("/api/user/mood", authMiddleware, handleSaveMood);
+app.get("/api/user/mood/today", authMiddleware, handleGetTodayMood);
 
 // ===== WORKOUT ROUTES =====
 app.get("/api/workouts", authMiddleware, getWorkoutsHandler);

@@ -61,6 +61,19 @@ export async function scheduleEventNotifications(event: CalendarEvent) {
     identifiers.push(id1);
   }
 
+  const oneHourBefore = new Date(eventDate.getTime() - 60 * 60 * 1000);
+  if (oneHourBefore > new Date()) {
+    const id3 = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${event.title} — Daqui a 1 hora`,
+        body: event.description || 'Seu evento começa em 1 hora',
+        data: { eventId: event.id },
+      },
+      trigger: ({ date: oneHourBefore } as any),
+    });
+    identifiers.push(id3);
+  }
+
   if (eventDate > new Date()) {
     const id2 = await Notifications.scheduleNotificationAsync({
       content: {

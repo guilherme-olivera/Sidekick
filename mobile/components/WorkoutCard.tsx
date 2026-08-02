@@ -29,16 +29,17 @@ interface WorkoutCardProps {
   onPress?: () => void;
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
+  compact?: boolean;
 }
 
 const getTypeEmoji = (type: string) => {
   switch (type) {
     case "run":
-      return "🏃";
+      return "👟";
     case "cycling":
-      return "🚴";
+      return "🚲";
     case "strength":
-      return "💪";
+      return "🏋️";
     default:
       return "⚡";
   }
@@ -88,18 +89,25 @@ const formatDate = (date: Date) => {
   });
 };
 
-export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing }: WorkoutCardProps) {
+export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact }: WorkoutCardProps) {
   const intensityStyle = getIntensityColor(workout.intensity);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.typeEmoji}>{getTypeEmoji(workout.type)}</Text>
           <View>
             <Text style={styles.title}>{workout.title}</Text>
-            <Text style={styles.date}>{formatDate(workout.date)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.date}>{formatDate(workout.date)}</Text>
+              {workout.aiNarrative && (
+                <View style={styles.iaMiniBadge}>
+                  <Text style={styles.iaMiniBadgeText}>🧠 IA</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
         <View
@@ -133,14 +141,14 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing }: Workou
       </View>
 
       {/* AI Narrative or Analyze Button */}
-      {workout.aiNarrative ? (
+      {!compact && workout.aiNarrative ? (
         <View style={styles.narrativeContainer}>
-          <Text style={styles.narrativeLabel}>💭 Sidekick says:</Text>
+          <Text style={styles.narrativeLabel}>💭 Sidekick diz:</Text>
           <Text style={styles.narrative} numberOfLines={3}>
             {workout.aiNarrative}
           </Text>
         </View>
-      ) : onAnalyze ? (
+      ) : !compact && onAnalyze ? (
         <TouchableOpacity
           style={styles.analyzeButton}
           onPress={onAnalyze}
@@ -266,5 +274,18 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 14,
     fontWeight: '600',
+  },
+  iaMiniBadge: {
+    backgroundColor: "#171f1a",
+    borderColor: "#51cf66",
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  iaMiniBadgeText: {
+    color: "#51cf66",
+    fontSize: 9,
+    fontWeight: "bold",
   },
 });

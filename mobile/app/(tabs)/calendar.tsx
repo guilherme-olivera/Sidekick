@@ -10,11 +10,13 @@ import {
   Alert,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useRouter } from "expo-router";
 import Calendar from "@/components/Calendar";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { CalendarEvent } from "@/src/services/calendarMockService";
 
 export default function CalendarScreen() {
+  const router = useRouter();
   const {
     loadWorkouts,
     calendarEvents,
@@ -67,6 +69,11 @@ export default function CalendarScreen() {
   };
 
   const handleDayPress = (isoDate: string) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (isoDate < todayStr) {
+      Alert.alert("Bloqueado", "Não é permitido criar lembretes em datas passadas.");
+      return;
+    }
     startNewEvent(isoDate);
   };
 
@@ -79,10 +86,81 @@ export default function CalendarScreen() {
     setModalVisible(true);
   };
 
+  const handleEventPress = (event: CalendarEvent) => {
+    if (event.isWorkout) {
+      setModalVisible(false);
+      router.push(`/history?workoutId=${event.id}`);
+      return;
+    }
+
+    // It's a manual reminder. Check if past:
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isPast = event.date < todayStr;
+
+    if (isPast) {
+      Alert.alert(
+        "Lembrete Passado",
+        "Este lembrete é de uma data passada. O que você deseja fazer?",
+        [
+          {
+            text: "Replicar para amanhã",
+            onPress: async () => {
+              try {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+                await createEvent({
+                  title: event.title,
+                  description: event.description,
+                  time: event.time,
+                  type: event.type,
+                  date: tomorrowStr,
+                });
+                await loadCalendarEvents();
+                Alert.alert("Sucesso", "Lembrete replicado para amanhã!");
+              } catch (err) {
+                console.error(err);
+                Alert.alert("Erro", "Não foi possível replicar o lembrete.");
+              }
+            }
+          },
+          {
+            text: "Deletar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await deleteEvent(event.id);
+                await loadCalendarEvents();
+                Alert.alert("Sucesso", "Lembrete deletado!");
+              } catch (err) {
+                console.error(err);
+                Alert.alert("Erro", "Não foi possível deletar o lembrete.");
+              }
+            }
+          },
+          {
+            text: "Cancelar",
+            style: "cancel"
+          }
+        ]
+      );
+    } else {
+      handleEventEdit(event);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedDate) return;
     if (!title.trim()) {
       Alert.alert("Preencha o título", "O evento precisa de um nome para ser salvo.");
+      return;
+    }
+
+    // Double check creation date
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (selectedDate < todayStr && !editingId) {
+      Alert.alert("Erro", "Não é permitido criar lembretes em datas passadas.");
       return;
     }
 
@@ -149,7 +227,7 @@ export default function CalendarScreen() {
                       <TouchableOpacity
                         key={event.id}
                         style={styles.eventRow}
-                        onPress={() => handleEventEdit(event)}
+                        onPress={() => handleEventPress(event)}
                       >
                         <View>
                           <Text style={styles.eventTitle}>{event.title}</Text>
