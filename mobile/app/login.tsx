@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   Keyboard,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useAuth } from "../src/contexts/AuthContext";
 // O certo é subir um nível (..) e entrar em components
@@ -46,88 +48,93 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Logo/Header */}
-          <View style={styles.header}>            
-            <Image
-                source={require('../assets/images/sidekick-logo.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-            />
-            <Text style={styles.title}>Sidekick</Text>
-            <Text style={styles.subtitle}>Seu companheiro de jornada</Text>
-          </View>
-
-          {/* Form Container */}
-          <View style={styles.formContainer}>
-            {/* Email Input */}
-            <AuthInput
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-            />
-
-            {/* Password Input */}
-            <AuthInput
-              placeholder="Senha"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-
-            {/* Name Input (only for register) */}
-            {!isLogin && (
-              <AuthInput
-                placeholder="Seu nome"
-                value={name}
-                onChangeText={setName}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            {/* Logo/Header */}
+            <View style={styles.header}>            
+              <Image
+                  source={require('../assets/images/sidekick-logo.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
               />
-            )}
-
-            {/* Error Message */}
-            <ErrorMessage message={error || undefined} />
-
-            {/* Submit Button */}
-            <AuthButton
-              title={isLogin ? "Entrar" : "Criar Conta"}
-              onPress={handleAuth}
-              loading={isLoading}
-              disabled={!isFormValid}
-            />
-
-            {/* Toggle Auth Mode with inline link */}
-            <View style={styles.toggleContainer}>
-              {isLogin ? (
-                <Text style={styles.toggleText}>
-                  Não tem conta?{' '}
-                  <Text
-                    style={styles.linkText}
-                    onPress={() => {
-                      setIsLogin(false);
-                      setError(null);
-                      setName("");
-                    }}
-                  >
-                    clique aqui
-                  </Text>
-                </Text>
-              ) : (
-                <Text style={styles.toggleText}>
-                  Já tem conta?{' '}
-                  <Text
-                    style={styles.linkText}
-                    onPress={() => {
-                      setIsLogin(true);
-                      setError(null);
-                    }}
-                  >
-                    clique aqui
-                  </Text>
-                </Text>
-              )}
+              <Text style={styles.title}>Sidekick</Text>
+              <Text style={styles.subtitle}>Seu companheiro de jornada</Text>
             </View>
-          </View>
-        </ScrollView>
+
+            {/* Form Container */}
+            <View style={styles.formContainer}>
+              {/* Email Input */}
+              <AuthInput
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+              />
+
+              {/* Password Input */}
+              <AuthInput
+                placeholder="Senha"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+
+              {/* Name Input (only for register) */}
+              {!isLogin && (
+                <AuthInput
+                  placeholder="Seu nome"
+                  value={name}
+                  onChangeText={setName}
+                />
+              )}
+
+              {/* Error Message */}
+              <ErrorMessage message={error || undefined} />
+
+              {/* Submit Button */}
+              <AuthButton
+                title={isLogin ? "Entrar" : "Criar Conta"}
+                onPress={handleAuth}
+                loading={isLoading}
+                disabled={!isFormValid}
+              />
+
+              {/* Toggle Auth Mode with inline link */}
+              <View style={styles.toggleContainer}>
+                {isLogin ? (
+                  <Text style={styles.toggleText}>
+                    Não tem conta?{' '}
+                    <Text
+                      style={styles.linkText}
+                      onPress={() => {
+                        setIsLogin(false);
+                        setError(null);
+                        setName("");
+                      }}
+                    >
+                      clique aqui
+                    </Text>
+                  </Text>
+                ) : (
+                  <Text style={styles.toggleText}>
+                    Já tem conta?{' '}
+                    <Text
+                      style={styles.linkText}
+                      onPress={() => {
+                        setIsLogin(true);
+                        setError(null);
+                      }}
+                    >
+                      clique aqui
+                    </Text>
+                  </Text>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
