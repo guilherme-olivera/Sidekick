@@ -102,7 +102,7 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
             <Text style={styles.title}>{workout.title}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={styles.date}>{formatDate(workout.date)}</Text>
-              {workout.aiNarrative && (
+              {!!workout.aiNarrative && (
                 <View style={styles.iaMiniBadge}>
                   <Text style={styles.iaMiniBadgeText}>🧠 IA</Text>
                 </View>
@@ -129,15 +129,15 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
       {/* Metrics */}
       <View style={styles.metricsContainer}>
         <MetricItem label="Duração" value={formatDuration(workout.duration)} />
-        {workout.distance && (
+        {workout.distance ? (
           <MetricItem label="Distância" value={`${workout.distance.toFixed(1)} km`} />
-        )}
-        {workout.pace && (
+        ) : null}
+        {workout.pace ? (
           <MetricItem label="Velocidade" value={`${workout.pace.toFixed(1)} km/h`} />
-        )}
-        {workout.avgHeartRate && (
+        ) : null}
+        {workout.avgHeartRate ? (
           <MetricItem label="BPM Médio" value={`${workout.avgHeartRate} bpm`} />
-        )}
+        ) : null}
       </View>
 
       {/* AI Narrative or Analyze Button */}
