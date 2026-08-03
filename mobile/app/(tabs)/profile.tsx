@@ -9,6 +9,12 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -45,6 +51,91 @@ export default function ProfileScreen() {
   const [historyAnalysis, setHistoryAnalysis] = useState<string | null>(null);
   const [historyAnalysisUpdatedAt, setHistoryAnalysisUpdatedAt] = useState<string | null>(null);
   const [updatingHistoryAnalysis, setUpdatingHistoryAnalysis] = useState(false);
+
+  // Estados para personalização do companheiro
+  const [companionName, setCompanionName] = useState("");
+  const [companionAvatar, setCompanionAvatar] = useState("🤖");
+  const [isCompanionModalVisible, setIsCompanionModalVisible] = useState(false);
+  const [savingCompanion, setSavingCompanion] = useState(false);
+
+  // Estados para compartilhamento de conquistas
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (user?.profile) {
+      setCompanionName(user.profile.companionName || "");
+      setCompanionAvatar(user.profile.companionAvatar || "🤖");
+    }
+  }, [user]);
+
+  const handleSaveCompanion = async () => {
+    if (!companionName.trim()) {
+      Alert.alert("Erro", "Por favor, digite um nome para seu companheiro.");
+      return;
+    }
+    setSavingCompanion(true);
+    try {
+      const res = await apiService.put('/user/profile', {
+        ...user?.profile,
+        companionName: companionName.trim(),
+        companionAvatar: companionAvatar
+      });
+      if (res && res.success) {
+        Alert.alert("Sucesso", "Configurações do companheiro salvas!");
+        setIsCompanionModalVisible(false);
+        refreshUser();
+      } else {
+        Alert.alert("Erro", res.error || "Erro ao salvar perfil.");
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Erro", "Erro ao salvar no servidor.");
+    } finally {
+      setSavingCompanion(false);
+    }
+  };
+
+  const handleBadgePress = (emoji: string, name: string, desc: string, unlocked: boolean) => {
+    if (!unlocked) {
+      Alert.alert("Bloqueado", "Realize mais treinos para desbloquear esta conquista!");
+      return;
+    }
+    setSelectedBadge({ emoji, name, desc });
+    setShareModalVisible(true);
+  };
+
+  // Cálculo de Carga de Treino Semanal
+  const getWeeklyWorkloadData = () => {
+    const data = [];
+    const today = new Date();
+    
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date(today);
+      const todayDay = today.getDay();
+      const mondayOffset = todayDay === 0 ? -6 : 1 - todayDay;
+      weekStart.setDate(today.getDate() + mondayOffset - (i * 7));
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      const weekWorkouts = allWorkouts.filter(w => {
+        const d = new Date(w.date);
+        return d >= weekStart && d <= weekEnd;
+      });
+      
+      const totalKm = weekWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
+      const label = i === 0 ? "Atual" : `Sem -${i}`;
+      data.push({ label, distance: totalKm });
+    }
+    
+    return data;
+  };
+
+  const chartData = getWeeklyWorkloadData();
+  const maxDistanceScale = Math.max(...chartData.map(d => d.distance), 10);
 
   const loadAllWorkouts = async () => {
     try {
@@ -418,6 +509,19 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
+
+          <TouchableOpacity
+            style={styles.customizeCompanionBtn}
+            onPress={() => {
+              setCompanionName(user?.profile?.companionName || "");
+              setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
+              setIsCompanionModalVisible(true);
+            }}
+          >
+            <Text style={styles.customizeCompanionText}>
+              {user?.profile?.companionAvatar || "🤖"} Personalizar {user?.profile?.companionName || "Companheiro"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Section: Minhas Estatísticas style Strava */}
@@ -634,24 +738,54 @@ export default function ProfileScreen() {
                   </View>
                 )}
 
+                {/* SVG Weekly Workload Chart */}
+                <Text style={styles.badgesSectionTitle}>📊 Carga de Treino Semanal (Últimas 4 semanas)</Text>
+                <View style={styles.chartBlock}>
+                  <View style={styles.chartContainer}>
+                    {chartData.map((d, index) => {
+                      const heightPct = d.distance > 0 ? (d.distance / maxDistanceScale) * 100 : 0;
+                      return (
+                        <View key={index} style={styles.chartColumnWrapper}>
+                          <Text style={styles.chartValue}>{d.distance.toFixed(1)} km</Text>
+                          <View style={styles.chartTrack}>
+                            <View style={[styles.chartBar, { height: `${Math.max(heightPct, 6)}%` }]} />
+                          </View>
+                          <Text style={styles.chartLabel}>{d.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+
                 {/* Gamified Badges */}
                 <Text style={styles.badgesSectionTitle}>🎖️ Conquistas Desbloqueadas</Text>
                 <View style={styles.badgesContainer}>
-                  <View style={[styles.badgeItem, allWorkouts.length > 0 ? styles.badgeUnlocked : styles.badgeLocked]}>
+                  <TouchableOpacity
+                    style={[styles.badgeItem, allWorkouts.length > 0 ? styles.badgeUnlocked : styles.badgeLocked]}
+                    onPress={() => handleBadgePress("🏃", "Primeiro Passo", "1+ treinos realizados", allWorkouts.length > 0)}
+                  >
                     <Text style={styles.badgeEmoji}>{allWorkouts.length > 0 ? "🏃" : "🔒"}</Text>
                     <Text style={styles.badgeName}>Primeiro Passo</Text>
                     <Text style={styles.badgeDesc}>1+ treinos realizados</Text>
-                  </View>
-                  <View style={[styles.badgeItem, allWorkouts.length >= 5 ? styles.badgeUnlocked : styles.badgeLocked]}>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.badgeItem, allWorkouts.length >= 5 ? styles.badgeUnlocked : styles.badgeLocked]}
+                    onPress={() => handleBadgePress("🔥", "Consistente", "5+ treinos realizados", allWorkouts.length >= 5)}
+                  >
                     <Text style={styles.badgeEmoji}>{allWorkouts.length >= 5 ? "🔥" : "🔒"}</Text>
                     <Text style={styles.badgeName}>Consistente</Text>
                     <Text style={styles.badgeDesc}>5+ treinos realizados</Text>
-                  </View>
-                  <View style={[styles.badgeItem, allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? styles.badgeUnlocked : styles.badgeLocked]}>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.badgeItem, allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? styles.badgeUnlocked : styles.badgeLocked]}
+                    onPress={() => handleBadgePress("🧭", "Devorador de KM", "50+ km acumulados", allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50)}
+                  >
                     <Text style={styles.badgeEmoji}>{allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? "🧭" : "🔒"}</Text>
                     <Text style={styles.badgeName}>Devorador de KM</Text>
                     <Text style={styles.badgeDesc}>50+ km acumulados</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -801,6 +935,119 @@ export default function ProfileScreen() {
         </View>
 
         <View style={{ height: 30 }} />
+
+        {/* Companion Personalization Modal */}
+        <Modal
+          visible={isCompanionModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsCompanionModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Personalizar Companheiro 👥</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Dê um nome e escolha um avatar exclusivo para o seu companheiro digital de treinos.
+                  </Text>
+
+                  <Text style={styles.inputLabel}>Nome do Companheiro:</Text>
+                  <TextInput
+                    value={companionName}
+                    onChangeText={setCompanionName}
+                    placeholder="Ex: Treinador Iron, Buddy, Sidekick..."
+                    style={styles.modalInput}
+                    placeholderTextColor="#666"
+                  />
+
+                  <Text style={styles.inputLabel}>Escolha o Avatar:</Text>
+                  <View style={styles.avatarSelectionGrid}>
+                    {["🤖", "🦁", "⏱️", "⚡", "🦊", "🦅"].map((av) => (
+                      <TouchableOpacity
+                        key={av}
+                        style={[
+                          styles.avatarOption,
+                          companionAvatar === av && styles.avatarOptionSelected,
+                        ]}
+                        onPress={() => setCompanionAvatar(av)}
+                      >
+                        <Text style={{ fontSize: 28 }}>{av}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={[styles.modalBtn, styles.modalBtnCancel]}
+                      onPress={() => setIsCompanionModalVisible(false)}
+                    >
+                      <Text style={styles.modalBtnCancelText}>Voltar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalBtn, styles.modalBtnConfirm]}
+                      onPress={handleSaveCompanion}
+                      disabled={savingCompanion}
+                    >
+                      {savingCompanion ? (
+                        <ActivityIndicator size="small" color="#000" />
+                      ) : (
+                        <Text style={styles.modalBtnConfirmText}>Salvar</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Medal Share Modal */}
+        <Modal
+          visible={shareModalVisible}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShareModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.shareCardContent}>
+              <Text style={styles.shareTitle}>Compartilhar Conquista 🏆</Text>
+              
+              {selectedBadge && (
+                <View style={styles.shareCard}>
+                  <Text style={styles.shareLogo}>🏃‍♂️ Sidekick</Text>
+                  <Text style={styles.shareCardEmoji}>{selectedBadge.emoji}</Text>
+                  <Text style={styles.shareCardName}>{selectedBadge.name}</Text>
+                  <Text style={styles.shareCardDesc}>{selectedBadge.desc}</Text>
+                  <Text style={styles.shareCardFooter}>sidekickapp.com</Text>
+                </View>
+              )}
+              
+              <View style={styles.shareActions}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnCancel]}
+                  onPress={() => setShareModalVisible(false)}
+                >
+                  <Text style={styles.modalBtnCancelText}>Fechar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnConfirm]}
+                  onPress={() => {
+                    const Share = require("react-native").Share;
+                    Share.share({
+                      message: `Conquistei o badge "${selectedBadge?.name}" (${selectedBadge?.desc}) no app Sidekick! 🏃‍♂️🔥`,
+                    }).catch((err: any) => console.log(err));
+                  }}
+                >
+                  <Text style={styles.modalBtnConfirmText}>Compartilhar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1307,5 +1554,225 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 9,
     textAlign: "center",
+  },
+  customizeCompanionBtn: {
+    marginTop: 14,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#333",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  customizeCompanionText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  chartBlock: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  chartContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    height: 140,
+    paddingTop: 20,
+  },
+  chartColumnWrapper: {
+    flex: 1,
+    alignItems: "center",
+  },
+  chartValue: {
+    color: Colors.primary,
+    fontSize: 9,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  chartTrack: {
+    width: 24,
+    height: 80,
+    backgroundColor: "#111",
+    borderRadius: 6,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  chartBar: {
+    width: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 6,
+  },
+  chartLabel: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    marginTop: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "90%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+  },
+  modalTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalInput: {
+    backgroundColor: "#0a0a0a",
+    color: "#fff",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#333",
+    marginBottom: 16,
+    width: "100%",
+    fontSize: 14,
+  },
+  inputLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+    alignSelf: "flex-start",
+  },
+  avatarSelectionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    gap: 10,
+    width: "100%",
+  },
+  avatarOption: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "#0a0a0a",
+    borderWidth: 2,
+    borderColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarOptionSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: "#222",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    width: "100%",
+  },
+  modalBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnCancel: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    marginRight: 8,
+  },
+  modalBtnConfirm: {
+    backgroundColor: Colors.primary,
+  },
+  modalBtnCancelText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalBtnConfirmText: {
+    color: "#0a0a0c",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  shareCardContent: {
+    width: "85%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 24,
+    alignItems: "center",
+  },
+  shareTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+  shareCard: {
+    width: "100%",
+    backgroundColor: "#08080a",
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "44",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  shareLogo: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  shareCardEmoji: {
+    fontSize: 54,
+    marginBottom: 16,
+  },
+  shareCardName: {
+    color: Colors.text,
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  shareCardDesc: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  shareCardFooter: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    opacity: 0.5,
+  },
+  shareActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
   },
 });

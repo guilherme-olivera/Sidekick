@@ -56,6 +56,7 @@ export async function analyzeWorkoutWithGemini(
     - Intensidade: ${workout.intensity || "não informada"}
     ${workout.effortRating ? `- Percepção de Esforço Físico (1 a 5): ${workout.effortRating}/5` : ""}
     ${workout.userNotes ? `- Notas e impressões do atleta sobre o treino: "${workout.userNotes}"` : ""}
+    ${workout.weather ? `- Condições Climatológicas do Treino: "${workout.weather}"` : ""}
     ${mood ? `- Humor do Atleta Hoje: ${mood}` : ""}
     `;
 
@@ -136,6 +137,7 @@ export async function analyzeWorkoutWithGemini(
     - Avalie se o treino aproxima o atleta de sua Meta Principal.
     - Considere a percepção de esforço do atleta (se for alta como 4 ou 5, valorize seu empenho e recomende cuidado; se for baixa, comente sobre a facilidade do treino) e as notas sobre como se sentiu.
     - Se houver lesão ativa registrada no perfil do atleta, atue de forma cuidadosa fazendo um alerta/recomendação de prevenção relevante para a lesão mencionada!
+    - Se houver condições climatológicas desafiadoras (ex: chuva forte, ventania ou calor extremo de 34°C), comente sobre elas no conselho e recomende alternativas preventivas ou cuidados especiais (ex: hidratação extra no calor, treinar na esteira ou musculação indoor em caso de chuva).
     - Adapte a linguagem ao nível de experiência do atleta (ex: seja mais didático para iniciantes e mais técnico para avançados).
     - O feedback deve ser curto (máx 140 palavras), focado e em tom conversacional de acordo com sua personalidade. Fale diretamente ao atleta ("você").
 

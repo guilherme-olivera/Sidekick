@@ -99,7 +99,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   // Toggle para usar backend para workouts e mock local apenas para lembretes/eventos manuais
   const USE_LOCAL_WORKOUTS = false;
-  const USE_LOCAL_EVENTS = true;
+  const USE_LOCAL_EVENTS = false;
 
   const loadWorkouts = async () => {
     if (!user) return;
@@ -247,9 +247,37 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // no backend route for manual events yet
-    setManualCalendarEvents([]);
-    await loadCalendarEvents();
+    try {
+      const res = await apiService.get('/events');
+      if (res && res.success) {
+        const mappedEvents = (res.events || []).map((e: any) => {
+          const eventDate = new Date(e.date);
+          // Converter data para ISO mantendo o timezone local ajustado
+          const offset = eventDate.getTimezoneOffset();
+          const localDate = new Date(eventDate.getTime() - (offset * 60 * 1000));
+          const isoDate = localDate.toISOString().split('T')[0];
+          const time = localDate.toISOString().split('T')[1].slice(0, 5);
+          return {
+            id: e.id,
+            date: isoDate,
+            time,
+            title: e.title,
+            description: e.description || "",
+            type: e.type || "reminder",
+            completed: e.completed || false,
+            isWorkout: false,
+          };
+        });
+        setManualCalendarEvents(mappedEvents);
+      } else {
+        setManualCalendarEvents([]);
+      }
+      await loadCalendarEvents();
+    } catch (error) {
+      console.error('Error loading manual events from API:', error);
+      setManualCalendarEvents([]);
+      await loadCalendarEvents();
+    }
   };
 
   const getCalendarEventsByDate = (isoDate: string) => {
@@ -268,9 +296,35 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       await loadManualEvents();
       return res.event;
     }
-    const res = await apiService.post('/events', payload);
+    
+    const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00` : payload.date;
+    const body = {
+      title: payload.title,
+      description: payload.description,
+      date: eventDateStr,
+      type: payload.type,
+      completed: payload.completed
+    };
+    
+    const res = await apiService.post('/events', body);
     try {
-      if (res.event) await notificationService.scheduleEventNotifications(res.event);
+      if (res.event) {
+        const dbEvent = res.event;
+        const eDate = new Date(dbEvent.date);
+        const isoD = eDate.toISOString().split('T')[0];
+        const eTime = eDate.toISOString().split('T')[1].slice(0, 5);
+        const mapped = {
+          id: dbEvent.id,
+          date: isoD,
+          time: eTime,
+          title: dbEvent.title,
+          description: dbEvent.description || "",
+          type: dbEvent.type || "reminder",
+          completed: dbEvent.completed || false,
+          isWorkout: false,
+        };
+        await notificationService.scheduleEventNotifications(mapped);
+      }
     } catch (e) {
       console.warn('Failed scheduling notifications', e);
     }
@@ -290,10 +344,36 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       await loadManualEvents();
       return res.event;
     }
-    const res = await apiService.put(`/events/${id}`, payload);
+    
+    const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00` : payload.date;
+    const body = {
+      title: payload.title,
+      description: payload.description,
+      date: eventDateStr,
+      type: payload.type,
+      completed: payload.completed
+    };
+    
+    const res = await apiService.put(`/events/${id}`, body);
     try {
       await notificationService.cancelEventNotifications(id);
-      if (res.event) await notificationService.scheduleEventNotifications(res.event);
+      if (res.event) {
+        const dbEvent = res.event;
+        const eDate = new Date(dbEvent.date);
+        const isoD = eDate.toISOString().split('T')[0];
+        const eTime = eDate.toISOString().split('T')[1].slice(0, 5);
+        const mapped = {
+          id: dbEvent.id,
+          date: isoD,
+          time: eTime,
+          title: dbEvent.title,
+          description: dbEvent.description || "",
+          type: dbEvent.type || "reminder",
+          completed: dbEvent.completed || false,
+          isWorkout: false,
+        };
+        await notificationService.scheduleEventNotifications(mapped);
+      }
     } catch (e) {
       console.warn('Failed updating notifications', e);
     }
@@ -312,6 +392,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       await loadManualEvents();
       return res;
     }
+    
     const res = await apiService.delete(`/events/${id}`);
     try {
       await notificationService.cancelEventNotifications(id);

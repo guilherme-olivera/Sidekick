@@ -17,6 +17,8 @@ interface UserProfile {
   experienceLevel?: string;
   weeklyFrequency?: number;
   isConfigured?: boolean;
+  companionName?: string;
+  companionAvatar?: string;
 }
 
 interface User {

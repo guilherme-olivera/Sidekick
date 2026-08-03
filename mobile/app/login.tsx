@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Modal,
+  Alert,
 } from "react-native";
 import { useAuth } from "../src/contexts/AuthContext";
 // O certo é subir um nível (..) e entrar em components
@@ -27,6 +29,89 @@ export default function LoginScreen({ navigation }: any) {
   const { login, register, isLoading} = useAuth();
   
   const [error, setError] = useState<string | null>(null);
+
+  // Estados de recuperação de senha
+  const [forgotPasswordModalVisible, setForgotPasswordModalVisible] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [newPasswordForReset, setNewPasswordForReset] = useState("");
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+
+  const triggerForgotPassword = async () => {
+    if (!forgotEmail) {
+      Alert.alert("Erro", "Por favor, digite o e-mail.");
+      return;
+    }
+    
+    setIsForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.11:3000'}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setShowResetForm(true);
+        if (data.mockCode) {
+          Alert.alert(
+            "Código Enviado",
+            `Enviamos um código de 6 dígitos.\n\n[CÓDIGO MOCK PARA TESTES: ${data.mockCode}]`,
+            [{ text: "Copiar Código", onPress: () => setRecoveryCode(data.mockCode) }]
+          );
+        } else {
+          Alert.alert("Sucesso", "Se o e-mail estiver cadastrado, você receberá o código.");
+        }
+      } else {
+        Alert.alert("Erro", data.error || "Erro ao solicitar recuperação.");
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "Erro ao se conectar ao servidor.");
+    } finally {
+      setIsForgotPasswordLoading(false);
+    }
+  };
+
+  const triggerResetPassword = async () => {
+    if (!recoveryCode || !newPasswordForReset) {
+      Alert.alert("Erro", "Código e nova senha são obrigatórios.");
+      return;
+    }
+    
+    setIsForgotPasswordLoading(true);
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.11:3000'}/api/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: forgotEmail,
+          code: recoveryCode,
+          newPassword: newPasswordForReset,
+        }),
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        Alert.alert("Sucesso", "Senha alterada com sucesso! Entre com sua nova senha.");
+        setForgotPasswordModalVisible(false);
+        setForgotEmail("");
+        setRecoveryCode("");
+        setNewPasswordForReset("");
+        setShowResetForm(false);
+        setPassword(newPasswordForReset); // auto-fill password
+      } else {
+        Alert.alert("Erro", data.error || "Erro ao alterar a senha.");
+      }
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Erro", "Erro ao se conectar ao servidor.");
+    } finally {
+      setIsForgotPasswordLoading(false);
+    }
+  };
 
   const handleAuth = async () => {
     try {
@@ -100,6 +185,20 @@ export default function LoginScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
 
+              {isLogin && (
+                <TouchableOpacity
+                  style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 12, marginRight: 4 }}
+                  onPress={() => {
+                    setForgotEmail(email); // pre-fill with email typed so far
+                    setForgotPasswordModalVisible(true);
+                  }}
+                >
+                  <Text style={{ color: Colors.primary, fontSize: 13, textDecorationLine: 'underline' }}>
+                    Esqueci minha senha
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {/* Name Input (only for register) */}
               {!isLogin && (
                 <AuthInput
@@ -155,6 +254,94 @@ export default function LoginScreen({ navigation }: any) {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={forgotPasswordModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setForgotPasswordModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Recuperar Senha 🔑</Text>
+                
+                {!showResetForm ? (
+                  <>
+                    <Text style={styles.modalSubtitle}>
+                      Digite seu e-mail para receber o código de verificação e redefinir sua senha.
+                    </Text>
+                    <AuthInput
+                      placeholder="E-mail cadastrado"
+                      value={forgotEmail}
+                      onChangeText={setForgotEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={[styles.modalBtn, styles.modalBtnCancel]}
+                        onPress={() => setForgotPasswordModalVisible(false)}
+                      >
+                        <Text style={styles.modalBtnCancelText}>Voltar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalBtn, styles.modalBtnConfirm]}
+                        onPress={triggerForgotPassword}
+                        disabled={isForgotPasswordLoading}
+                      >
+                        <Text style={styles.modalBtnConfirmText}>
+                          {isForgotPasswordLoading ? "Enviando..." : "Enviar Código"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.modalSubtitle}>
+                      Digite o código de 6 dígitos que você recebeu e crie sua nova senha de acesso.
+                    </Text>
+                    <AuthInput
+                      placeholder="Código de verificação"
+                      value={recoveryCode}
+                      onChangeText={setRecoveryCode}
+                      keyboardType="number-pad"
+                    />
+                    <AuthInput
+                      placeholder="Nova Senha"
+                      value={newPasswordForReset}
+                      onChangeText={setNewPasswordForReset}
+                      secureTextEntry={true}
+                    />
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={[styles.modalBtn, styles.modalBtnCancel]}
+                        onPress={() => setShowResetForm(false)}
+                      >
+                        <Text style={styles.modalBtnCancelText}>Alterar E-mail</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalBtn, styles.modalBtnConfirm]}
+                        onPress={triggerResetPassword}
+                        disabled={isForgotPasswordLoading}
+                      >
+                        <Text style={styles.modalBtnConfirmText}>
+                          {isForgotPasswordLoading ? "Aguarde..." : "Confirmar Nova Senha"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
     </TouchableWithoutFeedback>
   );
 }
@@ -289,5 +476,64 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 12,
     marginBottom: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "90%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+  },
+  modalTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnCancel: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    marginRight: 8,
+  },
+  modalBtnConfirm: {
+    backgroundColor: Colors.primary,
+  },
+  modalBtnCancelText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalBtnConfirmText: {
+    color: "#0a0a0c",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

@@ -246,14 +246,25 @@ export default function CalendarScreen() {
                           style={styles.eventRow}
                           onPress={() => handleEventPress(event)}
                         >
-                          <View>
-                            <Text style={styles.eventTitle}>{event.title}</Text>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                              <View style={[
+                                styles.smallDot,
+                                event.isWorkout ? styles.smallWorkoutDot : styles.smallReminderDot
+                              ]} />
+                              <Text style={[styles.eventTitle, { marginBottom: 0 }]}>{event.title}</Text>
+                            </View>
                             <Text style={styles.eventSubtitle} numberOfLines={2}>
                               {event.description || "Sem descrição"}
                             </Text>
                             <Text style={styles.eventMeta}>{event.time}</Text>
                           </View>
-                          <Text style={styles.eventSource}>{event.source || "Sidekick"}</Text>
+                          <Text style={[
+                            styles.eventSource,
+                            event.isWorkout ? { color: "#51cf66" } : { color: "#ff922b" }
+                          ]}>
+                            {event.isWorkout ? "Treino" : "Lembrete"}
+                          </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -484,5 +495,18 @@ const styles = StyleSheet.create({
   deleteText: {
     color: "#fff",
     fontWeight: "700",
+  },
+  smallDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+    marginTop: -2,
+  },
+  smallWorkoutDot: {
+    backgroundColor: "#51cf66",
+  },
+  smallReminderDot: {
+    backgroundColor: "#ff922b",
   },
 });

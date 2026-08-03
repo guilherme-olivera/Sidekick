@@ -157,8 +157,27 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
 
     await consumeAiAnalysisQuota(userId, workoutToAnalyze.user?.planType);
 
+    // Clima simulado dependente deterministicamente do ID do treino para consistência
+    const mockWeathers = [
+      "Chuva intensa e vento de 30 km/h",
+      "Calor extremo de 34°C com baixa umidade do ar",
+      "Clima agradável e fresco de 18°C, ideal para correr",
+      "Nublado e temperatura de 22°C",
+      "Dia ensolarado e temperatura de 28°C",
+      "Chuva fina e névoa matinal com 16°C",
+      "Calor moderado de 29°C com rajadas de vento"
+    ];
+    const workoutIdStr = String(id);
+    const hash = workoutIdStr.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const mockWeather = mockWeathers[hash % mockWeathers.length];
+    
+    const workoutContextWithWeather = {
+      ...workoutToAnalyze,
+      weather: mockWeather
+    };
+
     // Gera análise com Gemini, passando perfil e histórico
-    const narrative = await analyzeWorkoutWithGemini(workoutToAnalyze, mood, userProfile, recentWorkouts);
+    const narrative = await analyzeWorkoutWithGemini(workoutContextWithWeather, mood, userProfile, recentWorkouts);
 
     // Atualiza o treino com a narrativa
     const updatedWorkout = await prisma.workout.update({

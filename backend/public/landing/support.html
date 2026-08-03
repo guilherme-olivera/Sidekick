@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajuda e Suporte — Sidekick</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="container header-inner">
+      <a href="/" class="logo">
+        🏃‍♂️ <span>Sidekick</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Início</a></li>
+        <li><a href="/support.html" class="active">Suporte</a></li>
+        <li><a href="/terms.html">Termos de Uso</a></li>
+        <li><a href="/privacy.html">Privacidade</a></li>
+      </ul>
+      <a href="/support.html" class="btn-primary">Contato</a>
+    </div>
+  </header>
+
+  <section class="page-header">
+    <div class="container">
+      <h2>Suporte & Central de Ajuda</h2>
+      <p class="hero-subtitle">Precisa de ajuda ou quer sugerir melhorias? Envie sua mensagem abaixo.</p>
+    </div>
+  </section>
+
+  <!-- Content Block / Form -->
+  <div class="container">
+    <div class="content-block">
+      <h3>Dúvidas Frequentes (FAQ)</h3>
+      
+      <h4>1. Como conectar meu relógio Garmin?</h4>
+      <p>
+        Abra o aplicativo Sidekick em seu dispositivo móvel, acesse a aba <strong>Perfil</strong>, clique em <strong>Integrações</strong> e selecione "Garmin Connect". Você será redirecionado para a página oficial do Garmin para autorizar o compartilhamento.
+      </p>
+
+      <h4>2. O treino não sincronizou imediatamente, o que fazer?</h4>
+      <p>
+        As conexões do Garmin e Strava dependem das APIs externas enviarem os dados ao nosso servidor. Normalmente, leva menos de um minuto após a conclusão da atividade no seu relógio. Se atrasar, você pode abrir o app e puxar a Home para baixo para forçar uma nova verificação.
+      </p>
+
+      <h4>3. Como alterar a personalidade do companheiro de IA?</h4>
+      <p>
+        Acesse a aba <strong>Perfil</strong> no aplicativo móvel, clique em "Personalizar IA" e mude a Vibe (Calmo, Rígido, Bravo) e o Tom (Sarcástico, Motivador, Sério). Salve para atualizar as próximas análises de treino.
+      </p>
+
+      <h3 style="margin-top: 40px; border-top: 1px solid var(--border); paddingTop: 24px;">Envie uma Solicitação de Suporte</h3>
+      
+      <form onsubmit="alert('Obrigado! Sua solicitação de suporte foi simulada e enviada.'); return false;">
+        <div class="form-group">
+          <label for="name">Seu Nome</label>
+          <input type="text" id="name" placeholder="Digite seu nome completo" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Seu E-mail</label>
+          <input type="email" id="email" placeholder="nome@provedor.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Mensagem ou Dúvida</label>
+          <textarea id="message" rows="5" placeholder="Descreva o problema com o seu relógio, treino ou conta..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Enviar Mensagem</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <a href="/" class="footer-logo">🏃‍♂️ <span>Sidekick</span></a>
+      <div class="footer-links">
+        <a href="/terms.html">Termos de Uso</a>
+        <a href="/privacy.html">Política de Privacidade</a>
+        <a href="/support.html">Ajuda & Suporte</a>
+      </div>
+      <p class="copyright">
+        &copy; 2026 Sidekick App. Todos os direitos reservados.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

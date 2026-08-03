@@ -37,6 +37,8 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
             experienceLevel: true,
             weeklyFrequency: true,
             isConfigured: true,
+            companionName: true,
+            companionAvatar: true,
           },
         },
       },
@@ -74,6 +76,8 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
       experienceLevel,
       weeklyFrequency,
       isConfigured,
+      companionName,
+      companionAvatar,
     } = req.body;
 
     if (!userId) {
@@ -101,6 +105,8 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         experienceLevel,
         weeklyFrequency: freq,
         isConfigured: isConfigured ?? false,
+        companionName: companionName !== undefined ? companionName : null,
+        companionAvatar: companionAvatar !== undefined ? companionAvatar : null,
       },
       update: {
         trainingGoal,
@@ -118,6 +124,8 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         experienceLevel,
         weeklyFrequency: freq,
         isConfigured: isConfigured ?? false,
+        companionName: companionName !== undefined ? companionName : undefined,
+        companionAvatar: companionAvatar !== undefined ? companionAvatar : undefined,
       },
     });
 

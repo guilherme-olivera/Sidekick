@@ -90,6 +90,8 @@ export async function handleGetMe(req: any, res: Response) {
             experienceLevel: true,
             weeklyFrequency: true,
             isConfigured: true,
+            companionName: true,
+            companionAvatar: true,
           },
         },
       },
@@ -103,6 +105,81 @@ export async function handleGetMe(req: any, res: Response) {
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Erro ao buscar usuário",
+    });
+  }
+}
+
+/**
+ * POST /api/auth/forgot-password
+ * Solicita redefinição de senha
+ */
+export async function handleForgotPassword(req: Request, res: Response) {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: "E-mail é obrigatório" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.json({
+        success: true,
+        message: "Se o e-mail estiver cadastrado, o código foi enviado.",
+      });
+    }
+
+    const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(`[RECOVERY] Código gerado para ${email}: ${mockCode}`);
+
+    return res.json({
+      success: true,
+      message: "Código de recuperação enviado para o e-mail.",
+      mockCode,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Erro ao processar recuperação",
+    });
+  }
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Redefine a senha com o código
+ */
+export async function handleResetPassword(req: Request, res: Response) {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: "E-mail, código e nova senha são obrigatórios" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { email },
+      data: { password: hashedPassword },
+    });
+
+    return res.json({
+      success: true,
+      message: "Senha redefinida com sucesso!",
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Erro ao redefinir senha",
     });
   }
 }

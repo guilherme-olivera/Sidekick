@@ -8,7 +8,15 @@ import {
   handleLogin,
   handleRegister,
   handleGetMe,
+  handleForgotPassword,
+  handleResetPassword,
 } from "./controllers/authController";
+import {
+  getEventsHandler,
+  createEventHandler,
+  updateEventHandler,
+  deleteEventHandler,
+} from "./controllers/eventController";
 import {
   getStravaAuthUrlHandler,
   stravaCallbackHandler,
@@ -52,7 +60,7 @@ app.use(express.json());
 app.use(cors());
 
 // Servir arquivos estáticos (avatares, etc)
-app.use("/public", express.static(path.join(__dirname, "../public")));
+app.use("/public", express.static(path.join(process.cwd(), "public")));
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -63,6 +71,8 @@ app.get("/health", (req, res) => {
 app.post("/api/auth/register", handleRegister);
 app.post("/api/auth/login", handleLogin);
 app.get("/api/auth/me", authMiddleware, handleGetMe);
+app.post("/api/auth/forgot-password", handleForgotPassword);
+app.post("/api/auth/reset-password", handleResetPassword);
 
 // ===== STRAVA INTEGRATION ROUTES =====
 app.get("/api/strava/auth-url", authMiddleware, getStravaAuthUrlHandler);
@@ -73,12 +83,21 @@ app.post("/api/strava/disconnect", authMiddleware, disconnectStravaHandler);
 app.get("/api/strava/status", authMiddleware, getStravaStatusHandler);
 app.get("/api/strava/stats", authMiddleware, getStravaStatsHandler);
 
-app.get("/", async (req, res) => {
+// Serve public landing page
+app.use(express.static(path.join(process.cwd(), "public/landing")));
+
+app.get("/", async (req, res, next) => {
   if (req.query.code) {
     return stravaCallbackHandler(req, res);
   }
-  res.send("Sidekick Backend is running");
+  next();
 });
+
+// ===== CALENDAR EVENT ROUTES =====
+app.get("/api/events", authMiddleware, getEventsHandler);
+app.post("/api/events", authMiddleware, createEventHandler);
+app.put("/api/events/:id", authMiddleware, updateEventHandler);
+app.delete("/api/events/:id", authMiddleware, deleteEventHandler);
 
 // ===== USER PROFILE ROUTES =====
 app.get("/api/user/profile", authMiddleware, getUserProfileHandler);

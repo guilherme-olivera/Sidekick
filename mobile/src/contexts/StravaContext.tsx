@@ -128,7 +128,10 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
       if (Platform.OS === 'web') {
         window.open(authUrl, '_blank');
       } else {
-        await WebBrowser.openBrowserAsync(authUrl);
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, 'sidekick://');
+        if (result.type === 'success' && result.url) {
+          await processStravaRedirect(result.url);
+        }
       }
 
       console.log('[StravaContext] browser opened for Strava auth');

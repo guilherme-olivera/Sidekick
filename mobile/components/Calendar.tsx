@@ -80,16 +80,25 @@ export function Calendar({ events, onDayPress }: { events: CalendarEvent[]; onDa
           const isToday = formatDateYMD(d) === formatDateYMD(today);
           const dayEvents = eventMap.get(iso) || [];
           const hasEvents = dayEvents.length > 0;
+          const hasWorkouts = dayEvents.some(e => e.isWorkout);
+          const hasReminders = dayEvents.some(e => !e.isWorkout);
+
+          const circleStyles: any[] = [styles.dateCircle];
+          if (!inMonth) circleStyles.push(styles.outsideMonth);
+          if (isToday) circleStyles.push(styles.todayActive);
+          
+          if (hasWorkouts && hasReminders) {
+            circleStyles.push(styles.bothEventsDay);
+          } else if (hasWorkouts) {
+            circleStyles.push(styles.workoutEventDay);
+          } else if (hasReminders) {
+            circleStyles.push(styles.reminderEventDay);
+          }
 
           return (
             <View key={iso} style={[styles.cell, { width: CELL_SIZE, height: CELL_SIZE }]}> 
               <TouchableOpacity
-                style={[
-                  styles.dateCircle,
-                  !inMonth && styles.outsideMonth,
-                  hasEvents && styles.eventDay,
-                  isToday && styles.todayActive,
-                ]}
+                style={circleStyles}
                 onPress={() => onDayPress && onDayPress(iso)}
               >
                 <Text style={[
@@ -98,7 +107,13 @@ export function Calendar({ events, onDayPress }: { events: CalendarEvent[]; onDa
                   isToday && styles.todayText,
                   hasEvents && styles.eventText,
                 ]}>{d.getDate()}</Text>
-                {hasEvents && <View style={styles.eventDot} />}
+                
+                {hasEvents && (
+                  <View style={styles.dotsRow}>
+                    {hasWorkouts && <View style={[styles.eventDot, styles.workoutDot]} />}
+                    {hasReminders && <View style={[styles.eventDot, styles.reminderDot]} />}
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           );
@@ -173,12 +188,38 @@ const styles = StyleSheet.create({
     color: "#ff6b6b",
   },
   eventDot: {
-    position: "absolute",
-    bottom: 6,
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  workoutDot: {
     backgroundColor: "#51cf66",
+  },
+  reminderDot: {
+    backgroundColor: "#ff922b",
+  },
+  dotsRow: {
+    position: "absolute",
+    bottom: 6,
+    flexDirection: "row",
+    gap: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  workoutEventDay: {
+    backgroundColor: "#112a18",
+    borderColor: "#2b8a3e",
+    borderWidth: 1,
+  },
+  reminderEventDay: {
+    backgroundColor: "#2b1a0a",
+    borderColor: "#d9480f",
+    borderWidth: 1,
+  },
+  bothEventsDay: {
+    backgroundColor: "#21200a",
+    borderColor: "#e5db9c",
+    borderWidth: 1,
   },
   eventDay: {
     backgroundColor: "#2d5e3a",

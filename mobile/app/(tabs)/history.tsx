@@ -17,6 +17,7 @@ import {
 import { useLocalSearchParams } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { WorkoutCard } from "@/components/WorkoutCard";
+import * as Speech from "expo-speech";
 
 const Colors = {
   dark: "#0a0a0a",
@@ -36,6 +37,33 @@ export default function HistoryScreen() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
   const [analyzingWorkoutId, setAnalyzingWorkoutId] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
+  const handleToggleSpeech = (text: string) => {
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+    } else {
+      setIsSpeaking(true);
+      Speech.speak(text, {
+        language: "pt-BR",
+        onDone: () => setIsSpeaking(false),
+        onError: () => setIsSpeaking(false),
+      });
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    Speech.stop();
+    setIsSpeaking(false);
+    setSelectedWorkoutId(null);
+  };
 
   // Auto-open modal if workoutId is passed via URL query params (e.g. redirected from other screens)
   useEffect(() => {
@@ -157,7 +185,7 @@ export default function HistoryScreen() {
         visible={selectedWorkoutId !== null}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setSelectedWorkoutId(null)}
+        onRequestClose={handleCloseDetailModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -186,7 +214,7 @@ export default function HistoryScreen() {
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => setSelectedWorkoutId(null)}>
+                  <TouchableOpacity onPress={handleCloseDetailModal}>
                     <Text style={styles.modalCloseButton}>✕</Text>
                   </TouchableOpacity>
                 </View>
@@ -270,7 +298,28 @@ export default function HistoryScreen() {
 
                   {/* IA Analysis Narrative Section */}
                   <View style={styles.modalIaSection}>
-                    <Text style={styles.modalIaTitle}>🧠 Análise do Sidekick (IA)</Text>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <Text style={[styles.modalIaTitle, { marginBottom: 0 }]}>🧠 Análise do Sidekick (IA)</Text>
+                      {selectedWorkoutDetail.aiNarrative && (
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            backgroundColor: "#222",
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#333",
+                          }}
+                          onPress={() => handleToggleSpeech(selectedWorkoutDetail.aiNarrative!)}
+                        >
+                          <Text style={{ color: Colors.primary, fontSize: 13, fontWeight: "700" }}>
+                            {isSpeaking ? "⏹️ Parar" : "🔊 Ouvir"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                     
                     {selectedWorkoutDetail.aiNarrative ? (
                       <View style={styles.modalNarrativeContainer}>
@@ -307,7 +356,7 @@ export default function HistoryScreen() {
             {/* Close action */}
             <TouchableOpacity
               style={styles.modalCloseAction}
-              onPress={() => setSelectedWorkoutId(null)}
+              onPress={handleCloseDetailModal}
             >
               <Text style={styles.modalCloseActionText}>Fechar</Text>
             </TouchableOpacity>

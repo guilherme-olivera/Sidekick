@@ -17,6 +17,7 @@ import {
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { useAuth } from "@/src/contexts/AuthContext";
+import { useStrava } from "@/src/contexts/StravaContext";
 import { MoodWidget } from "@/components/MoodWidget";
 import { WorkoutCard } from "@/components/WorkoutCard";
 
@@ -37,6 +38,8 @@ const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0]; // Mapping DAYS to Date.getDay()
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { isConnected: isStravaConnected, syncActivities } = useStrava();
+  const [newWorkoutsSyncedMessage, setNewWorkoutsSyncedMessage] = useState<string | null>(null);
   const {
     workouts,
     workoutsByDay,
@@ -104,6 +107,17 @@ export default function HomeScreen() {
       time: "1h atrás",
     });
 
+    // 4. Silent sync notification
+    if (newWorkoutsSyncedMessage) {
+      list.push({
+        id: "silentsync",
+        icon: "🔄",
+        title: "Sincronização Concluída",
+        description: newWorkoutsSyncedMessage,
+        time: "Agora",
+      });
+    }
+
     return list;
   };
 
@@ -151,7 +165,19 @@ export default function HomeScreen() {
     monday.setDate(today.getDate() + offset);
     monday.setHours(0, 0, 0, 0);
     loadWeeklyWorkouts(monday);
-  }, []);
+
+    // Silent Strava Sync on mount
+    if (isStravaConnected) {
+      syncActivities()
+        .then((res) => {
+          if (res && res.syncedActivities > 0) {
+            setNewWorkoutsSyncedMessage("Novo treino detectado! Clique para analisar.");
+            loadWeeklyWorkouts(monday);
+          }
+        })
+        .catch((err) => console.log('[Silent Sync] failed:', err));
+    }
+  }, [isStravaConnected]);
 
   const handleMoodSelect = async (moodId: string, emoji: string) => {
     await setMood(moodId, emoji);

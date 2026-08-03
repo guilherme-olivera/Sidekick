@@ -9,6 +9,7 @@ export interface CalendarEvent {
   description?: string;
   source?: "Germini" | "Strava" | "Sidekick";
   isWorkout?: boolean;
+  completed?: boolean;
 }
 
 let events: CalendarEvent[] = germiniMockEvents.map((e) => ({

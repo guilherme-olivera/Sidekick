@@ -75,6 +75,8 @@ interface AuthInputProps {
   value: string;
   onChangeText: (text: string) => void;
   secureTextEntry?: boolean;
+  keyboardType?: string;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }
 
 export function AuthInput({
@@ -82,6 +84,8 @@ export function AuthInput({
   value,
   onChangeText,
   secureTextEntry,
+  keyboardType,
+  autoCapitalize,
 }: AuthInputProps) {
   return (
     <TextInput
@@ -91,7 +95,8 @@ export function AuthInput({
       value={value}
       onChangeText={onChangeText}
       secureTextEntry={secureTextEntry}
-      autoCapitalize="none"
+      keyboardType={keyboardType as any}
+      autoCapitalize={autoCapitalize || "none"}
     />
   );
 }
