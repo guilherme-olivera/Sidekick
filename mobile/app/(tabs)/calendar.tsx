@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   Alert,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Calendar from "@/components/Calendar";
@@ -218,91 +220,96 @@ export default function CalendarScreen() {
       <Calendar events={calendarEvents} onDayPress={handleDayPress} />
 
       <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeaderRow}>
-                  <View>
-                    <Text style={styles.modalTitle}>{selectedDate ? formatCalendarLabel(selectedDate) : "Selecionar data"}</Text>
-                    <Text style={styles.modalSubtitle}>Eventos e lembretes</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Text style={styles.closeIcon}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {selectedDayEvents.length > 0 ? (
-                  <View style={styles.eventList}>
-                    {selectedDayEvents.map((event) => (
-                      <TouchableOpacity
-                        key={event.id}
-                        style={styles.eventRow}
-                        onPress={() => handleEventPress(event)}
-                      >
-                        <View>
-                          <Text style={styles.eventTitle}>{event.title}</Text>
-                          <Text style={styles.eventSubtitle} numberOfLines={2}>
-                            {event.description || "Sem descrição"}
-                          </Text>
-                          <Text style={styles.eventMeta}>{event.time}</Text>
-                        </View>
-                        <Text style={styles.eventSource}>{event.source || "Sidekick"}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.emptyText}>
-                    Nenhum evento salvo para este dia. Crie um novo evento abaixo.
-                  </Text>
-                )}
-
-                {!(selectedDate && selectedDate < new Date().toISOString().split('T')[0]) ? (
-                  <>
-                    <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
-                    <TextInput
-                      value={title}
-                      onChangeText={setTitle}
-                      placeholder="Título"
-                      style={styles.input}
-                      placeholderTextColor="#888"
-                    />
-                    <TextInput
-                      value={description}
-                      onChangeText={setDescription}
-                      placeholder="Descrição"
-                      style={[styles.input, styles.textArea]}
-                      placeholderTextColor="#888"
-                      multiline
-                    />
-                    <TextInput
-                      value={time}
-                      onChangeText={setTime}
-                      placeholder="Hora (HH:mm)"
-                      style={styles.input}
-                      placeholderTextColor="#888"
-                    />
-
-                    <View style={styles.modalActions}>
-                      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                        <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
-                        <Text style={styles.cancelText}>Cancelar</Text>
-                      </TouchableOpacity>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeaderRow}>
+                    <View>
+                      <Text style={styles.modalTitle}>{selectedDate ? formatCalendarLabel(selectedDate) : "Selecionar data"}</Text>
+                      <Text style={styles.modalSubtitle}>Eventos e lembretes</Text>
                     </View>
-                  </>
-                ) : (
-                  <View style={styles.modalActions}>
-                    <TouchableOpacity style={styles.saveButton} onPress={() => setModalVisible(false)}>
-                      <Text style={styles.saveText}>Fechar</Text>
+                    <TouchableOpacity onPress={() => setModalVisible(false)}>
+                      <Text style={styles.closeIcon}>✕</Text>
                     </TouchableOpacity>
                   </View>
-                )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+
+                  {selectedDayEvents.length > 0 ? (
+                    <View style={styles.eventList}>
+                      {selectedDayEvents.map((event) => (
+                        <TouchableOpacity
+                          key={event.id}
+                          style={styles.eventRow}
+                          onPress={() => handleEventPress(event)}
+                        >
+                          <View>
+                            <Text style={styles.eventTitle}>{event.title}</Text>
+                            <Text style={styles.eventSubtitle} numberOfLines={2}>
+                              {event.description || "Sem descrição"}
+                            </Text>
+                            <Text style={styles.eventMeta}>{event.time}</Text>
+                          </View>
+                          <Text style={styles.eventSource}>{event.source || "Sidekick"}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyText}>
+                      Nenhum evento salvo para este dia. Crie um novo evento abaixo.
+                    </Text>
+                  )}
+
+                  {!(selectedDate && selectedDate < new Date().toISOString().split('T')[0]) ? (
+                    <>
+                      <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
+                      <TextInput
+                        value={title}
+                        onChangeText={setTitle}
+                        placeholder="Título"
+                        style={styles.input}
+                        placeholderTextColor="#888"
+                      />
+                      <TextInput
+                        value={description}
+                        onChangeText={setDescription}
+                        placeholder="Descrição"
+                        style={[styles.input, styles.textArea]}
+                        placeholderTextColor="#888"
+                        multiline
+                      />
+                      <TextInput
+                        value={time}
+                        onChangeText={setTime}
+                        placeholder="Hora (HH:mm)"
+                        style={styles.input}
+                        placeholderTextColor="#888"
+                      />
+
+                      <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                          <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
+                          <Text style={styles.cancelText}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity style={styles.saveButton} onPress={() => setModalVisible(false)}>
+                        <Text style={styles.saveText}>Fechar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
