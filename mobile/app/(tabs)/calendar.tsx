@@ -70,8 +70,19 @@ export default function CalendarScreen() {
 
   const handleDayPress = (isoDate: string) => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const dayEvents = getCalendarEventsByDate(isoDate);
+    
     if (isoDate < todayStr) {
-      Alert.alert("Bloqueado", "Não é permitido criar lembretes em datas passadas.");
+      if (dayEvents.length > 0) {
+        setSelectedDate(isoDate);
+        setTitle("");
+        setDescription("");
+        setTime("08:00");
+        setEditingId(null);
+        setModalVisible(true);
+      } else {
+        Alert.alert("Bloqueado", "Não é permitido criar lembretes em datas passadas.");
+      }
       return;
     }
     startNewEvent(isoDate);
@@ -246,38 +257,48 @@ export default function CalendarScreen() {
                   </Text>
                 )}
 
-                <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
-                <TextInput
-                  value={title}
-                  onChangeText={setTitle}
-                  placeholder="Título"
-                  style={styles.input}
-                  placeholderTextColor="#888"
-                />
-                <TextInput
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Descrição"
-                  style={[styles.input, styles.textArea]}
-                  placeholderTextColor="#888"
-                  multiline
-                />
-                <TextInput
-                  value={time}
-                  onChangeText={setTime}
-                  placeholder="Hora (HH:mm)"
-                  style={styles.input}
-                  placeholderTextColor="#888"
-                />
+                {!(selectedDate && selectedDate < new Date().toISOString().split('T')[0]) ? (
+                  <>
+                    <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
+                    <TextInput
+                      value={title}
+                      onChangeText={setTitle}
+                      placeholder="Título"
+                      style={styles.input}
+                      placeholderTextColor="#888"
+                    />
+                    <TextInput
+                      value={description}
+                      onChangeText={setDescription}
+                      placeholder="Descrição"
+                      style={[styles.input, styles.textArea]}
+                      placeholderTextColor="#888"
+                      multiline
+                    />
+                    <TextInput
+                      value={time}
+                      onChangeText={setTime}
+                      placeholder="Hora (HH:mm)"
+                      style={styles.input}
+                      placeholderTextColor="#888"
+                    />
 
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                    <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
-                    <Text style={styles.cancelText}>Cancelar</Text>
-                  </TouchableOpacity>
-                </View>
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                        <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
+                        <Text style={styles.cancelText}>Cancelar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity style={styles.saveButton} onPress={() => setModalVisible(false)}>
+                      <Text style={styles.saveText}>Fechar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </TouchableWithoutFeedback>
           </View>

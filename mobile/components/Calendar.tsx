@@ -9,7 +9,7 @@ import {
 import { CalendarEvent } from "@/src/services/calendarMockService";
 
 const { width } = Dimensions.get("window");
-const CELL_SIZE = Math.floor((width - 32 - 12) / 7);
+const CELL_SIZE = Math.floor((width - 32 - 36) / 7);
 
 function formatDateYMD(date: Date) {
   const y = date.getFullYear();
@@ -132,8 +132,8 @@ const styles = StyleSheet.create({
   },
   weekDaysRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     marginBottom: 8,
+    gap: 6,
   },
   weekDay: {
     color: "#b0b0b0",

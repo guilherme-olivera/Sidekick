@@ -45,19 +45,51 @@ export default function HomeScreen() {
 
   const [analyzingWorkoutId, setAnalyzingWorkoutId] = useState<string | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
-  const [selectedDayWorkouts, setSelectedDayWorkouts] = useState<any[]>([]);
   const [selectedWorkoutIdForDetail, setSelectedWorkoutIdForDetail] = useState<string | null>(null);
 
   const latestWorkout = workouts[0];
   const today = new Date();
+  
+  // Calculate current week Monday
   const currentWeekMonday = new Date(today);
   const todayDay = today.getDay();
   const mondayOffset = todayDay === 0 ? -6 : 1 - todayDay;
   currentWeekMonday.setDate(today.getDate() + mondayOffset);
+  currentWeekMonday.setHours(0, 0, 0, 0);
+
+  // Calculate current week Sunday
+  const currentWeekSunday = new Date(currentWeekMonday);
+  currentWeekSunday.setDate(currentWeekMonday.getDate() + 6);
+  currentWeekSunday.setHours(23, 59, 59, 999);
+
+  // Filter workouts belonging ONLY to this week
+  const weeklyWorkouts = workouts.filter(w => {
+    const d = new Date(w.date);
+    return d >= currentWeekMonday && d <= currentWeekSunday;
+  });
+
+  // Group weekly workouts by day
+  const weeklyWorkoutsByDay: Record<number, any[]> = {};
+  DAY_NUMBERS.forEach(num => {
+    weeklyWorkoutsByDay[num] = [];
+  });
+  weeklyWorkouts.forEach(w => {
+    const d = new Date(w.date);
+    const dayOfWeek = d.getDay();
+    if (weeklyWorkoutsByDay[dayOfWeek]) {
+      weeklyWorkoutsByDay[dayOfWeek].push(w);
+    }
+  });
+
+  const selectedDayWorkouts = selectedDayIndex !== null 
+    ? (weeklyWorkoutsByDay[DAY_NUMBERS[selectedDayIndex]] || [])
+    : [];
 
   useEffect(() => {
     const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1); // Início da semana
+    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
+    monday.setDate(today.getDate() + offset);
+    monday.setHours(0, 0, 0, 0);
     loadWeeklyWorkouts(monday);
   }, []);
 
@@ -79,15 +111,10 @@ export default function HomeScreen() {
   };
 
   const handleDayPress = (dayIndex: number) => {
-    const dayOfWeek = DAY_NUMBERS[dayIndex];
-    const workoutsForDay = workoutsByDay[dayOfWeek] || [];
-    
     if (selectedDayIndex === dayIndex) {
       setSelectedDayIndex(null);
-      setSelectedDayWorkouts([]);
     } else {
       setSelectedDayIndex(dayIndex);
-      setSelectedDayWorkouts(workoutsForDay);
     }
   };
 
@@ -97,7 +124,7 @@ export default function HomeScreen() {
 
   const getDayBadgeColor = (dayIndex: number): "empty" | "filled" | "upcoming" => {
     const dayOfWeek = DAY_NUMBERS[dayIndex];
-    const hasWorkout = workoutsByDay[dayOfWeek] && workoutsByDay[dayOfWeek].length > 0;
+    const hasWorkout = weeklyWorkoutsByDay[dayOfWeek] && weeklyWorkoutsByDay[dayOfWeek].length > 0;
     if (!hasWorkout) return "empty";
 
     const dayDate = new Date(currentWeekMonday);

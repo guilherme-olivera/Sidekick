@@ -9,9 +9,11 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/src/contexts/AuthContext";
+import { useStrava } from "@/src/contexts/StravaContext";
 import { apiService } from "@/src/services/apiService";
 
 const Colors = {
@@ -30,6 +32,11 @@ export default function OnboardingScreen() {
   const { user, refreshUser } = useAuth();
   const { edit } = useLocalSearchParams();
   const isEditMode = edit === "true";
+
+  const { isConnected, athlete, connect, disconnect, syncActivities } = useStrava();
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncedCount, setSyncedCount] = useState<number | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // IA Companion States
   const [aiGender, setAiGender] = useState("neutral");
@@ -122,22 +129,27 @@ export default function OnboardingScreen() {
   const handleSave = async () => {
     if (isSaving) return;
 
+    if (!isEditMode && !termsAccepted) {
+      Alert.alert("Aviso de Isenção", "Por favor, aceite a declaração de que o aplicativo é um companheiro digital e não um médico/treinador.");
+      return;
+    }
+
     // Validation checks
     if (!validateBirthday(birthday)) {
       Alert.alert("Data de Nascimento", "Por favor, insira uma data de nascimento válida no formato DD/MM/AAAA.");
-      setStep(2);
+      setStep(3);
       return;
     }
 
     if (goalType === "pace" && !goalTargetTime) {
       Alert.alert("Tempo Alvo", "Por favor, insira o seu tempo alvo desejado.");
-      setStep(3);
+      setStep(4);
       return;
     }
 
     if (goalDistance === "custom" && !customDistance) {
       Alert.alert("Distância", "Por favor, preencha a distância personalizada.");
-      setStep(3);
+      setStep(4);
       return;
     }
 
@@ -183,13 +195,13 @@ export default function OnboardingScreen() {
   };
 
   const nextStep = () => {
-    if (step === 2) {
+    if (step === 3) {
       if (!validateBirthday(birthday)) {
         Alert.alert("Data de Nascimento", "Por favor, insira uma data de nascimento válida (DD/MM/AAAA).");
         return;
       }
     }
-    if (step === 3) {
+    if (step === 4) {
       if (goalType === "pace" && !goalTargetTime) {
         Alert.alert("Meta de Pace", "Por favor, informe o tempo que você deseja alcançar.");
         return;
@@ -238,12 +250,94 @@ export default function OnboardingScreen() {
         <Text style={styles.headerTitle}>
           {isEditMode ? "Ajustar Sidekick" : "Configuração Inicial"}
         </Text>
-        <Text style={styles.stepIndicator}>{step} / 4</Text>
+        <Text style={styles.stepIndicator}>{step} / 5</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* STEP 1: IA COMPANION */}
+        {/* STEP 1: STRAVA CONNECTION */}
         {step === 1 && (
+          <View style={styles.stepContainer}>
+            <Text style={styles.title}>Conectar ao Strava</Text>
+            <Text style={styles.subtitle}>
+              Para que o Sidekick conheça seu histórico de treinos e calibre a IA, conecte seu Strava abaixo.
+            </Text>
+
+            <View style={styles.stravaBox}>
+              {isConnected ? (
+                <View style={styles.stravaConnectedContainer}>
+                  <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
+                  {athlete && (
+                    <View style={styles.athleteProfile}>
+                      {athlete.profile ? (
+                        <Image source={{ uri: athlete.profile }} style={styles.athleteImage} />
+                      ) : (
+                        <View style={[styles.athleteImage, styles.athleteImagePlaceholder]}>
+                          <Text style={{ fontSize: 24 }}>🏃</Text>
+                        </View>
+                      )}
+                      <Text style={styles.athleteName}>{athlete.name || athlete.username}</Text>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.syncButton, isSyncing && { opacity: 0.8 }]}
+                    onPress={async () => {
+                      try {
+                        setIsSyncing(true);
+                        const result = await syncActivities();
+                        setSyncedCount(result?.syncedActivities || 0);
+                        Alert.alert("Sincronização concluída", `Sucesso! ${result?.syncedActivities || 0} atividades importadas do Strava.`);
+                      } catch (err) {
+                        Alert.alert("Erro", "Falha ao sincronizar atividades do Strava.");
+                      } finally {
+                        setIsSyncing(false);
+                      }
+                    }}
+                    disabled={isSyncing}
+                  >
+                    {isSyncing ? (
+                      <ActivityIndicator color="#000" size="small" />
+                    ) : (
+                      <Text style={styles.syncButtonText}>
+                        {syncedCount !== null ? "🔄 Sincronizar Novamente" : "🔄 Sincronizar Treinos Recentes"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  {syncedCount !== null && (
+                    <Text style={styles.syncResultText}>
+                      A sincronização obteve {syncedCount} treinos nos últimos 30 dias.
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.stravaDisconnectedContainer}>
+                  <Text style={styles.stravaStatusText}>❌ Nenhuma conta do Strava conectada</Text>
+                  
+                  <TouchableOpacity
+                    style={styles.connectButton}
+                    onPress={async () => {
+                      try {
+                        await connect();
+                      } catch (err) {
+                        Alert.alert("Erro", "Falha ao iniciar conexão com o Strava.");
+                      }
+                    }}
+                  >
+                    <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.stravaHint}>
+                    Nota: O Sidekick precisa do Strava para coletar suas atividades. Se preferir fazer isso mais tarde, você pode avançar clicando em avançar abaixo.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* STEP 2: IA COMPANION */}
+        {step === 2 && (
           <View style={styles.stepContainer}>
             <Text style={styles.title}>Configure o seu Sidekick</Text>
             <Text style={styles.subtitle}>Personalize o sexo, tom de voz e atitude da IA que vai te treinar.</Text>
@@ -323,8 +417,8 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* STEP 2: USER METADATA */}
-        {step === 2 && (
+        {/* STEP 3: USER METADATA */}
+        {step === 3 && (
           <View style={styles.stepContainer}>
             <Text style={styles.title}>Sobre Você</Text>
             <Text style={styles.subtitle}>Preencha seus dados para a IA calibrar as recomendações biológicas e de descanso.</Text>
@@ -428,8 +522,8 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* STEP 3: ATHLETE GOALS */}
-        {step === 3 && (
+        {/* STEP 4: ATHLETE GOALS */}
+        {step === 4 && (
           <View style={styles.stepContainer}>
             <Text style={styles.title}>Sua Meta de Treino</Text>
             <Text style={styles.subtitle}>O que você está buscando conquistar nesse momento?</Text>
@@ -511,8 +605,8 @@ export default function OnboardingScreen() {
           </View>
         )}
 
-        {/* STEP 4: FINAL SUMMARY */}
-        {step === 4 && (
+        {/* STEP 5: FINAL SUMMARY */}
+        {step === 5 && (
           <View style={styles.stepContainer}>
             <Text style={styles.title}>Jornada Pronta!</Text>
             <Text style={styles.subtitle}>Olha só a síntese do companheiro digital que estruturamos para você:</Text>
@@ -545,6 +639,21 @@ export default function OnboardingScreen() {
               </Text>
             </View>
 
+            {!isEditMode && (
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setTermsAccepted(!termsAccepted)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                  {termsAccepted && <Text style={styles.checkboxCheckMark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico.
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <View style={styles.savingLoaderContainer}>
               {isSaving ? (
                 <View style={styles.loadingWrapper}>
@@ -552,7 +661,14 @@ export default function OnboardingScreen() {
                   <Text style={styles.loadingText}>Configurando seu Sidekick...</Text>
                 </View>
               ) : (
-                <TouchableOpacity style={styles.finalButton} onPress={handleSave}>
+                <TouchableOpacity
+                  style={[
+                    styles.finalButton,
+                    (!isEditMode && !termsAccepted) && styles.finalButtonDisabled
+                  ]}
+                  onPress={handleSave}
+                  disabled={!isEditMode && !termsAccepted}
+                >
                   <Text style={styles.finalButtonText}>
                     {isEditMode ? "Salvar e Concluir 💾" : "Iniciar Jornada 🚀"}
                   </Text>
@@ -573,7 +689,7 @@ export default function OnboardingScreen() {
           <View style={{ width: 100 }} />
         )}
 
-        {step < 4 ? (
+        {step < 5 ? (
           <TouchableOpacity style={styles.navButtonPrimary} onPress={nextStep}>
             <Text style={styles.navButtonPrimaryText}>Avançar</Text>
           </TouchableOpacity>
@@ -854,5 +970,131 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 14,
     fontWeight: "600",
+  },
+  stravaBox: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+    marginTop: 10,
+    width: "100%",
+  },
+  stravaConnectedContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  stravaDisconnectedContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  stravaStatusText: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  athleteProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.dark,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    width: "100%",
+    marginBottom: 20,
+    gap: 12,
+  },
+  athleteImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  athleteImagePlaceholder: {
+    backgroundColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  athleteName: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  syncButton: {
+    backgroundColor: Colors.gold,
+    borderRadius: 10,
+    paddingVertical: 14,
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  syncButtonText: {
+    color: "#000",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  syncResultText: {
+    color: Colors.success,
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  connectButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 14,
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  connectButtonText: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  stravaHint: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 10,
+    marginBottom: 24,
+    gap: 10,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.darkBorder,
+    backgroundColor: Colors.darkCard,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary,
+  },
+  checkboxCheckMark: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  checkboxLabel: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  finalButtonDisabled: {
+    opacity: 0.5,
   },
 });
