@@ -336,45 +336,17 @@ export default function OnboardingScreen() {
               <View style={styles.stravaBox}>
                 {isConnected ? (
                   <View style={styles.stravaConnectedContainer}>
-                    <Text style={styles.stravaStatusText}>✅ Status: Strava Conectado</Text>
+                    <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
                     <Text style={styles.stravaConnectedDesc}>
-                      Sua conta do Strava já está vinculada. Conectado como {athlete?.name || athlete?.username || "atleta"}.
+                      O Sidekick já está sincronizado com sua conta do Strava e seus treinos históricos foram importados com sucesso para calibrar sua jornada.
                     </Text>
-
-                    <TouchableOpacity
-                      style={[styles.syncButton, isSyncing && { opacity: 0.8 }]}
-                      onPress={async () => {
-                        try {
-                          setIsSyncing(true);
-                          const result = await syncActivities();
-                          setSyncedCount(result?.syncedActivities || 0);
-                          Alert.alert("Sincronização concluída", `Sucesso! ${result?.syncedActivities || 0} atividades importadas do Strava.`);
-                        } catch (err) {
-                          Alert.alert("Erro", "Falha ao sincronizar atividades do Strava.");
-                        } finally {
-                          setIsSyncing(false);
-                        }
-                      }}
-                      disabled={isSyncing}
-                    >
-                      {isSyncing ? (
-                        <ActivityIndicator color="#000" size="small" />
-                      ) : (
-                        <Text style={styles.syncButtonText}>
-                          {syncedCount !== null ? "🔄 Sincronizar Novamente" : "🔄 Sincronizar Atividades"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                    
-                    {syncedCount !== null && (
-                      <Text style={styles.syncResultText}>
-                        A sincronização obteve {syncedCount} treinos nos últimos 30 dias.
-                      </Text>
-                    )}
                   </View>
                 ) : (
                   <View style={styles.stravaDisconnectedContainer}>
-                    <Text style={styles.stravaStatusText}>❌ Nenhuma conta do Strava conectada</Text>
+                    <Text style={styles.stravaStatusText}>⚠️ Strava Não Conectado</Text>
+                    <Text style={styles.stravaHint}>
+                      Conecte sua conta para que seu companheiro conheça seu histórico de corrida e configure a IA da melhor maneira.
+                    </Text>
                     
                     <TouchableOpacity
                       style={styles.connectButton}
@@ -388,10 +360,6 @@ export default function OnboardingScreen() {
                     >
                       <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
                     </TouchableOpacity>
-
-                    <Text style={styles.stravaHint}>
-                      Nota: O Sidekick precisa do Strava para coletar suas atividades. Se preferir fazer isso mais tarde, você pode avançar clicando em avançar abaixo.
-                    </Text>
                   </View>
                 )}
               </View>

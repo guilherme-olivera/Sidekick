@@ -34,15 +34,34 @@ type SportTab = "run" | "strength" | "cycling" | "walk";
 export default function ProfileScreen() {
   const { user, logout, isLoading, refreshUser } = useAuth();
   const { isConnected, athlete, connect, disconnect, syncActivities } = useStrava();
-  const { workouts } = useDashboard();
+  const [allWorkouts, setAllWorkouts] = useState<any[]>([]);
+  const [isLoadingAllWorkouts, setIsLoadingAllWorkouts] = useState(false);
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [activeSportTab, setActiveSportTab] = useState<SportTab>("run");
   const [stravaStats, setStravaStats] = useState<any | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
-  // Fetch Strava cumulative stats
+  const loadAllWorkouts = async () => {
+    try {
+      setIsLoadingAllWorkouts(true);
+      const response = await apiService.get("/workouts");
+      if (response.success && response.workouts) {
+        setAllWorkouts(response.workouts.map((w: any) => ({
+          ...w,
+          date: new Date(w.date)
+        })));
+      }
+    } catch (err) {
+      console.error("Failed to load all workouts for profile:", err);
+    } finally {
+      setIsLoadingAllWorkouts(false);
+    }
+  };
+
+  // Fetch Strava cumulative stats and local workouts
   useEffect(() => {
+    loadAllWorkouts();
     if (isConnected) {
       loadStravaStats();
     } else {
@@ -130,6 +149,7 @@ export default function ProfileScreen() {
         "Sincronização concluída",
         `Atividades sincronizadas: ${result?.syncedActivities || 0}`
       );
+      await loadAllWorkouts();
       if (isConnected) {
         await loadStravaStats();
       }
@@ -203,7 +223,7 @@ export default function ProfileScreen() {
   };
 
   // ----- SPORT-SPECIFIC LOCAL WORKOUTS FILTERING -----
-  const sportWorkouts = workouts.filter(w => {
+  const sportWorkouts = allWorkouts.filter(w => {
     if (activeSportTab === "run") return w.type === "run";
     if (activeSportTab === "cycling") return w.type === "cycling";
     if (activeSportTab === "strength") return w.type === "strength";
@@ -445,31 +465,31 @@ export default function ProfileScreen() {
                   <>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>400 m</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 0.4) || "1:40"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 0.4) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>1/2 milha</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 0.8) || "3:25"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 0.8) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>1 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 1.0) || "4:15"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 1.0) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>1 milha</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 1.6) || "7:12"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 1.6) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>5 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 5.0) || "24:17"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 5.0) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>10 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 10.0) || "51:38"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 10.0) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Meia maratona</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 21.1) || "1:59:53"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 21.1) || "--"}</Text>
                     </View>
                   </>
                 )}
@@ -478,19 +498,19 @@ export default function ProfileScreen() {
                   <>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Maior distância</Text>
-                      <Text style={styles.statRowLink}>{maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "42.5 km"}</Text>
+                      <Text style={styles.statRowLink}>{maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>10 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 10.0) || "18:30"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 10.0) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>20 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 20.0) || "38:45"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 20.0) || "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>50 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 50.0) || "1:45:20"}</Text>
+                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 50.0) || "--"}</Text>
                     </View>
                   </>
                 )}
@@ -499,15 +519,15 @@ export default function ProfileScreen() {
                   <>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Treino mais longo</Text>
-                      <Text style={styles.statRowLink}>{maxDuration > 0 ? formatSecondsToTime(maxDuration) : "1h 15min"}</Text>
+                      <Text style={styles.statRowLink}>{maxDuration > 0 ? formatSecondsToTime(maxDuration) : "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Frequência recorde</Text>
-                      <Text style={styles.statRowLink}>{sportWorkouts.length > 0 ? "5 treinos / semana" : "3 treinos / semana"}</Text>
+                      <Text style={styles.statRowLink}>{sportWorkouts.length > 0 ? `${sportWorkouts.length} treinos` : "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Volume máximo estimado</Text>
-                      <Text style={styles.statRowLink}>8.450 kg</Text>
+                      <Text style={styles.statRowLink}>--</Text>
                     </View>
                   </>
                 )}
@@ -516,11 +536,11 @@ export default function ProfileScreen() {
                   <>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Maior caminhada</Text>
-                      <Text style={styles.statRowLink}>{maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "12.0 km"}</Text>
+                      <Text style={styles.statRowLink}>{maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "--"}</Text>
                     </View>
                     <View style={styles.statRow}>
                       <Text style={styles.statRowLabel}>Treino mais longo</Text>
-                      <Text style={styles.statRowLink}>{maxDuration > 0 ? formatSecondsToTime(maxDuration) : "2h 10min"}</Text>
+                      <Text style={styles.statRowLink}>{maxDuration > 0 ? formatSecondsToTime(maxDuration) : "--"}</Text>
                     </View>
                   </>
                 )}
@@ -590,60 +610,55 @@ export default function ProfileScreen() {
         {/* Strava Integration Section (Moved to the bottom, before logout) */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Integrações</Text>
-          <View
-            style={[
-              styles.integrationCard,
-              isConnected && styles.integrationConnected,
-            ]}
-          >
-            <View style={styles.integrationHeader}>
-              <Text style={styles.integrationIcon}>🧡</Text>
-              <View style={styles.integrationInfo}>
-                <Text style={styles.integrationName}>Strava</Text>
-                <Text style={styles.integrationStatus}>
-                  {isConnected
-                    ? `Conectado como ${athlete?.name ?? "Strava"}`
-                    : "Não conectado"}
+          <View style={styles.stravaBox}>
+            {isConnected ? (
+              <View style={styles.stravaConnectedContainer}>
+                <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
+                {athlete && (
+                  <View style={styles.athleteProfile}>
+                    {athlete.profile ? (
+                      <Image source={{ uri: athlete.profile }} style={styles.athleteImage} />
+                    ) : (
+                      <View style={[styles.athleteImage, styles.athleteImagePlaceholder]}>
+                        <Text style={{ fontSize: 24 }}>🏃</Text>
+                      </View>
+                    )}
+                    <Text style={styles.athleteName}>{athlete.name || athlete.username}</Text>
+                  </View>
+                )}
+
+                <View style={styles.integrationRowButtons}>
+                  <TouchableOpacity
+                    style={styles.syncButton}
+                    onPress={handleStravaSync}
+                  >
+                    <Text style={styles.syncButtonText}>🔄 Sincronizar</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.disconnectButton}
+                    onPress={handleStravaDisconnect}
+                  >
+                    <Text style={styles.disconnectButtonText}>❌ Desconectar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.stravaDisconnectedContainer}>
+                <Text style={styles.stravaStatusText}>❌ Nenhuma conta do Strava conectada</Text>
+                
+                <TouchableOpacity
+                  style={styles.connectButton}
+                  onPress={handleStravaConnect}
+                >
+                  <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.stravaHint}>
+                  Vincule sua conta para trazer suas atividades e métricas automaticamente.
                 </Text>
               </View>
-              <View
-                style={[
-                  styles.statusBadge,
-                  isConnected && styles.statusBadgeConnected,
-                ]}
-              >
-                <Text style={styles.statusDot}>●</Text>
-              </View>
-            </View>
-
-            <View style={styles.integrationActions}>
-              {isConnected ? (
-                <>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.actionButtonPrimary]}
-                    onPress={handleStravaSync}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.actionButtonText}>🔄 Sincronizar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.actionButtonDanger]}
-                    onPress={handleStravaDisconnect}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.actionButtonText}>❌ Desconectar</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.actionButtonPrimary]}
-                  onPress={handleStravaConnect}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.actionButtonText}>🔗 Conectar Strava</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            )}
           </View>
         </View>
 
@@ -986,5 +1001,109 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 12,
     marginBottom: 4,
+  },
+  stravaBox: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+    marginTop: 10,
+    width: "100%",
+  },
+  stravaConnectedContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  stravaDisconnectedContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  stravaStatusText: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  athleteProfile: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.dark,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    width: "100%",
+    marginBottom: 20,
+    gap: 12,
+  },
+  athleteImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  athleteImagePlaceholder: {
+    backgroundColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  athleteName: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  syncButton: {
+    backgroundColor: Colors.gold,
+    borderRadius: 10,
+    paddingVertical: 14,
+    flex: 1,
+    marginRight: 8,
+    alignItems: "center",
+  },
+  syncButtonText: {
+    color: "#000",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  connectButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 14,
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  connectButtonText: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  stravaHint: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  integrationRowButtons: {
+    flexDirection: "row",
+    width: "100%",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  disconnectButton: {
+    backgroundColor: "#222",
+    borderRadius: 10,
+    paddingVertical: 14,
+    flex: 1,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  disconnectButtonText: {
+    color: "#ff6b6b",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
