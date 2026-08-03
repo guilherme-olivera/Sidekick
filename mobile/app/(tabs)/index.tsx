@@ -9,6 +9,10 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
@@ -46,6 +50,62 @@ export default function HomeScreen() {
   const [analyzingWorkoutId, setAnalyzingWorkoutId] = useState<string | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [selectedWorkoutIdForDetail, setSelectedWorkoutIdForDetail] = useState<string | null>(null);
+
+  const [effortModalVisible, setEffortModalVisible] = useState(false);
+  const [effortRating, setEffortRating] = useState<number>(3);
+  const [userNotes, setUserNotes] = useState("");
+  const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
+
+  const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+
+  const getNotifications = () => {
+    const list = [];
+    const p = user?.profile?.aiPersonality || "calm";
+    const t = user?.profile?.aiTone || "motivational";
+    
+    // 1. Companheiro Mensagem
+    let companionMsg = "Aproveite o dia para dar o seu melhor!";
+    if (p === "strict") {
+      companionMsg = "Sem desculpas hoje. Foco na planilha e disciplina!";
+    } else if (p === "tough") {
+      companionMsg = "Levanta desse sofá e vai treinar! Você consegue fazer melhor!";
+    } else if (t === "sarcastic") {
+      companionMsg = "A meta não vai se atingir sozinha enquanto você dorme... ou vai? 😏";
+    } else if (t === "funny") {
+      companionMsg = "Correr é que nem boleto: se você não pagar, o juros vem depois! 🃏";
+    }
+    
+    list.push({
+      id: "companion",
+      icon: "🧠",
+      title: `${user?.profile?.trainingGoal || "Companheiro"}`,
+      description: companionMsg,
+      time: "Agora",
+    });
+
+    // 2. Treinos pendentes
+    const pendingAnalysisCount = workouts.filter(w => !w.aiNarrative).length;
+    if (pendingAnalysisCount > 0) {
+      list.push({
+        id: "workouts",
+        icon: "👟",
+        title: "Treinos para analisar",
+        description: `Você tem ${pendingAnalysisCount} treino${pendingAnalysisCount > 1 ? "s" : ""} pendente${pendingAnalysisCount > 1 ? "s" : ""} de análise de IA.`,
+        time: "10m atrás",
+      });
+    }
+
+    // 3. Calendário / Planejamento
+    list.push({
+      id: "calendar",
+      icon: "📅",
+      title: "Planejamento Semanal",
+      description: "Confira seus lembretes e programações de corrida na aba de Calendário.",
+      time: "1h atrás",
+    });
+
+    return list;
+  };
 
   const latestWorkout = workouts[0];
   const today = new Date();
@@ -97,16 +157,27 @@ export default function HomeScreen() {
     await setMood(moodId, emoji);
   };
 
-  const handleAnalyzeWorkout = async (workoutId: string) => {
+  const handleOpenAnalyzeModal = (workout: any) => {
+    setTargetWorkoutId(workout.id);
+    setEffortRating(workout.effortRating || 3);
+    setUserNotes(workout.userNotes || workout.description || "");
+    setEffortModalVisible(true);
+  };
+
+  const submitAnalysis = async () => {
+    if (!targetWorkoutId) return;
+    setEffortModalVisible(false);
+    
     try {
-      setAnalyzingWorkoutId(workoutId);
-      await analyzeWorkout(workoutId);
+      setAnalyzingWorkoutId(targetWorkoutId);
+      await analyzeWorkout(targetWorkoutId, effortRating, userNotes);
       Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
     } catch (error) {
       console.error("Error analyzing workout:", error);
       Alert.alert("Erro", "Não foi possível gerar a análise. Tente novamente.");
     } finally {
       setAnalyzingWorkoutId(null);
+      setTargetWorkoutId(null);
     }
   };
 
@@ -152,9 +223,21 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Welcome */}
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Olá, {user?.name}! 👋</Text>
-          <Text style={styles.subtitle}>Bem-vindo ao seu Dashboard</Text>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTextGroup}>
+            <Text style={styles.greeting}>Olá, {user?.name}! 👋</Text>
+            <Text style={styles.subtitle}>Bem-vindo ao seu Dashboard</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => setNotificationsModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 24 }}>🔔</Text>
+            {getNotifications().length > 0 && (
+              <View style={styles.notificationBadge} />
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Stats Container */}
@@ -175,6 +258,60 @@ export default function HomeScreen() {
             onPress={() => router.push('/profile')} 
           />
         </View>
+
+        {/* Goal Progress Card */}
+        {user?.profile?.isConfigured && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🎯 Meta de Evolução</Text>
+            <View style={styles.goalCard}>
+              <View style={styles.goalHeaderRow}>
+                <Text style={styles.goalName}>
+                  {user.profile.goalDistance === "5k" ? "Corrida de 5km" :
+                   user.profile.goalDistance === "10k" ? "Corrida de 10km" :
+                   user.profile.goalDistance === "15k" ? "Corrida de 15km" :
+                   user.profile.goalDistance === "half_marathon" ? "Meia Maratona (21km)" :
+                   user.profile.goalDistance === "marathon" ? "Maratona (42km)" : "Meta Personalizada"}
+                </Text>
+                {user.profile.goalTargetTime && (
+                  <Text style={styles.goalTarget}>Tempo alvo: {user.profile.goalTargetTime}</Text>
+                )}
+              </View>
+
+              {/* Progress: Weekly frequency */}
+              <View style={styles.goalMetricRow}>
+                <View style={{ flex: 1, marginBottom: 8 }}>
+                  <Text style={styles.goalMetricLabel}>Frequência Semanal</Text>
+                  <Text style={styles.goalMetricValue}>
+                    {weeklyWorkouts.length} de {user.profile.weeklyFrequency || 3} treinos realizados
+                  </Text>
+                </View>
+                {/* Progress bar */}
+                <View style={styles.progressBarBg}>
+                  <View 
+                    style={[
+                      styles.progressBarFill, 
+                      { 
+                        width: `${Math.min(100, (weeklyWorkouts.length / (user.profile.weeklyFrequency || 3)) * 100)}%`,
+                        backgroundColor: weeklyWorkouts.length >= (user.profile.weeklyFrequency || 3) ? Colors.success : Colors.primary
+                      }
+                    ]} 
+                  />
+                </View>
+              </View>
+
+              {/* Highlight best workout against target */}
+              <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.darkBorder }}>
+                <Text style={styles.goalAdviseText}>
+                  {weeklyWorkouts.length === 0 
+                    ? "Nenhum treino realizado ainda esta semana. Calce os tênis e comece!"
+                    : weeklyWorkouts.length >= (user.profile.weeklyFrequency || 3)
+                    ? "Meta de frequência semanal batida! Excelente consistência! 🔥"
+                    : "Continue firme! Você está no caminho certo para cumprir sua planilha."}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Latest Workout */}
         <View style={styles.section}>
@@ -394,7 +531,7 @@ export default function HomeScreen() {
 
                     <TouchableOpacity
                       style={[styles.modalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.modalAnalyzeButtonDisabled]}
-                      onPress={() => handleAnalyzeWorkout(selectedWorkoutDetail.id)}
+                      onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
                       disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
                     >
                       {analyzingWorkoutId === selectedWorkoutDetail.id ? (
@@ -417,6 +554,116 @@ export default function HomeScreen() {
             >
               <Text style={styles.modalCloseActionText}>Fechar</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Sub-modal: Percepção de esforço e notas */}
+      <Modal
+        visible={effortModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setEffortModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableWithoutFeedback onPress={() => setEffortModalVisible(false)}>
+            <View style={styles.effortModalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.effortModalContent}>
+                  <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
+                  <Text style={styles.effortModalSubtitle}>
+                    Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
+                  </Text>
+
+                  <Text style={styles.effortLabel}>Esforço Percebido:</Text>
+                  <View style={styles.effortRatingContainer}>
+                    {[1, 2, 3, 4, 5].map((num) => {
+                      const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
+                      return (
+                        <TouchableOpacity
+                          key={num}
+                          style={[
+                            styles.effortRatingButton,
+                            effortRating === num && styles.effortRatingButtonActive,
+                          ]}
+                          onPress={() => setEffortRating(num)}
+                        >
+                          <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
+                          <Text style={styles.effortRatingLabel}>{num}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.effortRatingDesc}>
+                    {["Muito Leve (Sem esforço)", "Leve (Respiração normal)", "Moderado (Cansaço médio)", "Intenso (Respiração pesada)", "Exaustivo (Limite físico)"][effortRating - 1]}
+                  </Text>
+
+                  <Text style={styles.effortLabel}>Suas observações / Como se sentiu:</Text>
+                  <TextInput
+                    style={styles.effortInput}
+                    placeholder="Ex: cansaço nas subidas, pernas leves, etc..."
+                    placeholderTextColor="#888"
+                    value={userNotes}
+                    onChangeText={setUserNotes}
+                    multiline
+                  />
+
+                  <View style={styles.effortModalActions}>
+                    <TouchableOpacity
+                      style={[styles.effortModalButton, styles.effortModalButtonCancel]}
+                      onPress={() => setEffortModalVisible(false)}
+                    >
+                      <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
+                      onPress={submitAnalysis}
+                    >
+                      <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal: Painel de Notificações */}
+      <Modal
+        visible={notificationsModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setNotificationsModalVisible(false)}
+      >
+        <View style={styles.notificationsModalOverlay}>
+          <View style={styles.notificationsModalContent}>
+            <View style={styles.notificationsModalHeader}>
+              <Text style={styles.notificationsModalTitle}>🔔 Notificações</Text>
+              <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
+                <Text style={styles.notificationsModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
+              {getNotifications().length === 0 ? (
+                <Text style={styles.notificationsEmpty}>Nenhuma notificação por aqui.</Text>
+              ) : (
+                getNotifications().map((notif) => (
+                  <View key={notif.id} style={styles.notificationCard}>
+                    <Text style={styles.notificationCardIcon}>{notif.icon}</Text>
+                    <View style={styles.notificationCardBody}>
+                      <Text style={styles.notificationCardTitle}>{notif.title}</Text>
+                      <Text style={styles.notificationCardDesc}>{notif.description}</Text>
+                      <Text style={styles.notificationCardTime}>{notif.time}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -821,5 +1068,278 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 16,
     fontWeight: "600",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  headerTextGroup: {
+    flex: 1,
+  },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: 10,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  notificationsModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "flex-end",
+  },
+  notificationsModalContent: {
+    backgroundColor: Colors.darkCard,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    height: "60%",
+    padding: 20,
+  },
+  notificationsModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.darkBorder,
+  },
+  notificationsModalTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  notificationsModalClose: {
+    color: Colors.textSecondary,
+    fontSize: 20,
+    fontWeight: "600",
+    paddingHorizontal: 8,
+  },
+  notificationsList: {
+    flex: 1,
+  },
+  notificationsEmpty: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 40,
+  },
+  notificationCard: {
+    flexDirection: "row",
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  notificationCardIcon: {
+    fontSize: 24,
+  },
+  notificationCardBody: {
+    flex: 1,
+  },
+  notificationCardTitle: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  notificationCardDesc: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  notificationCardTime: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    opacity: 0.6,
+  },
+  goalCard: {
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 16,
+    padding: 16,
+  },
+  goalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  goalName: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  goalTarget: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  goalMetricRow: {
+    marginBottom: 6,
+  },
+  goalMetricLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  goalMetricValue: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: Colors.dark,
+    borderRadius: 3,
+    width: "100%",
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  goalAdviseText: {
+    color: Colors.textSecondary,
+    fontSize: 12.5,
+    fontStyle: "italic",
+    lineHeight: 18,
+  },
+  effortModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  effortModalContent: {
+    width: "90%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+  },
+  effortModalTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  effortModalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  effortLabel: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  effortRatingContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  effortRatingButton: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginHorizontal: 3,
+  },
+  effortRatingButtonActive: {
+    borderColor: Colors.primary,
+    backgroundColor: "#2a1f1f",
+  },
+  effortRatingEmoji: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  effortRatingLabel: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  effortRatingDesc: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  effortInput: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 14,
+    height: 80,
+    textAlignVertical: "top",
+    marginBottom: 20,
+  },
+  effortModalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  effortModalButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  effortModalButtonCancel: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    marginRight: 8,
+  },
+  effortModalButtonConfirm: {
+    backgroundColor: Colors.primary,
+  },
+  effortModalButtonTextCancel: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  effortModalButtonTextConfirm: {
+    color: "#0a0a0a",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

@@ -19,6 +19,8 @@ interface Workout {
   intensity: "low" | "moderate" | "high";
   aiNarrative?: string;
   description?: string;
+  effortRating?: number;
+  userNotes?: string;
 }
 
 interface WorkoutByDay {
@@ -36,7 +38,7 @@ interface DashboardContextType {
   loadWorkouts: () => Promise<void>;
   loadWeeklyWorkouts: (startDate: Date) => Promise<void>;
   getWorkoutsByDate: (date: Date) => Workout[];
-  analyzeWorkout: (workoutId: string) => Promise<void>;
+  analyzeWorkout: (workoutId: string, effortRating?: number, userNotes?: string) => Promise<void>;
   calendarEvents: CalendarEvent[];
   loadCalendarEvents: () => Promise<void>;
   getCalendarEventsByDate: (isoDate: string) => CalendarEvent[];
@@ -168,10 +170,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return workoutsByDay[dayOfWeek] || [];
   };
 
-  const analyzeWorkout = async (workoutId: string) => {
+  const analyzeWorkout = async (workoutId: string, effortRating?: number, userNotes?: string) => {
     try {
       const response = await apiService.post(`/workouts/${workoutId}/analyze`, {
         mood: currentMood,
+        effortRating,
+        userNotes,
       });
 
       if (!response || response.error) {
@@ -185,7 +189,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setWorkouts(prevWorkouts =>
         prevWorkouts.map(workout =>
           workout.id === workoutId
-            ? { ...workout, aiNarrative: response.narrative }
+            ? { 
+                ...workout, 
+                aiNarrative: response.narrative,
+                effortRating: effortRating ?? workout.effortRating,
+                userNotes: userNotes ?? workout.userNotes
+              }
             : workout
         )
       );

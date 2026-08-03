@@ -9,6 +9,10 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  TextInput,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
@@ -52,16 +56,32 @@ export default function HistoryScreen() {
 
   const selectedWorkoutDetail = workouts.find((w) => w.id === selectedWorkoutId);
 
-  const handleAnalyzeWorkout = async (wId: string) => {
+  const [effortModalVisible, setEffortModalVisible] = useState(false);
+  const [effortRating, setEffortRating] = useState<number>(3);
+  const [userNotes, setUserNotes] = useState("");
+  const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
+
+  const handleOpenAnalyzeModal = (workout: any) => {
+    setTargetWorkoutId(workout.id);
+    setEffortRating(workout.effortRating || 3);
+    setUserNotes(workout.userNotes || workout.description || "");
+    setEffortModalVisible(true);
+  };
+
+  const submitAnalysis = async () => {
+    if (!targetWorkoutId) return;
+    setEffortModalVisible(false);
+    
     try {
-      setAnalyzingWorkoutId(wId);
-      await analyzeWorkout(wId);
+      setAnalyzingWorkoutId(targetWorkoutId);
+      await analyzeWorkout(targetWorkoutId, effortRating, userNotes);
       Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
     } catch (error) {
       console.error("Error analyzing workout:", error);
       Alert.alert("Erro", "Não foi possível gerar a análise. Tente novamente.");
     } finally {
       setAnalyzingWorkoutId(null);
+      setTargetWorkoutId(null);
     }
   };
 
@@ -268,7 +288,7 @@ export default function HistoryScreen() {
 
                     <TouchableOpacity
                       style={[styles.modalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.modalAnalyzeButtonDisabled]}
-                      onPress={() => handleAnalyzeWorkout(selectedWorkoutDetail.id)}
+                      onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
                       disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
                     >
                       {analyzingWorkoutId === selectedWorkoutDetail.id ? (
@@ -293,6 +313,80 @@ export default function HistoryScreen() {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Sub-modal: Percepção de esforço e notas */}
+      <Modal
+        visible={effortModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setEffortModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <TouchableWithoutFeedback onPress={() => setEffortModalVisible(false)}>
+            <View style={styles.effortModalOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.effortModalContent}>
+                  <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
+                  <Text style={styles.effortModalSubtitle}>
+                    Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
+                  </Text>
+
+                  <Text style={styles.effortLabel}>Esforço Percebido:</Text>
+                  <View style={styles.effortRatingContainer}>
+                    {[1, 2, 3, 4, 5].map((num) => {
+                      const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
+                      return (
+                        <TouchableOpacity
+                          key={num}
+                          style={[
+                            styles.effortRatingButton,
+                            effortRating === num && styles.effortRatingButtonActive,
+                          ]}
+                          onPress={() => setEffortRating(num)}
+                        >
+                          <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
+                          <Text style={styles.effortRatingLabel}>{num}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.effortRatingDesc}>
+                    {["Muito Leve (Sem esforço)", "Leve (Respiração normal)", "Moderado (Cansaço médio)", "Intenso (Respiração pesada)", "Exaustivo (Limite físico)"][effortRating - 1]}
+                  </Text>
+
+                  <Text style={styles.effortLabel}>Suas observações / Como se sentiu:</Text>
+                  <TextInput
+                    style={styles.effortInput}
+                    placeholder="Ex: cansaço nas subidas, pernas leves, etc..."
+                    placeholderTextColor="#888"
+                    value={userNotes}
+                    onChangeText={setUserNotes}
+                    multiline
+                  />
+
+                  <View style={styles.effortModalActions}>
+                    <TouchableOpacity
+                      style={[styles.effortModalButton, styles.effortModalButtonCancel]}
+                      onPress={() => setEffortModalVisible(false)}
+                    >
+                      <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
+                      onPress={submitAnalysis}
+                    >
+                      <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -552,5 +646,118 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 16,
     fontWeight: "600",
+  },
+  effortModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  effortModalContent: {
+    width: "90%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+  },
+  effortModalTitle: {
+    color: Colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  effortModalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  effortLabel: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  effortRatingContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  effortRatingButton: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginHorizontal: 3,
+  },
+  effortRatingButtonActive: {
+    borderColor: Colors.primary,
+    backgroundColor: "#2a1f1f",
+  },
+  effortRatingEmoji: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  effortRatingLabel: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  effortRatingDesc: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  effortInput: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 14,
+    height: 80,
+    textAlignVertical: "top",
+    marginBottom: 20,
+  },
+  effortModalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  effortModalButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  effortModalButtonCancel: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    marginRight: 8,
+  },
+  effortModalButtonConfirm: {
+    backgroundColor: Colors.primary,
+  },
+  effortModalButtonTextCancel: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  effortModalButtonTextConfirm: {
+    color: "#0a0a0a",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

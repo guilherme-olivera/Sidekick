@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
-import { analyzeWorkoutWithGemini } from "../services/geminiService";
+import { analyzeWorkoutWithGemini, analyzeHistoryWithGemini } from "../services/geminiService";
 import { consumeAiAnalysisQuota } from "../services/usageService";
 
 /**
@@ -95,7 +95,7 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const { mood } = req.body;
+    const { mood, effortRating, userNotes } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
@@ -119,6 +119,26 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Workout not found" });
     }
 
+    // Atualiza esforço e notas se fornecidos
+    let updatedWorkoutData: any = {};
+    if (effortRating !== undefined) updatedWorkoutData.effortRating = Number(effortRating);
+    if (userNotes !== undefined) updatedWorkoutData.userNotes = userNotes;
+
+    let workoutToAnalyze = workout;
+    if (Object.keys(updatedWorkoutData).length > 0) {
+      workoutToAnalyze = await prisma.workout.update({
+        where: { id: String(id) },
+        data: updatedWorkoutData,
+        include: {
+          user: {
+            select: {
+              planType: true,
+            },
+          },
+        },
+      });
+    }
+
     // Busca o perfil completo do usuário
     const userProfile = await prisma.userProfile.findUnique({
       where: { userId },
@@ -129,16 +149,16 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       where: {
         userId,
         id: { not: String(id) },
-        date: { lt: workout.date }, // apenas treinos anteriores chronologicamente
+        date: { lt: workoutToAnalyze.date }, // apenas treinos anteriores chronologicamente
       },
       orderBy: { date: "desc" },
       take: 5,
     });
 
-    await consumeAiAnalysisQuota(userId, workout.user?.planType);
+    await consumeAiAnalysisQuota(userId, workoutToAnalyze.user?.planType);
 
     // Gera análise com Gemini, passando perfil e histórico
-    const narrative = await analyzeWorkoutWithGemini(workout, mood, userProfile, recentWorkouts);
+    const narrative = await analyzeWorkoutWithGemini(workoutToAnalyze, mood, userProfile, recentWorkouts);
 
     // Atualiza o treino com a narrativa
     const updatedWorkout = await prisma.workout.update({
@@ -153,6 +173,103 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error analyzing workout:", error);
     res.status(500).json({ error: error instanceof Error ? error.message : "Failed to analyze workout" });
+  }
+};
+
+/**
+ * POST /api/user/history-analysis
+ * Gera ou atualiza relatório de progresso e gamificação histórica
+ */
+export const getUserHistoryAnalysisHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            planType: true,
+          },
+        },
+      },
+    });
+
+    if (!userProfile) {
+      return res.status(404).json({ error: "User profile not found" });
+    }
+
+    // Busca todos os treinos do usuário
+    const allWorkouts = await prisma.workout.findMany({
+      where: { userId },
+      orderBy: { date: "desc" },
+    });
+
+    if (allWorkouts.length === 0) {
+      return res.status(400).json({ error: "Nenhum treino encontrado para analisar a evolução histórica." });
+    }
+
+    await consumeAiAnalysisQuota(userId, userProfile.user?.planType);
+
+    // Gera análise com Gemini
+    const analysis = await analyzeHistoryWithGemini(userProfile, allWorkouts);
+
+    // Salva no banco de dados
+    const updatedProfile = await prisma.userProfile.update({
+      where: { userId },
+      data: {
+        historyAnalysis: analysis,
+        historyAnalysisUpdatedAt: new Date(),
+      },
+    });
+
+    res.json({
+      success: true,
+      analysis,
+      updatedAt: updatedProfile.historyAnalysisUpdatedAt,
+    });
+  } catch (error) {
+    console.error("Error generating history analysis:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to generate history analysis" });
+  }
+};
+
+/**
+ * GET /api/user/history-analysis
+ * Busca o relatório de progresso cacheado do atleta
+ */
+export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { userId },
+      select: {
+        historyAnalysis: true,
+        historyAnalysisUpdatedAt: true,
+      },
+    });
+
+    if (!userProfile) {
+      return res.status(404).json({ error: "User profile not found" });
+    }
+
+    res.json({
+      success: true,
+      analysis: userProfile.historyAnalysis,
+      updatedAt: userProfile.historyAnalysisUpdatedAt,
+    });
+  } catch (error) {
+    console.error("Error fetching history analysis cache:", error);
+    res.status(500).json({ error: "Failed to fetch history analysis cache" });
   }
 };
 

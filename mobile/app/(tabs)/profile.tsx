@@ -42,6 +42,10 @@ export default function ProfileScreen() {
   const [stravaStats, setStravaStats] = useState<any | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
 
+  const [historyAnalysis, setHistoryAnalysis] = useState<string | null>(null);
+  const [historyAnalysisUpdatedAt, setHistoryAnalysisUpdatedAt] = useState<string | null>(null);
+  const [updatingHistoryAnalysis, setUpdatingHistoryAnalysis] = useState(false);
+
   const loadAllWorkouts = async () => {
     try {
       setIsLoadingAllWorkouts(true);
@@ -59,15 +63,47 @@ export default function ProfileScreen() {
     }
   };
 
-  // Fetch Strava cumulative stats and local workouts
+  // Fetch Strava cumulative stats, local workouts and IA evolution analysis
   useEffect(() => {
     loadAllWorkouts();
+    loadHistoryAnalysis();
     if (isConnected) {
       loadStravaStats();
     } else {
       setStravaStats(null);
     }
   }, [isConnected]);
+
+  const loadHistoryAnalysis = async () => {
+    try {
+      const response = await apiService.get("/user/history-analysis");
+      if (response && response.success) {
+        setHistoryAnalysis(response.analysis);
+        setHistoryAnalysisUpdatedAt(response.updatedAt);
+      }
+    } catch (err) {
+      console.error("Error loading history analysis:", err);
+    }
+  };
+
+  const handleUpdateHistoryAnalysis = async () => {
+    try {
+      setUpdatingHistoryAnalysis(true);
+      const response = await apiService.post("/user/history-analysis", {});
+      if (response && response.success) {
+        setHistoryAnalysis(response.analysis);
+        setHistoryAnalysisUpdatedAt(response.updatedAt);
+        Alert.alert("Relatório atualizado!", "Sua evolução histórica foi analisada com sucesso.");
+      } else {
+        throw new Error(response?.error || "Erro desconhecido");
+      }
+    } catch (err) {
+      console.error("Error updating history analysis:", err);
+      Alert.alert("Erro", err instanceof Error ? err.message : "Não foi possível gerar a evolução histórica. Tente novamente.");
+    } finally {
+      setUpdatingHistoryAnalysis(false);
+    }
+  };
 
   const loadStravaStats = async () => {
     try {
@@ -544,6 +580,79 @@ export default function ProfileScreen() {
                     </View>
                   </>
                 )}
+              </View>
+
+              {/* Block: Evolução & Gamificação (IA) */}
+              <View style={styles.statsBlock}>
+                <View style={styles.rpHeaderRow}>
+                  <Text style={styles.statsBlockTitle}>🏆 Evolução & Nível (IA)</Text>
+                  <TouchableOpacity 
+                    onPress={handleUpdateHistoryAnalysis}
+                    disabled={updatingHistoryAnalysis}
+                  >
+                    {updatingHistoryAnalysis ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <Text style={styles.addRpText}>🔄 Atualizar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {historyAnalysis ? (
+                  <View style={styles.historyAnalysisContainer}>
+                    <Text style={styles.historyAnalysisText}>
+                      {historyAnalysis}
+                    </Text>
+                    {historyAnalysisUpdatedAt && (
+                      <Text style={styles.historyAnalysisTime}>
+                        Atualizado em: {new Date(historyAnalysisUpdatedAt).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.historyAnalysisEmptyContainer}>
+                    <Text style={styles.historyAnalysisEmptyText}>
+                      Você ainda não gerou seu relatório de evolução histórica com IA.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.generateHistoryButton}
+                      onPress={handleUpdateHistoryAnalysis}
+                      disabled={updatingHistoryAnalysis}
+                    >
+                      {updatingHistoryAnalysis ? (
+                        <ActivityIndicator color="#0a0a0a" />
+                      ) : (
+                        <Text style={styles.generateHistoryButtonText}>Gerar Relatório de Evolução</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Gamified Badges */}
+                <Text style={styles.badgesSectionTitle}>🎖️ Conquistas Desbloqueadas</Text>
+                <View style={styles.badgesContainer}>
+                  <View style={[styles.badgeItem, allWorkouts.length > 0 ? styles.badgeUnlocked : styles.badgeLocked]}>
+                    <Text style={styles.badgeEmoji}>{allWorkouts.length > 0 ? "🏃" : "🔒"}</Text>
+                    <Text style={styles.badgeName}>Primeiro Passo</Text>
+                    <Text style={styles.badgeDesc}>1+ treinos realizados</Text>
+                  </View>
+                  <View style={[styles.badgeItem, allWorkouts.length >= 5 ? styles.badgeUnlocked : styles.badgeLocked]}>
+                    <Text style={styles.badgeEmoji}>{allWorkouts.length >= 5 ? "🔥" : "🔒"}</Text>
+                    <Text style={styles.badgeName}>Consistente</Text>
+                    <Text style={styles.badgeDesc}>5+ treinos realizados</Text>
+                  </View>
+                  <View style={[styles.badgeItem, allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? styles.badgeUnlocked : styles.badgeLocked]}>
+                    <Text style={styles.badgeEmoji}>{allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? "🧭" : "🔒"}</Text>
+                    <Text style={styles.badgeName}>Devorador de KM</Text>
+                    <Text style={styles.badgeDesc}>50+ km acumulados</Text>
+                  </View>
+                </View>
               </View>
 
               {/* Block: Ano atual (2026) */}
@@ -1105,5 +1214,98 @@ const styles = StyleSheet.create({
     color: "#ff6b6b",
     fontSize: 14,
     fontWeight: "700",
+  },
+  historyAnalysisContainer: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  historyAnalysisText: {
+    color: Colors.text,
+    fontSize: 13.5,
+    lineHeight: 20,
+  },
+  historyAnalysisTime: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    opacity: 0.6,
+    marginTop: 8,
+    textAlign: "right",
+  },
+  historyAnalysisEmptyContainer: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    padding: 16,
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  historyAnalysisEmptyText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  generateHistoryButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+  },
+  generateHistoryButtonText: {
+    color: "#0a0a0a",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  badgesSectionTitle: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  badgesContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  badgeItem: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    alignItems: "center",
+  },
+  badgeUnlocked: {
+    borderColor: Colors.success + "66",
+  },
+  badgeLocked: {
+    borderColor: Colors.darkBorder,
+    opacity: 0.4,
+  },
+  badgeEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  badgeName: {
+    color: Colors.text,
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  badgeDesc: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    textAlign: "center",
   },
 });

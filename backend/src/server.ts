@@ -24,6 +24,8 @@ import {
   createWorkoutHandler,
   updateWorkoutHandler,
   deleteWorkoutHandler,
+  getUserHistoryAnalysisHandler,
+  getUserHistoryAnalysisCachedHandler,
 } from "./controllers/workoutController";
 import {
   getUserProfileHandler,
@@ -86,6 +88,8 @@ app.delete("/api/user/avatar", authMiddleware, handleDeleteAvatar);
 app.get("/api/user/usage", authMiddleware, getUserUsageHandler);
 app.post("/api/user/mood", authMiddleware, handleSaveMood);
 app.get("/api/user/mood/today", authMiddleware, handleGetTodayMood);
+app.get("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisCachedHandler);
+app.post("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisHandler);
 
 // ===== WORKOUT ROUTES =====
 app.get("/api/workouts", authMiddleware, getWorkoutsHandler);

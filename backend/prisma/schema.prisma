@@ -62,6 +62,10 @@ model Workout {
   // Narrativa IA
   aiNarrative   String?   // Análise gerada pelo Gemini
   
+  // Feedback subjetivo
+  effortRating  Int?      // percepção de esforço de 1 a 5
+  userNotes     String?   // notas subjetivas do usuário sobre o treino
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -118,6 +122,10 @@ model UserProfile {
   weeklyFrequency Int?      // 2 | 3 | 4 | 5
   
   isConfigured    Boolean   @default(false)
+  
+  // Análise Histórica Periódica (IA)
+  historyAnalysis          String?   // Relatório gamificado gerado pela IA
+  historyAnalysisUpdatedAt DateTime? // Data de atualização do relatório
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

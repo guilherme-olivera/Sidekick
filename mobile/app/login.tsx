@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 import { useAuth } from "../src/contexts/AuthContext";
 // O certo é subir um nível (..) e entrar em components
@@ -19,6 +20,7 @@ import { AuthInput, AuthButton, ErrorMessage, Colors } from "../components/AuthC
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("adm@adm.com");
   const [password, setPassword] = useState("adm123");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
 
@@ -74,12 +76,29 @@ export default function LoginScreen({ navigation }: any) {
               />
 
               {/* Password Input */}
-              <AuthInput
-                placeholder="Senha"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={{ position: 'relative', width: '100%' }}>
+                <AuthInput
+                  placeholder="Senha"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={{
+                    position: 'absolute',
+                    right: 16,
+                    height: 50,
+                    justifyContent: 'center',
+                    top: 10,
+                  }}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: Colors.textSecondary, fontSize: 18 }}>
+                    {showPassword ? "👁️" : "🙈"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Name Input (only for register) */}
               {!isLogin && (
