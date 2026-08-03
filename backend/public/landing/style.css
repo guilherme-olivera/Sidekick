@@ -80,6 +80,13 @@ header {
   -webkit-text-fill-color: transparent;
 }
 
+.logo img, .footer-logo img {
+  height: 30px;
+  width: auto;
+  border-radius: 6px;
+  vertical-align: middle;
+}
+
 .nav-links {
   display: flex;
   gap: 32px;
