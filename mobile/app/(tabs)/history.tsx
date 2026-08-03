@@ -80,7 +80,12 @@ export default function HistoryScreen() {
         </View>
 
         {/* Filters */}
-        <View style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScrollView}
+          contentContainerStyle={styles.filterContainer}
+        >
           <FilterButton
             label="Todos"
             icon="📊"
@@ -105,7 +110,7 @@ export default function HistoryScreen() {
             active={filter === "strength"}
             onPress={() => setFilter("strength")}
           />
-        </View>
+        </ScrollView>
 
         {/* Workouts List */}
         {filteredWorkouts.length > 0 ? (
@@ -337,20 +342,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
   },
+  filterScrollView: {
+    marginBottom: 20,
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
   filterContainer: {
     flexDirection: "row",
-    marginBottom: 20,
     gap: 8,
+    paddingRight: 32,
   },
   filterButton: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.darkCard,
     borderRadius: 10,
     paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
   },

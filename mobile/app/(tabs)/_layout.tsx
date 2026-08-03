@@ -33,16 +33,7 @@ export default function TabLayout() {
           borderTopColor: DarkTheme.colors.border,
           paddingBottom: Platform.OS === "ios" ? 8 : 0,
         },
-        headerStyle: {
-          backgroundColor: DarkTheme.colors.card,
-          borderBottomColor: DarkTheme.colors.border,
-          borderBottomWidth: 1,
-        },
-        headerTintColor: DarkTheme.colors.text,
-        headerTitleStyle: {
-          fontWeight: "600",
-        },
-        headerShown: true,
+        headerShown: false,
       }}
     >
       <Tabs.Screen
@@ -75,14 +66,6 @@ export default function TabLayout() {
           title: "Perfil",
           tabBarLabel: "Perfil",
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Configurações",
-          tabBarLabel: "Configurações",
-          tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
         }}
       />
     </Tabs>

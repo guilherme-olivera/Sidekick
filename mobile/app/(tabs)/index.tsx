@@ -133,12 +133,12 @@ export default function HomeScreen() {
   };
 
   // Dynamic weekly statistics calculation
-  const totalSeconds = workouts.reduce((sum, w) => sum + (w.duration || 0), 0);
+  const totalSeconds = weeklyWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const totalTimeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
-  const totalDistance = workouts.reduce((sum, w) => sum + (w.distance || 0), 0);
+  const totalDistance = weeklyWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
   const totalDistanceStr = `${totalDistance.toFixed(1)} km`;
 
   const selectedWorkoutDetail = 
@@ -161,7 +161,7 @@ export default function HomeScreen() {
         <View style={styles.statsContainer}>
           <StatCard 
             label="Treinos Semana" 
-            value={workouts.length.toString()} 
+            value={weeklyWorkouts.length.toString()} 
             onPress={() => router.push('/profile')} 
           />
           <StatCard 
