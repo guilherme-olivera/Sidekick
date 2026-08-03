@@ -240,25 +240,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Stats Container */}
-        <View style={styles.statsContainer}>
-          <StatCard 
-            label="Treinos Semana" 
-            value={weeklyWorkouts.length.toString()} 
-            onPress={() => router.push('/profile')} 
-          />
-          <StatCard 
-            label="Tempo Total" 
-            value={totalTimeStr} 
-            onPress={() => router.push('/profile')} 
-          />
-          <StatCard 
-            label="Km Percorridos" 
-            value={totalDistanceStr} 
-            onPress={() => router.push('/profile')} 
-          />
-        </View>
-
         {/* Goal Progress Card */}
         {user?.profile?.isConfigured && (
           <View style={styles.section}>
@@ -296,6 +277,18 @@ export default function HomeScreen() {
                       }
                     ]} 
                   />
+                </View>
+              </View>
+
+              {/* Weekly accumulated metrics inside the goal card */}
+              <View style={styles.goalStatsRow}>
+                <View style={styles.goalStatMiniCard}>
+                  <Text style={styles.goalStatMiniLabel}>Tempo Acumulado</Text>
+                  <Text style={styles.goalStatMiniValue}>⏱️ {totalTimeStr}</Text>
+                </View>
+                <View style={styles.goalStatMiniCard}>
+                  <Text style={styles.goalStatMiniLabel}>Distância Semanal</Text>
+                  <Text style={styles.goalStatMiniValue}>🏃 {totalDistanceStr}</Text>
                 </View>
               </View>
 
@@ -1340,6 +1333,31 @@ const styles = StyleSheet.create({
   effortModalButtonTextConfirm: {
     color: "#0a0a0a",
     fontSize: 14,
+    fontWeight: "700",
+  },
+  goalStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 8,
+    gap: 12,
+  },
+  goalStatMiniCard: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  goalStatMiniLabel: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  goalStatMiniValue: {
+    color: Colors.text,
+    fontSize: 13,
     fontWeight: "700",
   },
 });
