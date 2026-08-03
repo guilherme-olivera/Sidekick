@@ -10,6 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -47,7 +49,8 @@ export default function OnboardingScreen() {
   const [birthday, setBirthday] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("intermediate");
   const [weeklyFrequency, setWeeklyFrequency] = useState(3);
-  const [injuryNote, setInjuryNote] = useState("none");
+  const [selectedInjuries, setSelectedInjuries] = useState<string[]>(["none"]);
+  const [customInjury, setCustomInjury] = useState("");
 
   // Meta States
   const [goalType, setGoalType] = useState("distance");
@@ -68,7 +71,32 @@ export default function OnboardingScreen() {
       if (p.birthday) setBirthday(p.birthday);
       if (p.experienceLevel) setExperienceLevel(p.experienceLevel);
       if (p.weeklyFrequency) setWeeklyFrequency(p.weeklyFrequency);
-      if (p.injuryNote) setInjuryNote(p.injuryNote);
+      if (p.injuryNote) {
+        if (p.injuryNote === "none") {
+          setSelectedInjuries(["none"]);
+          setCustomInjury("");
+        } else {
+          const parts = p.injuryNote.split(",").map((s: string) => s.trim());
+          const presets = ["joelho", "canela", "lombar"];
+          const selected: string[] = [];
+          const customParts: string[] = [];
+          
+          parts.forEach(part => {
+            if (presets.includes(part)) {
+              selected.push(part);
+            } else {
+              customParts.push(part);
+            }
+          });
+          
+          if (customParts.length > 0) {
+            selected.push("custom");
+            setCustomInjury(customParts.join(", "));
+          }
+          
+          setSelectedInjuries(selected);
+        }
+      }
       if (p.goalType) setGoalType(p.goalType);
       
       if (p.goalDistance) {
@@ -84,7 +112,7 @@ export default function OnboardingScreen() {
   }, [user]);
 
   const handleBirthdayChange = (text: string) => {
-    // Only allow numbers
+    // Remove formatting
     const cleaned = text.replace(/[^0-9]/g, "");
     let formatted = cleaned;
     
@@ -153,10 +181,27 @@ export default function OnboardingScreen() {
       return;
     }
 
+    if (selectedInjuries.includes("custom") && !customInjury.trim()) {
+      Alert.alert("Dor Customizada", "Por favor, preencha o campo com a descrição da sua lesão/dor.");
+      setStep(3);
+      return;
+    }
+
     try {
       setIsSaving(true);
       
       const distance = goalDistance === "custom" ? customDistance : goalDistance;
+
+      // Build injury string
+      const filtered = selectedInjuries.filter(x => x !== "none");
+      let finalInjury = "none";
+      if (filtered.length > 0) {
+        const parts = filtered.map(x => {
+          if (x === "custom") return customInjury.trim();
+          return x;
+        }).filter(Boolean);
+        finalInjury = parts.length > 0 ? parts.join(", ") : "none";
+      }
       
       const payload = {
         aiGender,
@@ -168,7 +213,7 @@ export default function OnboardingScreen() {
         goalTargetTime,
         experienceLevel,
         weeklyFrequency,
-        injuryNote,
+        injuryNote: finalInjury,
         isConfigured: true,
       };
 
@@ -177,7 +222,7 @@ export default function OnboardingScreen() {
       if (response.success) {
         await refreshUser();
         if (isEditMode) {
-          Alert.alert("Sucesso", "Configurações atualizadas!", [
+          Alert.alert("Sucesso", "Configurações updated!", [
             { text: "OK", onPress: () => router.back() }
           ]);
         } else {
@@ -195,6 +240,19 @@ export default function OnboardingScreen() {
   };
 
   const nextStep = () => {
+    if (step === 1) {
+      if (!isConnected) {
+        Alert.alert(
+          "Strava Não Conectado",
+          "Conecte seu Strava para que seu companheiro te conheça melhor, caso contrário você iniciará como um iniciante.",
+          [
+            { text: "Conectar Strava", style: "cancel" },
+            { text: "Avançar assim mesmo", style: "destructive", onPress: () => setStep(2) }
+          ]
+        );
+        return;
+      }
+    }
     if (step === 3) {
       if (!validateBirthday(birthday)) {
         Alert.alert("Data de Nascimento", "Por favor, insira uma data de nascimento válida (DD/MM/AAAA).");
@@ -229,474 +287,514 @@ export default function OnboardingScreen() {
     funny: "Engraçado 🃏"
   };
   const expMap: Record<string, string> = { beginner: "Iniciante 🐢", intermediate: "Intermediário 🏃‍♂️", advanced: "Avançado 🚀" };
-  const injuryMap: Record<string, string> = {
-    joelho: "Lombar/Joelho 🦵",
-    canela: "Canelite/Canela 🦴",
-    lombar: "Lombar 🎒",
-    none: "Sem dores ✅"
+  
+  const getInjuriesSummaryString = () => {
+    const filtered = selectedInjuries.filter(x => x !== "none");
+    if (filtered.length === 0) return "Sem dores ✅";
+    
+    const parts = filtered.map(x => {
+      if (x === "joelho") return "Lombar/Joelho 🦵";
+      if (x === "canela") return "Canelite/Canela 🦴";
+      if (x === "lombar") return "Lombar 🎒";
+      if (x === "custom") return customInjury ? `Outra: ${customInjury} ✏️` : "Outra Restrição ✏️";
+      return x;
+    });
+    return parts.join(", ");
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        {isEditMode ? (
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>✕ Fechar</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 60 }} />
-        )}
-        <Text style={styles.headerTitle}>
-          {isEditMode ? "Ajustar Sidekick" : "Configuração Inicial"}
-        </Text>
-        <Text style={styles.stepIndicator}>{step} / 5</Text>
-      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        {/* Top Header */}
+        <View style={styles.header}>
+          {isEditMode ? (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Text style={styles.backButtonText}>✕ Fechar</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 60 }} />
+          )}
+          <Text style={styles.headerTitle}>
+            {isEditMode ? "Ajustar Sidekick" : "Configuração Inicial"}
+          </Text>
+          <Text style={styles.stepIndicator}>{step} / 5</Text>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* STEP 1: STRAVA CONNECTION */}
-        {step === 1 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Conectar ao Strava</Text>
-            <Text style={styles.subtitle}>
-              Para que o Sidekick conheça seu histórico de treinos e calibre a IA, conecte seu Strava abaixo.
-            </Text>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* STEP 1: STRAVA CONNECTION */}
+          {step === 1 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.title}>Conectar ao Strava</Text>
+              <Text style={styles.subtitle}>
+                Para que o Sidekick conheça seu histórico de treinos e calibre a IA, conecte seu Strava abaixo.
+              </Text>
 
-            <View style={styles.stravaBox}>
-              {isConnected ? (
-                <View style={styles.stravaConnectedContainer}>
-                  <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
-                  {athlete && (
-                    <View style={styles.athleteProfile}>
-                      {athlete.profile ? (
-                        <Image source={{ uri: athlete.profile }} style={styles.athleteImage} />
+              <View style={styles.stravaBox}>
+                {isConnected ? (
+                  <View style={styles.stravaConnectedContainer}>
+                    <Text style={styles.stravaStatusText}>✅ Status: Strava Conectado</Text>
+                    <Text style={styles.stravaConnectedDesc}>
+                      Sua conta do Strava já está vinculada. Conectado como {athlete?.name || athlete?.username || "atleta"}.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={[styles.syncButton, isSyncing && { opacity: 0.8 }]}
+                      onPress={async () => {
+                        try {
+                          setIsSyncing(true);
+                          const result = await syncActivities();
+                          setSyncedCount(result?.syncedActivities || 0);
+                          Alert.alert("Sincronização concluída", `Sucesso! ${result?.syncedActivities || 0} atividades importadas do Strava.`);
+                        } catch (err) {
+                          Alert.alert("Erro", "Falha ao sincronizar atividades do Strava.");
+                        } finally {
+                          setIsSyncing(false);
+                        }
+                      }}
+                      disabled={isSyncing}
+                    >
+                      {isSyncing ? (
+                        <ActivityIndicator color="#000" size="small" />
                       ) : (
-                        <View style={[styles.athleteImage, styles.athleteImagePlaceholder]}>
-                          <Text style={{ fontSize: 24 }}>🏃</Text>
-                        </View>
+                        <Text style={styles.syncButtonText}>
+                          {syncedCount !== null ? "🔄 Sincronizar Novamente" : "🔄 Sincronizar Atividades"}
+                        </Text>
                       )}
-                      <Text style={styles.athleteName}>{athlete.name || athlete.username}</Text>
-                    </View>
-                  )}
-
-                  <TouchableOpacity
-                    style={[styles.syncButton, isSyncing && { opacity: 0.8 }]}
-                    onPress={async () => {
-                      try {
-                        setIsSyncing(true);
-                        const result = await syncActivities();
-                        setSyncedCount(result?.syncedActivities || 0);
-                        Alert.alert("Sincronização concluída", `Sucesso! ${result?.syncedActivities || 0} atividades importadas do Strava.`);
-                      } catch (err) {
-                        Alert.alert("Erro", "Falha ao sincronizar atividades do Strava.");
-                      } finally {
-                        setIsSyncing(false);
-                      }
-                    }}
-                    disabled={isSyncing}
-                  >
-                    {isSyncing ? (
-                      <ActivityIndicator color="#000" size="small" />
-                    ) : (
-                      <Text style={styles.syncButtonText}>
-                        {syncedCount !== null ? "🔄 Sincronizar Novamente" : "🔄 Sincronizar Treinos Recentes"}
+                    </TouchableOpacity>
+                    
+                    {syncedCount !== null && (
+                      <Text style={styles.syncResultText}>
+                        A sincronização obteve {syncedCount} treinos nos últimos 30 dias.
                       </Text>
                     )}
-                  </TouchableOpacity>
-                  
-                  {syncedCount !== null && (
-                    <Text style={styles.syncResultText}>
-                      A sincronização obteve {syncedCount} treinos nos últimos 30 dias.
+                  </View>
+                ) : (
+                  <View style={styles.stravaDisconnectedContainer}>
+                    <Text style={styles.stravaStatusText}>❌ Nenhuma conta do Strava conectada</Text>
+                    
+                    <TouchableOpacity
+                      style={styles.connectButton}
+                      onPress={async () => {
+                        try {
+                          await connect();
+                        } catch (err) {
+                          Alert.alert("Erro", "Falha ao iniciar conexão com o Strava.");
+                        }
+                      }}
+                    >
+                      <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
+                    </TouchableOpacity>
+
+                    <Text style={styles.stravaHint}>
+                      Nota: O Sidekick precisa do Strava para coletar suas atividades. Se preferir fazer isso mais tarde, você pode avançar clicando em avançar abaixo.
                     </Text>
-                  )}
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* STEP 2: IA COMPANION */}
+          {step === 2 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.title}>Configure o seu Sidekick</Text>
+              <Text style={styles.subtitle}>Personalize o sexo, tom de voz e atitude da IA que vai te treinar.</Text>
+
+              {/* AI Gender */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Sexo da IA</Text>
+                <View style={styles.gridRow}>
+                  {[
+                    { id: "neutral", label: "Neutro 🤖" },
+                    { id: "male", label: "Homem 👨" },
+                    { id: "female", label: "Mulher 👩" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.gridCard, aiGender === item.id && styles.gridCardActive]}
+                      onPress={() => setAiGender(item.id)}
+                    >
+                      <Text style={[styles.gridCardText, aiGender === item.id && styles.gridCardTextActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              ) : (
-                <View style={styles.stravaDisconnectedContainer}>
-                  <Text style={styles.stravaStatusText}>❌ Nenhuma conta do Strava conectada</Text>
-                  
+              </View>
+
+              {/* AI Personality */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Atitude / Personalidade</Text>
+                <View style={styles.gridRow}>
+                  {[
+                    { id: "calm", label: "Calmo 😌", desc: "Paciente e compreensivo" },
+                    { id: "strict", label: "Rígido 📏", desc: "Disciplinado e objetivo" },
+                    { id: "tough", label: "Bravo ⚡", desc: "Enérgico e exigente" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.gridCardTall, aiPersonality === item.id && styles.gridCardActive]}
+                      onPress={() => setAiPersonality(item.id)}
+                    >
+                      <Text style={[styles.gridCardText, aiPersonality === item.id && styles.gridCardTextActive]}>
+                        {item.label}
+                      </Text>
+                      <Text style={styles.gridCardDesc}>{item.desc}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* AI Tone */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Humor / Tom de Voz</Text>
+                <View style={styles.verticalOptions}>
+                  {[
+                    { id: "motivational", label: "Muito Motivador 🔥", desc: "Focado em te encher de energia positiva" },
+                    { id: "sarcastic", label: "Sarcástico 😏", desc: "Irônico e engraçado sobre suas métricas" },
+                    { id: "serious", label: "Sério 🧐", desc: "Linguagem técnica, profissional e direta" },
+                    { id: "funny", label: "Engraçado 🃏", desc: "Espirituoso, faz piadas e descontrai" },
+                    { id: "cold", label: "Frio 🧊", desc: "Puramente analítico, curto e grosso" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.listCard, aiTone === item.id && styles.listCardActive]}
+                      onPress={() => setAiTone(item.id)}
+                    >
+                      <View style={styles.listCardInfo}>
+                        <Text style={[styles.listCardText, aiTone === item.id && styles.listCardTextActive]}>
+                          {item.label}
+                        </Text>
+                        <Text style={styles.listCardDesc}>{item.desc}</Text>
+                      </View>
+                      {aiTone === item.id && <Text style={styles.checkIcon}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* STEP 3: USER METADATA */}
+          {step === 3 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.title}>Sobre Você</Text>
+              <Text style={styles.subtitle}>Preencha seus dados para a IA calibrar as recomendações biológicas e de descanso.</Text>
+
+              {/* Birthday */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Data de Nascimento</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor="#666"
+                  keyboardType="numeric"
+                  maxLength={10}
+                  value={birthday}
+                  onChangeText={handleBirthdayChange}
+                />
+              </View>
+
+              {/* Experience Level */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Nível de Experiência</Text>
+                <View style={styles.gridRow}>
+                  {[
+                    { id: "beginner", label: "Iniciante 🐢" },
+                    { id: "intermediate", label: "Intermediário 🏃‍♂️" },
+                    { id: "advanced", label: "Avançado 🚀" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.gridCard, experienceLevel === item.id && styles.gridCardActive]}
+                      onPress={() => setExperienceLevel(item.id)}
+                    >
+                      <Text style={[styles.gridCardText, experienceLevel === item.id && styles.gridCardTextActive]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Weekly Frequency */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Meta de Treinos Semanais</Text>
+                <View style={styles.gridRow}>
+                  {[2, 3, 4, 5].map(freq => (
+                    <TouchableOpacity
+                      key={freq}
+                      style={[styles.gridCard, weeklyFrequency === freq && styles.gridCardActive]}
+                      onPress={() => setWeeklyFrequency(freq)}
+                    >
+                      <Text style={[styles.gridCardText, weeklyFrequency === freq && styles.gridCardTextActive]}>
+                        {freq === 5 ? "5+ dias" : `${freq} dias`}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Injuries / Active Pain */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Você sente alguma dor/lesão ativa? (Selecione todas aplicáveis)</Text>
+                <View style={styles.verticalOptions}>
+                  {[
+                    { id: "none", label: "Sem dores ativas ✅" },
+                    { id: "joelho", label: "Joelho / Articulação do Joelho 🦵" },
+                    { id: "canela", label: "Canelite / Canela 🦴" },
+                    { id: "lombar", label: "Lombar / Costas 🎒" },
+                  ].map(item => {
+                    const isSelected = selectedInjuries.includes(item.id);
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.listCard, isSelected && styles.listCardActive]}
+                        onPress={() => {
+                          if (item.id === "none") {
+                            setSelectedInjuries(["none"]);
+                            setCustomInjury("");
+                          } else {
+                            let updated = selectedInjuries.filter(x => x !== "none");
+                            if (updated.includes(item.id)) {
+                              updated = updated.filter(x => x !== item.id);
+                            } else {
+                              updated.push(item.id);
+                            }
+                            if (updated.length === 0) {
+                              updated = ["none"];
+                            }
+                            setSelectedInjuries(updated);
+                          }
+                        }}
+                      >
+                        <Text style={[styles.listCardText, isSelected && styles.listCardTextActive]}>
+                          {item.label}
+                        </Text>
+                        {isSelected && <Text style={styles.checkIcon}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* Custom injury toggle option */}
                   <TouchableOpacity
-                    style={styles.connectButton}
-                    onPress={async () => {
-                      try {
-                        await connect();
-                      } catch (err) {
-                        Alert.alert("Erro", "Falha ao iniciar conexão com o Strava.");
+                    style={[
+                      styles.listCard,
+                      selectedInjuries.includes("custom") && styles.listCardActive
+                    ]}
+                    onPress={() => {
+                      if (selectedInjuries.includes("custom")) {
+                        setSelectedInjuries(selectedInjuries.filter(x => x !== "custom" && x !== "none"));
+                        setCustomInjury("");
+                      } else {
+                        const updated = selectedInjuries.filter(x => x !== "none");
+                        updated.push("custom");
+                        setSelectedInjuries(updated);
                       }
                     }}
                   >
-                    <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
+                    <Text style={[styles.listCardText, selectedInjuries.includes("custom") && styles.listCardTextActive]}>
+                      Outra Restrição Customizada... ✏️
+                    </Text>
+                    {selectedInjuries.includes("custom") && <Text style={styles.checkIcon}>✓</Text>}
                   </TouchableOpacity>
 
-                  <Text style={styles.stravaHint}>
-                    Nota: O Sidekick precisa do Strava para coletar suas atividades. Se preferir fazer isso mais tarde, você pode avançar clicando em avançar abaixo.
-                  </Text>
+                  {selectedInjuries.includes("custom") && (
+                    <View style={styles.customInjuryContainer}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Descreva a lesão/dor (ex: Tornozelo, Ombro)"
+                        placeholderTextColor="#666"
+                        value={customInjury}
+                        onChangeText={setCustomInjury}
+                      />
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* STEP 2: IA COMPANION */}
-        {step === 2 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Configure o seu Sidekick</Text>
-            <Text style={styles.subtitle}>Personalize o sexo, tom de voz e atitude da IA que vai te treinar.</Text>
-
-            {/* AI Gender */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Sexo da IA</Text>
-              <View style={styles.gridRow}>
-                {[
-                  { id: "neutral", label: "Neutro 🤖" },
-                  { id: "male", label: "Homem 👨" },
-                  { id: "female", label: "Mulher 👩" },
-                ].map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.gridCard, aiGender === item.id && styles.gridCardActive]}
-                    onPress={() => setAiGender(item.id)}
-                  >
-                    <Text style={[styles.gridCardText, aiGender === item.id && styles.gridCardTextActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
               </View>
             </View>
+          )}
 
-            {/* AI Personality */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Atitude / Personalidade</Text>
-              <View style={styles.gridRow}>
-                {[
-                  { id: "calm", label: "Calmo 😌", desc: "Paciente e compreensivo" },
-                  { id: "strict", label: "Rígido 📏", desc: "Disciplinado e objetivo" },
-                  { id: "tough", label: "Bravo ⚡", desc: "Enérgico e exigente" },
-                ].map(item => (
+          {/* STEP 4: ATHLETE GOALS */}
+          {step === 4 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.title}>Sua Meta de Treino</Text>
+              <Text style={styles.subtitle}>O que você está buscando conquistar nesse momento?</Text>
+
+              {/* Goal Type */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Tipo de Meta</Text>
+                <View style={styles.gridRow}>
                   <TouchableOpacity
-                    key={item.id}
-                    style={[styles.gridCardTall, aiPersonality === item.id && styles.gridCardActive]}
-                    onPress={() => setAiPersonality(item.id)}
+                    style={[styles.gridCard, goalType === "distance" && styles.gridCardActive]}
+                    onPress={() => setGoalType("distance")}
                   >
-                    <Text style={[styles.gridCardText, aiPersonality === item.id && styles.gridCardTextActive]}>
-                      {item.label}
+                    <Text style={[styles.gridCardText, goalType === "distance" && styles.gridCardTextActive]}>
+                      Aumentar Distância 🏃‍♂️
                     </Text>
-                    <Text style={styles.gridCardDesc}>{item.desc}</Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* AI Tone */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Humor / Tom de Voz</Text>
-              <View style={styles.verticalOptions}>
-                {[
-                  { id: "motivational", label: "Muito Motivador 🔥", desc: "Focado em te encher de energia positiva" },
-                  { id: "sarcastic", label: "Sarcástico 😏", desc: "Irônico e engraçado sobre suas métricas" },
-                  { id: "serious", label: "Sério 🧐", desc: "Linguagem técnica, profissional e direta" },
-                  { id: "funny", label: "Engraçado 🃏", desc: "Espirituoso, faz piadas e descontrai" },
-                  { id: "cold", label: "Frio 🧊", desc: "Puramente analítico, curto e grosso" },
-                ].map(item => (
                   <TouchableOpacity
-                    key={item.id}
-                    style={[styles.listCard, aiTone === item.id && styles.listCardActive]}
-                    onPress={() => setAiTone(item.id)}
+                    style={[styles.gridCard, goalType === "pace" && styles.gridCardActive]}
+                    onPress={() => setGoalType("pace")}
                   >
-                    <View style={styles.listCardInfo}>
-                      <Text style={[styles.listCardText, aiTone === item.id && styles.listCardTextActive]}>
+                    <Text style={[styles.gridCardText, goalType === "pace" && styles.gridCardTextActive]}>
+                      Abaixar Tempo (Pace) ⏱️
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Distance Choice */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Qual a Distância Alvo?</Text>
+                <View style={styles.distanceGrid}>
+                  {[
+                    { id: "5k", label: "5 km" },
+                    { id: "10k", label: "10 km" },
+                    { id: "15k", label: "15 km" },
+                    { id: "half_marathon", label: "21.1 km (Meia)" },
+                    { id: "marathon", label: "42.2 km (Maratona)" },
+                    { id: "custom", label: "Personalizado ✏️" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.distanceCard, goalDistance === item.id && styles.distanceCardActive]}
+                      onPress={() => setGoalDistance(item.id)}
+                    >
+                      <Text style={[styles.gridCardText, goalDistance === item.id && styles.gridCardTextActive]}>
                         {item.label}
                       </Text>
-                      <Text style={styles.listCardDesc}>{item.desc}</Text>
-                    </View>
-                    {aiTone === item.id && <Text style={styles.checkIcon}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
-        {/* STEP 3: USER METADATA */}
-        {step === 3 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Sobre Você</Text>
-            <Text style={styles.subtitle}>Preencha seus dados para a IA calibrar as recomendações biológicas e de descanso.</Text>
-
-            {/* Birthday */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Data de Nascimento</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor="#666"
-                keyboardType="numeric"
-                maxLength={10}
-                value={birthday}
-                onChangeText={handleBirthdayChange}
-              />
-            </View>
-
-            {/* Experience Level */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Nível de Experiência</Text>
-              <View style={styles.gridRow}>
-                {[
-                  { id: "beginner", label: "Iniciante 🐢" },
-                  { id: "intermediate", label: "Intermediário 🏃‍♂️" },
-                  { id: "advanced", label: "Avançado 🚀" },
-                ].map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.gridCard, experienceLevel === item.id && styles.gridCardActive]}
-                    onPress={() => setExperienceLevel(item.id)}
-                  >
-                    <Text style={[styles.gridCardText, experienceLevel === item.id && styles.gridCardTextActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Weekly Frequency */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Meta de Treinos Semanais</Text>
-              <View style={styles.gridRow}>
-                {[2, 3, 4, 5].map(freq => (
-                  <TouchableOpacity
-                    key={freq}
-                    style={[styles.gridCard, weeklyFrequency === freq && styles.gridCardActive]}
-                    onPress={() => setWeeklyFrequency(freq)}
-                  >
-                    <Text style={[styles.gridCardText, weeklyFrequency === freq && styles.gridCardTextActive]}>
-                      {freq === 5 ? "5+ dias" : `${freq} dias`}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Injuries / Active Pain */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Você sente alguma dor/lesão ativa?</Text>
-              <View style={styles.verticalOptions}>
-                {[
-                  { id: "none", label: "Sem dores ativas ✅" },
-                  { id: "joelho", label: "Joelho / Articulação do Joelho 🦵" },
-                  { id: "canela", label: "Canelite / Canela 🦴" },
-                  { id: "lombar", label: "Lombar / Costas 🎒" },
-                ].map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.listCard, injuryNote === item.id && styles.listCardActive]}
-                    onPress={() => setInjuryNote(item.id)}
-                  >
-                    <Text style={[styles.listCardText, injuryNote === item.id && styles.listCardTextActive]}>
-                      {item.label}
-                    </Text>
-                    {injuryNote === item.id && <Text style={styles.checkIcon}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
-                {/* Custom injury text input */}
-                {["none", "joelho", "canela", "lombar"].indexOf(injuryNote) === -1 && injuryNote !== "" ? (
-                  <View style={styles.customInjuryContainer}>
+                {goalDistance === "custom" && (
+                  <View style={styles.customDistanceInput}>
                     <TextInput
                       style={styles.textInput}
-                      placeholder="Outra dor/lesão (ex: Tornozelo, Ombros)"
+                      placeholder="Distância em km (ex: 8.5)"
                       placeholderTextColor="#666"
-                      value={injuryNote === "custom" ? "" : injuryNote}
-                      onChangeText={setInjuryNote}
+                      keyboardType="numeric"
+                      value={customDistance}
+                      onChangeText={setCustomDistance}
                     />
+                  </View>
+                )}
+              </View>
+
+              {/* Target Time */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>
+                  {goalType === "pace" ? "Tempo Alvo (Obrigatório)" : "Tempo Desejado (Opcional)"}
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Ex: 00:45:00 ou 2 horas"
+                  placeholderTextColor="#666"
+                  value={goalTargetTime}
+                  onChangeText={setGoalTargetTime}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* STEP 5: FINAL SUMMARY */}
+          {step === 5 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.title}>Jornada Pronta!</Text>
+              <Text style={styles.subtitle}>Olha só a síntese do companheiro digital que estruturamos para você:</Text>
+
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTitle}>🤖 Contrato do Sidekick Coach</Text>
+                <Text style={styles.summaryText}>
+                  Seu companheiro será configurado como {" "}
+                  <Text style={styles.summaryHighlight}>{genderMap[aiGender] || aiGender}</Text> com a atitude {" "}
+                  <Text style={styles.summaryHighlight}>{persMap[aiPersonality]}</Text> e tom de voz {" "}
+                  <Text style={styles.summaryHighlight}>{toneMap[aiTone]}</Text>.
+                </Text>
+
+                <Text style={styles.summaryText}>
+                  Ele sabe que você tem nível {" "}
+                  <Text style={styles.summaryHighlight}>{expMap[experienceLevel]}</Text>, planeja treinar {" "}
+                  <Text style={styles.summaryHighlight}>{weeklyFrequency} vezes por semana</Text> e está monitorando o status de:{" "}
+                  <Text style={styles.summaryHighlight}>{getInjuriesSummaryString()}</Text>.
+                </Text>
+
+                <Text style={styles.summaryText}>
+                  Sua meta principal é {" "}
+                  <Text style={styles.summaryHighlight}>
+                    {goalType === "distance" ? "aumentar a distância" : "reduzir o pace/tempo"}
+                  </Text> para os {" "}
+                  <Text style={styles.summaryHighlight}>
+                    {getDistanceLabel(goalDistance, customDistance)}
+                  </Text>
+                  {goalTargetTime ? ` em ${goalTargetTime}` : ""}.
+                </Text>
+              </View>
+
+              {!isEditMode && (
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  onPress={() => setTermsAccepted(!termsAccepted)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                    {termsAccepted && <Text style={styles.checkboxCheckMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico.
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.savingLoaderContainer}>
+                {isSaving ? (
+                  <View style={styles.loadingWrapper}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.loadingText}>Configurando seu Sidekick...</Text>
                   </View>
                 ) : (
                   <TouchableOpacity
-                    style={[styles.listCard, ["none", "joelho", "canela", "lombar"].indexOf(injuryNote) === -1 && styles.listCardActive]}
-                    onPress={() => setInjuryNote("Outro")}
+                    style={[
+                      styles.finalButton,
+                      (!isEditMode && !termsAccepted) && styles.finalButtonDisabled
+                    ]}
+                    onPress={handleSave}
+                    disabled={!isEditMode && !termsAccepted}
                   >
-                    <Text style={styles.listCardText}>Outra Restrição Customizada...</Text>
+                    <Text style={styles.finalButtonText}>
+                      {isEditMode ? "Salvar e Concluir 💾" : "Iniciar Jornada 🚀"}
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
             </View>
-          </View>
-        )}
+          )}
+        </ScrollView>
 
-        {/* STEP 4: ATHLETE GOALS */}
-        {step === 4 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Sua Meta de Treino</Text>
-            <Text style={styles.subtitle}>O que você está buscando conquistar nesse momento?</Text>
+        {/* Bottom Actions Navigator */}
+        <View style={styles.navigationFooter}>
+          {step > 1 ? (
+            <TouchableOpacity style={styles.navButtonSecondary} onPress={prevStep} disabled={isSaving}>
+              <Text style={styles.navButtonSecondaryText}>Anterior</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 120 }} />
+          )}
 
-            {/* Goal Type */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Tipo de Meta</Text>
-              <View style={styles.gridRow}>
-                <TouchableOpacity
-                  style={[styles.gridCard, goalType === "distance" && styles.gridCardActive]}
-                  onPress={() => setGoalType("distance")}
-                >
-                  <Text style={[styles.gridCardText, goalType === "distance" && styles.gridCardTextActive]}>
-                    Aumentar Distância 🏃‍♂️
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.gridCard, goalType === "pace" && styles.gridCardActive]}
-                  onPress={() => setGoalType("pace")}
-                >
-                  <Text style={[styles.gridCardText, goalType === "pace" && styles.gridCardTextActive]}>
-                    Abaixar Tempo (Pace) ⏱️
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Distance Choice */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>Qual a Distância Alvo?</Text>
-              <View style={styles.distanceGrid}>
-                {[
-                  { id: "5k", label: "5 km" },
-                  { id: "10k", label: "10 km" },
-                  { id: "15k", label: "15 km" },
-                  { id: "half_marathon", label: "21.1 km (Meia)" },
-                  { id: "marathon", label: "42.2 km (Maratona)" },
-                  { id: "custom", label: "Personalizado ✏️" },
-                ].map(item => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.distanceCard, goalDistance === item.id && styles.distanceCardActive]}
-                    onPress={() => setGoalDistance(item.id)}
-                  >
-                    <Text style={[styles.gridCardText, goalDistance === item.id && styles.gridCardTextActive]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {goalDistance === "custom" && (
-                <View style={styles.customDistanceInput}>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Distância em km (ex: 8.5)"
-                    placeholderTextColor="#666"
-                    keyboardType="numeric"
-                    value={customDistance}
-                    onChangeText={setCustomDistance}
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* Target Time */}
-            <View style={styles.optionSection}>
-              <Text style={styles.sectionLabel}>
-                {goalType === "pace" ? "Tempo Alvo (Obrigatório)" : "Tempo Desejado (Opcional)"}
-              </Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Ex: 00:45:00 ou 2 horas"
-                placeholderTextColor="#666"
-                value={goalTargetTime}
-                onChangeText={setGoalTargetTime}
-              />
-            </View>
-          </View>
-        )}
-
-        {/* STEP 5: FINAL SUMMARY */}
-        {step === 5 && (
-          <View style={styles.stepContainer}>
-            <Text style={styles.title}>Jornada Pronta!</Text>
-            <Text style={styles.subtitle}>Olha só a síntese do companheiro digital que estruturamos para você:</Text>
-
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>🤖 Contrato do Sidekick Coach</Text>
-              <Text style={styles.summaryText}>
-                Seu companheiro será configurado como {" "}
-                <Text style={styles.summaryHighlight}>{genderMap[aiGender] || aiGender}</Text> com a atitude {" "}
-                <Text style={styles.summaryHighlight}>{persMap[aiPersonality]}</Text> e tom de voz {" "}
-                <Text style={styles.summaryHighlight}>{toneMap[aiTone]}</Text>.
-              </Text>
-
-              <Text style={styles.summaryText}>
-                Ele sabe que você tem nível {" "}
-                <Text style={styles.summaryHighlight}>{expMap[experienceLevel]}</Text>, planeja treinar {" "}
-                <Text style={styles.summaryHighlight}>{weeklyFrequency} vezes por semana</Text> e está monitorando o status de:{" "}
-                <Text style={styles.summaryHighlight}>{injuryMap[injuryNote] || injuryNote}</Text>.
-              </Text>
-
-              <Text style={styles.summaryText}>
-                Sua meta principal é {" "}
-                <Text style={styles.summaryHighlight}>
-                  {goalType === "distance" ? "aumentar a distância" : "reduzir o pace/tempo"}
-                </Text> para os {" "}
-                <Text style={styles.summaryHighlight}>
-                  {getDistanceLabel(goalDistance, customDistance)}
-                </Text>
-                {goalTargetTime ? ` em ${goalTargetTime}` : ""}.
-              </Text>
-            </View>
-
-            {!isEditMode && (
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setTermsAccepted(!termsAccepted)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-                  {termsAccepted && <Text style={styles.checkboxCheckMark}>✓</Text>}
-                </View>
-                <Text style={styles.checkboxLabel}>
-                  Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico.
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.savingLoaderContainer}>
-              {isSaving ? (
-                <View style={styles.loadingWrapper}>
-                  <ActivityIndicator size="large" color={Colors.primary} />
-                  <Text style={styles.loadingText}>Configurando seu Sidekick...</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[
-                    styles.finalButton,
-                    (!isEditMode && !termsAccepted) && styles.finalButtonDisabled
-                  ]}
-                  onPress={handleSave}
-                  disabled={!isEditMode && !termsAccepted}
-                >
-                  <Text style={styles.finalButtonText}>
-                    {isEditMode ? "Salvar e Concluir 💾" : "Iniciar Jornada 🚀"}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Bottom Actions Navigator */}
-      <View style={styles.navigationFooter}>
-        {step > 1 ? (
-          <TouchableOpacity style={styles.navButtonSecondary} onPress={prevStep} disabled={isSaving}>
-            <Text style={styles.navButtonSecondaryText}>Anterior</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 100 }} />
-        )}
-
-        {step < 5 ? (
-          <TouchableOpacity style={styles.navButtonPrimary} onPress={nextStep}>
-            <Text style={styles.navButtonPrimaryText}>Avançar</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 100 }} />
-        )}
-      </View>
+          {step < 5 ? (
+            <TouchableOpacity style={styles.navButtonPrimary} onPress={nextStep}>
+              <Text style={styles.navButtonPrimaryText}>Avançar</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 120 }} />
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -948,7 +1046,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 24,
-    width: 100,
+    width: 120,
     alignItems: "center",
   },
   navButtonPrimaryText: {
@@ -961,7 +1059,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 24,
-    width: 100,
+    width: 120,
     alignItems: "center",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
@@ -983,6 +1081,13 @@ const styles = StyleSheet.create({
   stravaConnectedContainer: {
     width: "100%",
     alignItems: "center",
+  },
+  stravaConnectedDesc: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 20,
   },
   stravaDisconnectedContainer: {
     width: "100%",
