@@ -3,6 +3,7 @@ import { apiService } from '../services/apiService';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Linking as RNLinking, Platform } from 'react-native';
+import { useAuth } from './AuthContext';
 
 interface StravaContextType {
   isConnected: boolean;
@@ -29,11 +30,20 @@ export const StravaProvider: React.FC<StravaProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [athlete, setAthlete] = useState<StravaContextType['athlete']>(null);
+  const { user } = useAuth();
 
-  // Verifica status da conexão ao iniciar
+  // Verifica status da conexão ao mudar o usuário autenticado
   useEffect(() => {
-    checkConnectionStatus();
+    if (user) {
+      checkConnectionStatus();
+    } else {
+      setIsConnected(false);
+      setAthlete(null);
+    }
+  }, [user?.id]);
 
+  // Registra ouvinte para redirecionamentos do Strava
+  useEffect(() => {
     const handleUrl = ({ url }: { url: string }) => {
       processStravaRedirect(url);
     };

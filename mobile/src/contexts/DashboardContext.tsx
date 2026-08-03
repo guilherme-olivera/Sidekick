@@ -65,6 +65,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       loadWorkouts();
       loadManualEvents();
       loadTodayMood();
+    } else {
+      setWorkouts([]);
+      setWorkoutsByDay({});
+      setCalendarEvents([]);
+      setManualCalendarEvents([]);
+      setCurrentMood(undefined);
+      setCurrentMoodEmoji("😐");
     }
   }, [user]);
 
