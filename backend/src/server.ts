@@ -48,6 +48,7 @@ import {
   handleDeleteAvatar,
 } from "./controllers/avatarController";
 import { authMiddleware } from "./services/authService";
+import { chatHandler } from "./controllers/chatController";
 import { uploadAvatar } from "./middleware/uploadMiddleware";
 
 const app = express();
@@ -92,6 +93,9 @@ app.get("/", async (req, res, next) => {
   }
   next();
 });
+
+// ===== CHAT ROUTES =====
+app.post("/api/chat", authMiddleware, chatHandler);
 
 // ===== CALENDAR EVENT ROUTES =====
 app.get("/api/events", authMiddleware, getEventsHandler);

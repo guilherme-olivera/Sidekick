@@ -275,3 +275,59 @@ export async function analyzeHistoryWithGemini(
     throw error;
   }
 }
+
+/**
+ * Generates a chat response from Gemini using the companion persona
+ */
+export async function generateChatResponse(
+  message: string,
+  chatHistory: { role: "user" | "model"; parts: string }[],
+  userProfile?: any
+): Promise<string> {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured in environment variables");
+    }
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+
+    const companionName = userProfile?.companionName || "Sidekick";
+    const aiGender = userProfile?.aiGender || "neutral";
+    const aiPersonality = userProfile?.aiPersonality || "motivational";
+    const aiTone = userProfile?.aiTone || "friendly";
+    const trainingGoal = userProfile?.trainingGoal || "Se manter saudável";
+    const experienceLevel = userProfile?.experienceLevel || "iniciante";
+
+    const systemInstruction = `
+Você é o ${companionName}, o companheiro digital de treinos de corrida e ciclismo do usuário.
+Gênero da IA: ${aiGender} (use termos de gênero apropriados para o seu tom).
+Personalidade: ${aiPersonality} (ex: motivador, técnico, amigável, etc).
+Tom de Voz: ${aiTone} (ex: focado, amigável, direto, etc).
+Seu objetivo é dar suporte ao usuário, responder a dúvidas de treinos de forma compreensível e motivadora, e ajudá-lo a atingir sua meta de "${trainingGoal}" (nível: ${experienceLevel}).
+
+Instruções cruciais:
+- Seja extremamente acolhedor, conciso (mensagens curtas para exibição em chat mobile).
+- NUNCA saia do personagem. Seu nome é ${companionName}.
+- Dê conselhos práticos e rápidos baseados em fisiologia do esporte, corrida ou ciclismo.
+- Não use formatação markdown excessiva (use apenas negrito ocasional).
+`;
+
+    const chat = model.startChat({
+      history: chatHistory.map(h => ({
+        role: h.role,
+        parts: [{ text: h.parts }]
+      })),
+      generationConfig: {
+        maxOutputTokens: 250,
+      },
+    });
+
+    const promptWithSystem = `${systemInstruction}\n\nMensagem do Usuário: ${message}`;
+    const result = await chat.sendMessage(promptWithSystem);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Error in generateChatResponse:", error);
+    throw error;
+  }
+}
