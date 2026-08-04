@@ -35,6 +35,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "guiii.olivera",
+    "extra": {
+      "API_URL": "http://192.168.15.11:3000",
+      "router": {},
+      "eas": {
+        "projectId": "3b69b29e-876f-4286-8c61-339dddd6a282"
+      }
     }
   }
 }
