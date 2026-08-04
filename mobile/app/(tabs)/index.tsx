@@ -336,7 +336,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Último Treino</Text>
-            <TouchableOpacity onPress={() => router.push("/history")}>
+            <TouchableOpacity onPress={() => router.push("/calendar")}>
               <Text style={styles.sectionLink}>Ver todos</Text>
             </TouchableOpacity>
           </View>

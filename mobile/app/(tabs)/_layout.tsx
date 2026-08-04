@@ -45,9 +45,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="history"
+        name="chat"
         options={{
-          href: null,
+          title: "Chat",
+          tabBarLabel: "Chat",
+          tabBarIcon: ({ color }) => <TabBarIcon name="comments" color={color} />,
         }}
       />
       <Tabs.Screen
