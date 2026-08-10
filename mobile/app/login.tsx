@@ -133,8 +133,9 @@ export default function LoginScreen({ navigation }: any) {
     : email && password && name;
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
+    <>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -254,6 +255,7 @@ export default function LoginScreen({ navigation }: any) {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+    </TouchableWithoutFeedback>
 
       {/* Forgot Password Modal */}
       <Modal
@@ -342,7 +344,7 @@ export default function LoginScreen({ navigation }: any) {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
-    </TouchableWithoutFeedback>
+    </>
   );
 }
 
