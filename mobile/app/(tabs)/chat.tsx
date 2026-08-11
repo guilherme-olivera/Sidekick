@@ -34,6 +34,29 @@ export default function ChatScreen() {
   const companionName = user?.profile?.companionName || "Sidekick";
   const companionAvatar = user?.profile?.companionAvatar || "🤖";
 
+  const QUICK_QUESTIONS = [
+    "O que é pace?",
+    "Qual o recorde da maratona?",
+    "Como evitar dores no joelho?",
+    "O que comer antes do treino?",
+    "Dicas para começar a correr",
+    "Como melhorar meu fôlego?",
+    "O que é treino de cadência?",
+    "Qual a melhor frequência cardíaca?",
+  ];
+
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // Shuffle suggestions when chat is empty or welcome state
+  useEffect(() => {
+    if (messages.length <= 1) {
+      const shuffled = [...QUICK_QUESTIONS].sort(() => 0.5 - Math.random());
+      setSuggestions(shuffled.slice(0, 3));
+    } else {
+      setSuggestions([]);
+    }
+  }, [messages]);
+
   // Load history on startup
   useEffect(() => {
     loadChatHistory();
@@ -91,11 +114,15 @@ export default function ChatScreen() {
     }
   };
 
-  const handleSend = async () => {
-    if (!inputText.trim()) return;
+  const handleSend = async (customText?: string) => {
+    const textToSend = customText || inputText;
+    if (!textToSend.trim()) return;
 
-    const userText = inputText.trim();
-    setInputText("");
+    if (!customText) {
+      setInputText("");
+    }
+
+    const userText = textToSend.trim();
 
     const timestamp = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const userMsg: ChatMessage = {
@@ -196,6 +223,20 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
+        {messages.length <= 2 && suggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            {suggestions.map((q, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.suggestionPill}
+                onPress={() => handleSend(q)}
+              >
+                <Text style={styles.suggestionPillText}>{q}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -205,7 +246,7 @@ export default function ChatScreen() {
             placeholderTextColor="#888"
             multiline
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+          <TouchableOpacity style={styles.sendButton} onPress={() => handleSend()}>
             <Text style={styles.sendButtonText}>➔</Text>
           </TouchableOpacity>
         </View>
@@ -346,5 +387,26 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  suggestionsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    backgroundColor: "#0a0a0a",
+  },
+  suggestionPill: {
+    backgroundColor: "#1c1c1e",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  suggestionPillText: {
+    color: "#ff6b6b",
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

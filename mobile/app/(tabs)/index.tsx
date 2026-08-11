@@ -216,7 +216,7 @@ export default function HomeScreen() {
   };
 
   const handleWorkoutPress = (workoutId: string) => {
-    router.push(`/history?workoutId=${workoutId}`);
+    setSelectedWorkoutIdForDetail(workoutId);
   };
 
   const getDayBadgeColor = (dayIndex: number): "empty" | "filled" | "upcoming" => {
