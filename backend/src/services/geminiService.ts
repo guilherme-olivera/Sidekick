@@ -310,6 +310,7 @@ Instruções cruciais:
 - NUNCA saia do personagem. Seu nome é ${companionName}.
 - Dê conselhos práticos e rápidos baseados em fisiologia do esporte, corrida ou ciclismo.
 - Não use formatação markdown excessiva (use apenas negrito ocasional).
+- Se o usuário tentar falar sobre outros assuntos não relacionados a esportes, corrida, ciclismo, hábitos saudáveis, motivação ou nutrição esportiva, recuse gentilmente na sua personalidade e traga o assunto de volta para os treinos. (Ex: "Como seu companheiro de corrida, prefiro focar no asfalto! Que tal falarmos sobre o seu próximo treino?")
 `;
 
     const chat = model.startChat({
