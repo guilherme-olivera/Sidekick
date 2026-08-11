@@ -44,6 +44,12 @@ export default function LoginScreen({ navigation }: any) {
       return;
     }
     
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail.trim())) {
+      Alert.alert("Erro", "Formato de e-mail inválido. Ex: nome@provedor.com");
+      return;
+    }
+    
     setIsForgotPasswordLoading(true);
     try {
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.11:3000'}/api/auth/forgot-password`, {
@@ -114,11 +120,17 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const handleAuth = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Formato de e-mail inválido. Ex: nome@provedor.com");
+      return;
+    }
+
     try {
       if (isLogin) {
-        await login(email, password);
+        await login(email.trim(), password);
       } else {
-        await register(email, password, name);
+        await register(email.trim(), password, name);
       }
       // Navigation será feito automaticamente pelo App.tsx quando token existir
     } catch (err) {

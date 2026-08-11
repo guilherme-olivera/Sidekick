@@ -17,6 +17,11 @@ export async function registerUser(
       return { success: false, error: "Email, senha e nome são obrigatórios" };
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return { success: false, error: "Formato de e-mail inválido" };
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -36,6 +41,13 @@ export async function registerUser(
     });
 
     console.log(`✅ Usuário registrado: ${email}`);
+    
+    // Import dynamically to avoid circular dependencies
+    const { sendWelcomeEmail } = require("./emailService");
+    sendWelcomeEmail(email, name).catch((err: any) => 
+      console.error("Failed to send welcome email:", err)
+    );
+
     return { success: true, userId: newUser.id };
   } catch (error) {
     return {

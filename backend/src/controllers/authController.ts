@@ -134,6 +134,11 @@ export async function handleForgotPassword(req: Request, res: Response) {
     const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
     console.log(`[RECOVERY] Código gerado para ${email}: ${mockCode}`);
 
+    const { sendPasswordRecoveryEmail } = require("../services/emailService");
+    sendPasswordRecoveryEmail(email, mockCode).catch((err: any) => 
+      console.error("Failed to send recovery email:", err)
+    );
+
     return res.json({
       success: true,
       message: "Código de recuperação enviado para o e-mail.",
