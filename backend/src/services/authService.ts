@@ -22,6 +22,14 @@ export async function registerUser(
       return { success: false, error: "Formato de e-mail inválido" };
     }
 
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      return {
+        success: false,
+        error: "A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.",
+      };
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });

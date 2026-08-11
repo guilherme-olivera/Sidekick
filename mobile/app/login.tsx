@@ -127,6 +127,14 @@ export default function LoginScreen({ navigation }: any) {
       return;
     }
 
+    if (!isLogin) {
+      const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
+      if (!passwordRegex.test(password)) {
+        setError("A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.");
+        return;
+      }
+    }
+
     try {
       if (isLogin) {
         await login(email.trim(), password);
@@ -198,6 +206,12 @@ export default function LoginScreen({ navigation }: any) {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {!isLogin && (
+                <Text style={styles.passwordHint}>
+                  * A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial (ex: !, @, #, $, %).
+                </Text>
+              )}
 
               {isLogin && (
                 <TouchableOpacity
@@ -550,5 +564,13 @@ const styles = StyleSheet.create({
     color: "#0a0a0c",
     fontSize: 14,
     fontWeight: "700",
+  },
+  passwordHint: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginTop: 4,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    lineHeight: 16,
   },
 });
