@@ -15,13 +15,14 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../src/contexts/AuthContext";
+import { API_BASE_URL } from "../src/services/apiService";
 // O certo é subir um nível (..) e entrar em components
 import { AuthInput, AuthButton, ErrorMessage, Colors } from "../components/AuthComponents";
 // import { AuthInput, AuthButton, ErrorMessage, Colors } from "./AuthComponents";
 
 export default function LoginScreen({ navigation }: any) {
-  const [email, setEmail] = useState("adm@adm.com");
-  const [password, setPassword] = useState("adm123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
@@ -52,7 +53,7 @@ export default function LoginScreen({ navigation }: any) {
     
     setIsForgotPasswordLoading(true);
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.11:3000'}/api/auth/forgot-password`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail }),
@@ -89,7 +90,7 @@ export default function LoginScreen({ navigation }: any) {
     
     setIsForgotPasswordLoading(true);
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.11:3000'}/api/auth/reset-password`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

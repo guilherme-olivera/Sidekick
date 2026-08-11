@@ -8,7 +8,7 @@ const rawApiBase =
   ((Constants.expoConfig?.extra as any)?.API_URL as string) ||
   ((Constants.manifest?.extra as any)?.API_URL as string) ||
   process.env.EXPO_PUBLIC_API_URL ||
-  'http://192.168.15.11:3000';
+  'https://sidekick-jtne.onrender.com';
 
 export let API_BASE_URL = rawApiBase;
 // Ensure protocol is present for React Native fetch to work

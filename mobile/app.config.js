@@ -19,6 +19,6 @@ module.exports = ({ config }) => ({
   ...config,
   extra: {
     ...(config.extra || {}),
-    API_URL: envApiUrl || process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.11:3000',
+    API_URL: envApiUrl || process.env.EXPO_PUBLIC_API_URL || 'https://sidekick-jtne.onrender.com',
   },
 });
