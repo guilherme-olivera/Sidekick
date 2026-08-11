@@ -313,8 +313,14 @@ Instruções cruciais:
 - Se o usuário tentar falar sobre outros assuntos não relacionados a esportes, corrida, ciclismo, hábitos saudáveis, motivação ou nutrição esportiva, recuse gentilmente na sua personalidade e traga o assunto de volta para os treinos. (Ex: "Como seu companheiro de corrida, prefiro focar no asfalto! Que tal falarmos sobre o seu próximo treino?")
 `;
 
+    // Ensure the chat history starts with a 'user' message as required by Gemini
+    let cleanHistory = [...chatHistory];
+    while (cleanHistory.length > 0 && cleanHistory[0].role !== "user") {
+      cleanHistory.shift();
+    }
+
     const chat = model.startChat({
-      history: chatHistory.map(h => ({
+      history: cleanHistory.map(h => ({
         role: h.role,
         parts: [{ text: h.parts }]
       })),

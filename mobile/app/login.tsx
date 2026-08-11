@@ -143,9 +143,9 @@ export default function LoginScreen({ navigation }: any) {
       }
       // Navigation será feito automaticamente pelo App.tsx quando token existir
     } catch (err) {
-      // Erro já está no contexto
       console.error("Auth error:", err);
-      setError("Erro ao realizar autenticação. Por favor, tente novamente.");
+      const errMsg = err instanceof Error ? err.message : "Erro ao realizar autenticação. Por favor, tente novamente.";
+      setError(errMsg);
     }
   };
 
