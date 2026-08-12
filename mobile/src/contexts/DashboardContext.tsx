@@ -300,7 +300,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return res.event;
     }
     
-    const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00` : payload.date;
+    const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00Z` : payload.date;
     const body = {
       title: payload.title,
       description: payload.description,
@@ -348,7 +348,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       return res.event;
     }
     
-    const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00` : payload.date;
+    const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00Z` : payload.date;
     const body = {
       title: payload.title,
       description: payload.description,

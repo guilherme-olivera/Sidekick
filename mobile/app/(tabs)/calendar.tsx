@@ -359,41 +359,51 @@ export default function CalendarScreen() {
                         multiline
                       />
                       <Text style={styles.inputLabel}>Horário do Lembrete</Text>
-                      <View style={styles.timePickerRow}>
+                      <View style={styles.timePickerContainer}>
                         <ScrollView 
-                          horizontal 
-                          showsHorizontalScrollIndicator={false}
-                          style={styles.timeScrollView}
-                          contentContainerStyle={styles.timeScrollContent}
+                          style={styles.timeVerticalScrollView}
+                          showsVerticalScrollIndicator={true}
+                          nestedScrollEnabled={true}
                         >
-                          {["05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"].map((t) => {
-                            const isSelected = time === t;
-                            return (
-                              <TouchableOpacity
-                                key={t}
-                                style={[
-                                  styles.timePill,
-                                  isSelected && styles.timePillSelected
-                                ]}
-                                onPress={() => setTime(t)}
-                              >
-                                <Text style={[
-                                  styles.timePillText,
-                                  isSelected && styles.timePillTextSelected
-                                ]}>{t}</Text>
-                              </TouchableOpacity>
-                            );
-                          })}
+                          <View style={styles.timeGrid}>
+                            {[
+                              "05:00", "05:30", "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
+                              "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+                              "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+                              "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
+                              "21:00", "21:30", "22:00"
+                            ].map((t) => {
+                              const isSelected = time === t;
+                              return (
+                                <TouchableOpacity
+                                  key={t}
+                                  style={[
+                                    styles.timeGridPill,
+                                    isSelected && styles.timePillSelected
+                                  ]}
+                                  onPress={() => setTime(t)}
+                                >
+                                  <Text style={[
+                                    styles.timePillText,
+                                    isSelected && styles.timePillTextSelected
+                                  ]}>{t}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
                         </ScrollView>
-                        <TextInput
-                          value={time}
-                          onChangeText={setTime}
-                          placeholder="Outro (HH:mm)"
-                          style={styles.timeCustomInput}
-                          placeholderTextColor="#666"
-                          keyboardType="numbers-and-punctuation"
-                          maxLength={5}
-                        />
+                        <View style={styles.customTimeRow}>
+                          <Text style={styles.customTimeLabel}>Ou digite outro:</Text>
+                          <TextInput
+                            value={time}
+                            onChangeText={setTime}
+                            placeholder="HH:mm"
+                            style={styles.timeCustomInput}
+                            placeholderTextColor="#666"
+                            keyboardType="numbers-and-punctuation"
+                            maxLength={5}
+                          />
+                        </View>
                       </View>
 
                       <View style={styles.modalActions}>
@@ -1153,28 +1163,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 12,
   },
-  timePickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
-  },
-  timeScrollView: {
-    flex: 1,
-  },
-  timeScrollContent: {
-    gap: 8,
-  },
-  timePill: {
-    backgroundColor: "#1c1c1e",
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   timePillSelected: {
     backgroundColor: "#ff6b6b",
     borderColor: "#ff6b6b",
@@ -1186,6 +1174,49 @@ const styles = StyleSheet.create({
   },
   timePillTextSelected: {
     color: "#ffffff",
+  },
+  timePickerContainer: {
+    backgroundColor: "#111",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#222",
+    padding: 8,
+    marginBottom: 16,
+  },
+  timeVerticalScrollView: {
+    height: 120,
+  },
+  timeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    justifyContent: "space-between",
+    paddingBottom: 8,
+  },
+  timeGridPill: {
+    width: "23%", // 4 columns with gap
+    backgroundColor: "#1c1c1e",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 16,
+    paddingVertical: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  customTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "#222",
+    paddingTop: 10,
+    marginTop: 6,
+  },
+  customTimeLabel: {
+    color: "#b0b0b0",
+    fontSize: 12,
+    fontWeight: "500",
   },
   timeCustomInput: {
     width: 100,
