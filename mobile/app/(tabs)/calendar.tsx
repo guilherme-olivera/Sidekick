@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Calendar from "@/components/Calendar";
@@ -357,13 +358,43 @@ export default function CalendarScreen() {
                         placeholderTextColor="#888"
                         multiline
                       />
-                      <TextInput
-                        value={time}
-                        onChangeText={setTime}
-                        placeholder="Hora (HH:mm)"
-                        style={styles.input}
-                        placeholderTextColor="#888"
-                      />
+                      <Text style={styles.inputLabel}>Horário do Lembrete</Text>
+                      <View style={styles.timePickerRow}>
+                        <ScrollView 
+                          horizontal 
+                          showsHorizontalScrollIndicator={false}
+                          style={styles.timeScrollView}
+                          contentContainerStyle={styles.timeScrollContent}
+                        >
+                          {["05:00", "06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"].map((t) => {
+                            const isSelected = time === t;
+                            return (
+                              <TouchableOpacity
+                                key={t}
+                                style={[
+                                  styles.timePill,
+                                  isSelected && styles.timePillSelected
+                                ]}
+                                onPress={() => setTime(t)}
+                              >
+                                <Text style={[
+                                  styles.timePillText,
+                                  isSelected && styles.timePillTextSelected
+                                ]}>{t}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                        <TextInput
+                          value={time}
+                          onChangeText={setTime}
+                          placeholder="Outro (HH:mm)"
+                          style={styles.timeCustomInput}
+                          placeholderTextColor="#666"
+                          keyboardType="numbers-and-punctuation"
+                          maxLength={5}
+                        />
+                      </View>
 
                       <View style={styles.modalActions}>
                         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -1106,5 +1137,58 @@ const styles = StyleSheet.create({
     color: "#0a0a0a",
     fontSize: 14,
     fontWeight: "700",
+  },
+  inputLabel: {
+    color: "#b0b0b0",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  timePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  timeScrollView: {
+    flex: 1,
+  },
+  timeScrollContent: {
+    gap: 8,
+  },
+  timePill: {
+    backgroundColor: "#1c1c1e",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  timePillSelected: {
+    backgroundColor: "#ff6b6b",
+    borderColor: "#ff6b6b",
+  },
+  timePillText: {
+    color: "#b0b0b0",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  timePillTextSelected: {
+    color: "#ffffff",
+  },
+  timeCustomInput: {
+    width: 100,
+    backgroundColor: "#1c1c1e",
+    borderWidth: 1,
+    borderColor: "#333",
+    color: "#ffffff",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    textAlign: "center",
+    fontSize: 13,
   },
 });

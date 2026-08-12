@@ -204,10 +204,10 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loadCalendarEvents = async (workoutsData?: Workout[]) => {
+  const loadCalendarEvents = async (workoutsData?: Workout[], manualEventsData?: CalendarEvent[]) => {
     if (!user) return;
 
-    let manualEvents: CalendarEvent[] = manualCalendarEvents;
+    let manualEvents: CalendarEvent[] = manualEventsData || manualCalendarEvents;
 
     if (USE_LOCAL_EVENTS) {
       const res = await calendarMockService.listAll();
@@ -252,11 +252,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (res && res.success) {
         const mappedEvents = (res.events || []).map((e: any) => {
           const eventDate = new Date(e.date);
-          // Converter data para ISO mantendo o timezone local ajustado
-          const offset = eventDate.getTimezoneOffset();
-          const localDate = new Date(eventDate.getTime() - (offset * 60 * 1000));
-          const isoDate = localDate.toISOString().split('T')[0];
-          const time = localDate.toISOString().split('T')[1].slice(0, 5);
+          const y = eventDate.getUTCFullYear();
+          const m = String(eventDate.getUTCMonth() + 1).padStart(2, "0");
+          const d = String(eventDate.getUTCDate()).padStart(2, "0");
+          const hh = String(eventDate.getUTCHours()).padStart(2, "0");
+          const mm = String(eventDate.getUTCMinutes()).padStart(2, "0");
+          const isoDate = `${y}-${m}-${d}`;
+          const time = `${hh}:${mm}`;
           return {
             id: e.id,
             date: isoDate,
@@ -269,14 +271,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           };
         });
         setManualCalendarEvents(mappedEvents);
+        await loadCalendarEvents(undefined, mappedEvents);
       } else {
         setManualCalendarEvents([]);
+        await loadCalendarEvents(undefined, []);
       }
-      await loadCalendarEvents();
     } catch (error) {
       console.error('Error loading manual events from API:', error);
       setManualCalendarEvents([]);
-      await loadCalendarEvents();
+      await loadCalendarEvents(undefined, []);
     }
   };
 
@@ -311,8 +314,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (res.event) {
         const dbEvent = res.event;
         const eDate = new Date(dbEvent.date);
-        const isoD = eDate.toISOString().split('T')[0];
-        const eTime = eDate.toISOString().split('T')[1].slice(0, 5);
+        const isoD = `${eDate.getUTCFullYear()}-${String(eDate.getUTCMonth() + 1).padStart(2, "0")}-${String(eDate.getUTCDate()).padStart(2, "0")}`;
+        const eTime = `${String(eDate.getUTCHours()).padStart(2, "0")}:${String(eDate.getUTCMinutes()).padStart(2, "0")}`;
         const mapped = {
           id: dbEvent.id,
           date: isoD,
@@ -360,8 +363,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (res.event) {
         const dbEvent = res.event;
         const eDate = new Date(dbEvent.date);
-        const isoD = eDate.toISOString().split('T')[0];
-        const eTime = eDate.toISOString().split('T')[1].slice(0, 5);
+        const isoD = `${eDate.getUTCFullYear()}-${String(eDate.getUTCMonth() + 1).padStart(2, "0")}-${String(eDate.getUTCDate()).padStart(2, "0")}`;
+        const eTime = `${String(eDate.getUTCHours()).padStart(2, "0")}:${String(eDate.getUTCMinutes()).padStart(2, "0")}`;
         const mapped = {
           id: dbEvent.id,
           date: isoD,
