@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await AsyncStorage.removeItem("authToken");
     await AsyncStorage.removeItem("user");
+    await AsyncStorage.removeItem("@sidekick:chat_history");
     setToken(null);
     setUser(null);
   };
