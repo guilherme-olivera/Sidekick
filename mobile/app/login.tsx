@@ -196,6 +196,15 @@ export default function LoginScreen({ navigation }: any) {
 
             {/* Form Container */}
             <View style={styles.formContainer}>
+              {/* Name Input (only for register) */}
+              {!isLogin && (
+                <AuthInput
+                  placeholder="Seu nome"
+                  value={name}
+                  onChangeText={setName}
+                />
+              )}
+
               {/* Email Input */}
               <AuthInput
                 placeholder="Email"
@@ -257,15 +266,6 @@ export default function LoginScreen({ navigation }: any) {
                     Esqueci minha senha
                   </Text>
                 </TouchableOpacity>
-              )}
-
-              {/* Name Input (only for register) */}
-              {!isLogin && (
-                <AuthInput
-                  placeholder="Seu nome"
-                  value={name}
-                  onChangeText={setName}
-                />
               )}
 
               {/* Error Message */}
