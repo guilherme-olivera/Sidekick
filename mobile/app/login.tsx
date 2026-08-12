@@ -23,6 +23,7 @@ import { AuthInput, AuthButton, ErrorMessage, Colors } from "../components/AuthC
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
@@ -36,6 +37,7 @@ export default function LoginScreen({ navigation }: any) {
   const [forgotEmail, setForgotEmail] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [newPasswordForReset, setNewPasswordForReset] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showResetForm, setShowResetForm] = useState(false);
   const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
 
@@ -83,8 +85,19 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const triggerResetPassword = async () => {
-    if (!recoveryCode || !newPasswordForReset) {
-      Alert.alert("Erro", "Código e nova senha são obrigatórios.");
+    if (!recoveryCode || !newPasswordForReset || !confirmNewPassword) {
+      Alert.alert("Erro", "Código, nova senha e confirmação são obrigatórios.");
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
+    if (!passwordRegex.test(newPasswordForReset)) {
+      Alert.alert("Erro", "A nova senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.");
+      return;
+    }
+
+    if (newPasswordForReset !== confirmNewPassword) {
+      Alert.alert("Erro", "As senhas não coincidem.");
       return;
     }
     
@@ -102,11 +115,15 @@ export default function LoginScreen({ navigation }: any) {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        Alert.alert("Sucesso", "Senha alterada com sucesso! Entre com sua nova senha.");
+        Alert.alert(
+          "Sucesso", 
+          "Sua senha foi alterada com sucesso! Um e-mail de confirmação foi enviado para a sua caixa de entrada."
+        );
         setForgotPasswordModalVisible(false);
         setForgotEmail("");
         setRecoveryCode("");
         setNewPasswordForReset("");
+        setConfirmNewPassword("");
         setShowResetForm(false);
         setPassword(newPasswordForReset); // auto-fill password
       } else {
@@ -133,6 +150,10 @@ export default function LoginScreen({ navigation }: any) {
         setError("A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.");
         return;
       }
+      if (password !== confirmPassword) {
+        setError("As senhas não coincidem.");
+        return;
+      }
     }
 
     try {
@@ -151,7 +172,7 @@ export default function LoginScreen({ navigation }: any) {
 
   const isFormValid = isLogin
     ? email && password
-    : email && password && name;
+    : email && password && confirmPassword && name;
 
   return (
     <>
@@ -206,6 +227,17 @@ export default function LoginScreen({ navigation }: any) {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {!isLogin && (
+                <View style={{ position: 'relative', width: '100%' }}>
+                  <AuthInput
+                    placeholder="Confirme a senha"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                </View>
+              )}
 
               {!isLogin && (
                 <Text style={styles.passwordHint}>
@@ -347,12 +379,24 @@ export default function LoginScreen({ navigation }: any) {
                       onChangeText={setNewPasswordForReset}
                       secureTextEntry={true}
                     />
+                    <AuthInput
+                      placeholder="Confirme a Nova Senha"
+                      value={confirmNewPassword}
+                      onChangeText={setConfirmNewPassword}
+                      secureTextEntry={true}
+                    />
                     <View style={styles.modalActions}>
                       <TouchableOpacity
                         style={[styles.modalBtn, styles.modalBtnCancel]}
-                        onPress={() => setShowResetForm(false)}
+                        onPress={() => {
+                          setForgotPasswordModalVisible(false);
+                          setShowResetForm(false);
+                          setRecoveryCode("");
+                          setNewPasswordForReset("");
+                          setConfirmNewPassword("");
+                        }}
                       >
-                        <Text style={styles.modalBtnCancelText}>Alterar E-mail</Text>
+                        <Text style={styles.modalBtnCancelText}>Cancelar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.modalBtn, styles.modalBtnConfirm]}
@@ -360,7 +404,7 @@ export default function LoginScreen({ navigation }: any) {
                         disabled={isForgotPasswordLoading}
                       >
                         <Text style={styles.modalBtnConfirmText}>
-                          {isForgotPasswordLoading ? "Aguarde..." : "Confirmar Nova Senha"}
+                          {isForgotPasswordLoading ? "Aguarde..." : "Confirmar"}
                         </Text>
                       </TouchableOpacity>
                     </View>

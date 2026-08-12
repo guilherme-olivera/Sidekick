@@ -162,6 +162,13 @@ export async function handleResetPassword(req: Request, res: Response) {
       return res.status(400).json({ error: "E-mail, código e nova senha são obrigatórios" });
     }
 
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        error: "A nova senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.",
+      });
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -177,6 +184,34 @@ export async function handleResetPassword(req: Request, res: Response) {
       where: { email },
       data: { password: hashedPassword },
     });
+
+    // Send confirmation email
+    const { sendMail } = require("../services/emailService");
+    const emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #ffffff;">
+        <h2 style="color: #ff6b6b; text-align: center;">Segurança da Conta Sidekick</h2>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p>Olá, ${user.name || "Atleta"}!</p>
+        <p style="font-size: 16px; color: #333;">
+          Informamos que a sua senha de acesso ao **Sidekick** foi alterada com sucesso.
+        </p>
+        <p style="color: #666; font-size: 14px;">
+          Se foi você quem realizou essa alteração, nenhuma ação adicional é necessária.
+        </p>
+        <p style="color: #e03c3c; font-size: 14px; font-weight: bold;">
+          Se você NÃO solicitou a redefinição de sua senha, entre em contato imediatamente com o suporte.
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;" />
+        <p style="color: #999; font-size: 12px; text-align: center;">© 2026 Sidekick. Todos os direitos reservados.</p>
+      </div>
+    `;
+    
+    sendMail(
+      email,
+      "Sua senha foi alterada com sucesso! 🔑",
+      emailHtml,
+      "Sua senha do Sidekick foi alterada com sucesso. Se não foi você, entre em contato com o suporte."
+    ).catch((err: any) => console.error("Failed to send password change confirmation email:", err));
 
     return res.json({
       success: true,
