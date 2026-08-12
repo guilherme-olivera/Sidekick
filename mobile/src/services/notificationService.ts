@@ -8,7 +8,7 @@ const STORAGE_KEY = '@sidekick:event_notifications';
 
 type StoredMap = Record<string, string[]>;
 
-async function requestPermissions() {
+export async function requestPermissions() {
   if (!Device.isDevice) return false;
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') {
@@ -102,4 +102,5 @@ export async function cancelEventNotifications(eventId: string) {
 export default {
   scheduleEventNotifications,
   cancelEventNotifications,
+  requestPermissions,
 };

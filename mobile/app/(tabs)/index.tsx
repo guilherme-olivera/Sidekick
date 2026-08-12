@@ -20,6 +20,7 @@ import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
 import { MoodWidget } from "@/components/MoodWidget";
 import { WorkoutCard } from "@/components/WorkoutCard";
+import notificationService from "@/src/services/notificationService";
 
 const Colors = {
   dark: "#0a0a0a",
@@ -191,6 +192,11 @@ export default function HomeScreen() {
     monday.setDate(today.getDate() + offset);
     monday.setHours(0, 0, 0, 0);
     loadWeeklyWorkouts(monday);
+
+    // Prompt for notification permissions on first load
+    notificationService.requestPermissions().catch((e) => 
+      console.log("[Notifications] permission request failed on mount:", e)
+    );
 
     // Silent Strava Sync on mount
     if (isStravaConnected) {
