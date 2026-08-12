@@ -328,7 +328,7 @@ Instruções cruciais:
         parts: [{ text: h.parts }]
       })),
       generationConfig: {
-        maxOutputTokens: 500, // increased to allow full answers
+        maxOutputTokens: 2048,
         temperature: 0.7,
       },
     });
