@@ -400,6 +400,14 @@ export default function CalendarScreen() {
                         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                           <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
                         </TouchableOpacity>
+                        {editingId && (
+                          <TouchableOpacity 
+                            style={[styles.cancelButtonInline, { backgroundColor: "#e03c3c", borderColor: "#e03c3c" }]} 
+                            onPress={handleDelete}
+                          >
+                            <Text style={[styles.cancelText, { color: "#ffffff" }]}>Excluir</Text>
+                          </TouchableOpacity>
+                        )}
                         <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
                           <Text style={styles.cancelText}>Cancelar</Text>
                         </TouchableOpacity>
