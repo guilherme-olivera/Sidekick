@@ -77,7 +77,7 @@ export default function LoginScreen({ navigation }: any) {
         Alert.alert("Erro", data.error || "Erro ao solicitar recuperação.");
       }
     } catch (err) {
-      console.error(err);
+      console.warn("Forgot password error:", err);
       Alert.alert("Erro", "Erro ao se conectar ao servidor.");
     } finally {
       setIsForgotPasswordLoading(false);
@@ -130,7 +130,7 @@ export default function LoginScreen({ navigation }: any) {
         Alert.alert("Erro", data.error || "Erro ao alterar a senha.");
       }
     } catch (err) {
-      console.error(err);
+      console.warn("Reset password error:", err);
       Alert.alert("Erro", "Erro ao se conectar ao servidor.");
     } finally {
       setIsForgotPasswordLoading(false);
@@ -164,7 +164,7 @@ export default function LoginScreen({ navigation }: any) {
       }
       // Navigation será feito automaticamente pelo App.tsx quando token existir
     } catch (err) {
-      console.error("Auth error:", err);
+      console.warn("Auth error:", err);
       const errMsg = err instanceof Error ? err.message : "Erro ao realizar autenticação. Por favor, tente novamente.";
       setError(errMsg);
     }
