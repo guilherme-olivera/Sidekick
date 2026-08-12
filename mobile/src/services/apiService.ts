@@ -104,11 +104,17 @@ export async function apiRegister(payload: RegisterPayload): Promise<AuthRespons
   }
 }
 
+let activeToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  activeToken = token;
+}
+
 /**
  * Valida o token
  */
 async function buildHeaders(additionalHeaders: Record<string, string> = {}) {
-  const token = await AsyncStorage.getItem('authToken');
+  const token = activeToken || await AsyncStorage.getItem('authToken');
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

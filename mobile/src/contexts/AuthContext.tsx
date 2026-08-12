@@ -58,6 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearAuthState = async () => {
+    try {
+      const { setAuthToken } = await import("../services/apiService");
+      setAuthToken(null);
+    } catch (e) {
+      console.warn("Failed to clear auth token cache:", e);
+    }
     await AsyncStorage.removeItem("authToken");
     await AsyncStorage.removeItem("user");
     setToken(null);
@@ -87,6 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const savedUser = await AsyncStorage.getItem("user");
 
       if (savedToken) {
+        try {
+          const { setAuthToken } = await import("../services/apiService");
+          setAuthToken(savedToken);
+        } catch (e) {
+          console.warn("Failed to restore auth token cache:", e);
+        }
         setToken(savedToken);
         if (savedUser) {
           setUser(JSON.parse(savedUser));
@@ -118,6 +130,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (response.token && response.user) {
+        try {
+          const { setAuthToken } = await import("../services/apiService");
+          setAuthToken(response.token);
+        } catch (e) {
+          console.warn("Failed to set auth token cache:", e);
+        }
         setToken(response.token);
         setUser(response.user);
         await AsyncStorage.setItem("authToken", response.token);
