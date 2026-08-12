@@ -60,6 +60,32 @@ export default function HomeScreen() {
   const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
 
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
+  const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>([]);
+
+  const handleNotificationClick = (notif: any) => {
+    if (notif.id === "workouts" || notif.id === "calendar") {
+      setNotificationsModalVisible(false);
+      router.push("/(tabs)/calendar");
+    } else {
+      Alert.alert(
+        notif.title,
+        notif.description,
+        [
+          { text: "Dispensar", style: "destructive", onPress: () => dismissNotification(notif.id) },
+          { text: "OK", style: "default" }
+        ]
+      );
+    }
+  };
+
+  const dismissNotification = (id: string) => {
+    setDismissedNotifIds(prev => [...prev, id]);
+  };
+
+  const clearAllNotifications = () => {
+    const currentIds = getNotifications().map(n => n.id);
+    setDismissedNotifIds(prev => [...prev, ...currentIds]);
+  };
 
   const getNotifications = () => {
     const list = [];
@@ -81,7 +107,7 @@ export default function HomeScreen() {
     list.push({
       id: "companion",
       icon: "🧠",
-      title: `${user?.profile?.trainingGoal || "Companheiro"}`,
+      title: `${user?.profile?.companionName || "Companheiro"}`,
       description: companionMsg,
       time: "Agora",
     });
@@ -118,7 +144,7 @@ export default function HomeScreen() {
       });
     }
 
-    return list;
+    return list.filter(n => !dismissedNotifIds.includes(n.id));
   };
 
   const latestWorkout = workouts[0];
@@ -662,9 +688,16 @@ export default function HomeScreen() {
           <View style={styles.notificationsModalContent}>
             <View style={styles.notificationsModalHeader}>
               <Text style={styles.notificationsModalTitle}>🔔 Notificações</Text>
-              <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
-                <Text style={styles.notificationsModalClose}>✕</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {getNotifications().length > 0 && (
+                  <TouchableOpacity onPress={clearAllNotifications}>
+                    <Text style={styles.notificationsModalClearAll}>Limpar tudo</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setNotificationsModalVisible(false)}>
+                  <Text style={styles.notificationsModalClose}>✕</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
@@ -672,14 +705,25 @@ export default function HomeScreen() {
                 <Text style={styles.notificationsEmpty}>Nenhuma notificação por aqui.</Text>
               ) : (
                 getNotifications().map((notif) => (
-                  <View key={notif.id} style={styles.notificationCard}>
+                  <TouchableOpacity 
+                    key={notif.id} 
+                    style={styles.notificationCard}
+                    onPress={() => handleNotificationClick(notif)}
+                    activeOpacity={0.7}
+                  >
                     <Text style={styles.notificationCardIcon}>{notif.icon}</Text>
                     <View style={styles.notificationCardBody}>
                       <Text style={styles.notificationCardTitle}>{notif.title}</Text>
-                      <Text style={styles.notificationCardDesc}>{notif.description}</Text>
+                      <Text style={styles.notificationCardDesc} numberOfLines={2}>{notif.description}</Text>
                       <Text style={styles.notificationCardTime}>{notif.time}</Text>
                     </View>
-                  </View>
+                    <TouchableOpacity 
+                      style={styles.notificationCardDismissBtn}
+                      onPress={() => dismissNotification(notif.id)}
+                    >
+                      <Text style={styles.notificationCardDismissText}>✕</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
                 ))
               )}
             </ScrollView>
@@ -1152,6 +1196,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     paddingHorizontal: 8,
+  },
+  notificationsModalClearAll: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: "600",
+    marginRight: 16,
+  },
+  notificationCardDismissBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
+  },
+  notificationCardDismissText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    opacity: 0.5,
   },
   notificationsList: {
     flex: 1,
