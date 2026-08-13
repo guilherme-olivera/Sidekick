@@ -181,28 +181,35 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
     const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
     const activities = await fetchStravaActivities(accessToken, thirtyDaysAgo);
 
+    // Busca todos os treinos que já existem para este usuário e possuem stravaId na lista
+    const stravaIds = activities.map((a: any) => a.id.toString());
+    const existingWorkouts = await prisma.workout.findMany({
+      where: {
+        userId,
+        stravaId: { in: stravaIds },
+      },
+      select: { stravaId: true },
+    });
+
+    const existingStravaIds = new Set(existingWorkouts.map((w: any) => w.stravaId));
+
     // Converte e salva atividades
     const workouts = [];
     for (const activity of activities) {
       const workoutData = convertStravaActivityToWorkout(activity);
 
-      // Verifica se já existe
-      const existingWorkout = await prisma.workout.findFirst({
-        where: {
+      // Se já foi importado, pula para evitar duplicados e queries extras
+      if (existingStravaIds.has(workoutData.stravaId)) {
+        continue;
+      }
+
+      const workout = await prisma.workout.create({
+        data: {
+          ...workoutData,
           userId,
-          stravaId: workoutData.stravaId,
         },
       });
-
-      if (!existingWorkout) {
-        const workout = await prisma.workout.create({
-          data: {
-            ...workoutData,
-            userId,
-          },
-        });
-        workouts.push(workout);
-      }
+      workouts.push(workout);
     }
 
     res.json({

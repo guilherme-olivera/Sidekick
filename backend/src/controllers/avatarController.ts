@@ -22,7 +22,7 @@ export async function handleUploadAvatar(req: any, res: Response) {
 
     // Se usuário já tem avatar, deletar o antigo
     if (user.avatar) {
-      const oldPath = path.join(__dirname, "../../public", user.avatar);
+      const oldPath = path.join(process.cwd(), user.avatar);
       if (fs.existsSync(oldPath)) {
         fs.unlinkSync(oldPath);
       }
@@ -72,7 +72,7 @@ export async function handleDeleteAvatar(req: any, res: Response) {
     }
 
     // Deletar arquivo
-    const avatarPath = path.join(__dirname, "../../public", user.avatar);
+    const avatarPath = path.join(process.cwd(), user.avatar);
     if (fs.existsSync(avatarPath)) {
       fs.unlinkSync(avatarPath);
     }

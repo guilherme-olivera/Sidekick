@@ -120,8 +120,10 @@ export async function handleForgotPassword(req: Request, res: Response) {
       return res.status(400).json({ error: "E-mail é obrigatório" });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: cleanEmail },
     });
 
     if (!user) {
@@ -132,10 +134,10 @@ export async function handleForgotPassword(req: Request, res: Response) {
     }
 
     const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log(`[RECOVERY] Código gerado para ${email}: ${mockCode}`);
+    console.log(`[RECOVERY] Código gerado para ${cleanEmail}: ${mockCode}`);
 
     const { sendPasswordRecoveryEmail } = require("../services/emailService");
-    sendPasswordRecoveryEmail(email, mockCode).catch((err: any) => 
+    sendPasswordRecoveryEmail(cleanEmail, mockCode).catch((err: any) => 
       console.error("Failed to send recovery email:", err)
     );
 
@@ -162,6 +164,8 @@ export async function handleResetPassword(req: Request, res: Response) {
       return res.status(400).json({ error: "E-mail, código e nova senha são obrigatórios" });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
@@ -170,7 +174,7 @@ export async function handleResetPassword(req: Request, res: Response) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: cleanEmail },
     });
 
     if (!user) {
@@ -181,7 +185,7 @@ export async function handleResetPassword(req: Request, res: Response) {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({
-      where: { email },
+      where: { email: cleanEmail },
       data: { password: hashedPassword },
     });
 
@@ -207,7 +211,7 @@ export async function handleResetPassword(req: Request, res: Response) {
     `;
     
     sendMail(
-      email,
+      cleanEmail,
       "Sua senha foi alterada com sucesso! 🔑",
       emailHtml,
       "Sua senha do Sidekick foi alterada com sucesso. Se não foi você, entre em contato com o suporte."

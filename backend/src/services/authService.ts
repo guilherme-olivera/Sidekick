@@ -17,8 +17,10 @@ export async function registerUser(
       return { success: false, error: "Email, senha e nome são obrigatórios" };
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(cleanEmail)) {
       return { success: false, error: "Formato de e-mail inválido" };
     }
 
@@ -31,7 +33,7 @@ export async function registerUser(
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: cleanEmail },
     });
 
     if (existingUser) {
@@ -42,17 +44,17 @@ export async function registerUser(
 
     const newUser = await prisma.user.create({
       data: {
-        email,
+        email: cleanEmail,
         password: hashedPassword,
         name,
       },
     });
 
-    console.log(`✅ Usuário registrado: ${email}`);
+    console.log(`✅ Usuário registrado: ${cleanEmail}`);
     
     // Import dynamically to avoid circular dependencies
     const { sendWelcomeEmail } = require("./emailService");
-    sendWelcomeEmail(email, name).catch((err: any) => 
+    sendWelcomeEmail(cleanEmail, name).catch((err: any) => 
       console.error("Failed to send welcome email:", err)
     );
 
@@ -82,8 +84,10 @@ export async function loginUser(
       return { success: false, error: "Email e senha são obrigatórios" };
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: cleanEmail },
     });
 
     if (!user || !user.password) {

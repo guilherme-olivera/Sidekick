@@ -11,15 +11,30 @@ let transporter: nodemailer.Transporter | null = null;
 
 // Initialize transporter if configuration is present
 if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+  console.log(`[EMAIL] Inicializando SMTP Transporter para ${SMTP_HOST}:${SMTP_PORT} (${SMTP_USER})`);
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
-    secure: SMTP_PORT === 465, // true for 465, false for other ports
+    secure: SMTP_PORT === 465,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
+
+  // Verify connection config on server startup
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error("[EMAIL] ❌ SMTP Connection verification failed:", error);
+    } else {
+      console.log("[EMAIL] ✅ SMTP Server is ready to send messages!");
+    }
+  });
+} else {
+  console.log("[EMAIL] ⚠️ SMTP não configurado. O servidor usará e-mails simulados nos logs.");
 }
 
 /**
