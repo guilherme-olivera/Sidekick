@@ -182,11 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      await AsyncStorage.removeItem("authToken");
-      await AsyncStorage.removeItem("user");
-
-      setToken(null);
-      setUser(null);
+      await clearAuthState();
       setError(null);
     } finally {
       setIsLoading(false);

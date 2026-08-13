@@ -63,7 +63,7 @@ export function getStravaAuthUrl(userId: string): string {
   const state = encodeURIComponent(createStravaState(userId));
   const authUrl = `${STRAVA_OAUTH_URL}?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&scope=${encodeURIComponent(
     STRAVA_SCOPE
-  )}&approval_prompt=auto&state=${state}`;
+  )}&approval_prompt=force&state=${state}`;
 
   console.log('[StravaService] getStravaAuthUrl', {
     clientId,

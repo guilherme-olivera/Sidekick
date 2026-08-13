@@ -8,8 +8,8 @@ async function run() {
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-    
-    const companionName = "Peidinho";
+
+    const companionName = "Sidekick";
     const aiGender = "male";
     const aiPersonality = "sarcastic";
     const aiTone = "sarcastic";
@@ -46,10 +46,10 @@ Instruções cruciais:
 
     console.log("Sending: O que é pace?");
     const result = await chat.sendMessage("O que é pace?");
-    
+
     console.log("\n=== RAW RESPONSE ===");
     console.log(JSON.stringify(result, null, 2));
-    
+
     console.log("\n=== TEXT ===");
     console.log(result.response.text());
   } catch (error) {

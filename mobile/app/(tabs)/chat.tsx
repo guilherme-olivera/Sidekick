@@ -202,27 +202,28 @@ export default function ChatScreen() {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessageItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      {isTyping && (
-        <View style={styles.typingContainer}>
-          <Text style={styles.typingText}>{companionName} está escrevendo...</Text>
-          <ActivityIndicator size="small" color="#ff6b6b" style={{ marginLeft: 8 }} />
-        </View>
-      )}
-
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessageItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        />
+
+        {isTyping && (
+          <View style={styles.typingContainer}>
+            <Text style={styles.typingText}>{companionName} está escrevendo...</Text>
+            <ActivityIndicator size="small" color="#ff6b6b" style={{ marginLeft: 8 }} />
+          </View>
+        )}
+
         {messages.length <= 2 && suggestions.length > 0 && (
           <View style={styles.suggestionsContainer}>
             {suggestions.map((q, idx) => (

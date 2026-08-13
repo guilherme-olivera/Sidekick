@@ -142,7 +142,7 @@ export async function handleForgotPassword(req: Request, res: Response) {
     return res.json({
       success: true,
       message: "Código de recuperação enviado para o e-mail.",
-      mockCode: process.env.NODE_ENV === "development" ? mockCode : undefined,
+      mockCode: (process.env.NODE_ENV === "development" && !process.env.SMTP_USER) ? mockCode : undefined,
     });
   } catch (error) {
     res.status(500).json({

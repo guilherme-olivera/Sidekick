@@ -72,6 +72,22 @@ export const stravaCallbackHandler = async (req: any, res: Response) => {
     console.log('[StravaController] exchanging code for tokens', { userId });
     const tokenData = await exchangeCodeForTokens(code);
 
+    // Clear old Strava workouts if athlete changes to prevent mixed data
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { stravaId: true }
+    });
+
+    if (existingUser && existingUser.stravaId && existingUser.stravaId !== tokenData.athlete.id.toString()) {
+      await prisma.workout.deleteMany({
+        where: {
+          userId,
+          stravaId: { not: null }
+        }
+      });
+      console.log('[StravaController] Cleared old Strava workouts because athlete changed');
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
@@ -256,6 +272,14 @@ export const disconnectStravaHandler = async (req: any, res: Response) => {
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
     }
+
+    // Clear synced Strava workouts to prevent mixed data on disconnect
+    await prisma.workout.deleteMany({
+      where: {
+        userId,
+        stravaId: { not: null },
+      },
+    });
 
     await prisma.user.update({
       where: { id: userId },
