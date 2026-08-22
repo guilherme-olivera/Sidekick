@@ -354,7 +354,7 @@ export default function OnboardingScreen() {
 
   // Helper strings for summary
   const genderMap: Record<string, string> = { neutral: "Neutro 🤖", male: "Homem 👨", female: "Mulher 👩" };
-  const userGenderMap: Record<string, string> = { male: "Masculino ♂️", female: "Feminino ♀️" };
+  const userGenderMap: Record<string, string> = { male: "Masculino ♂️", female: "Feminino ♀️", other: "Não informado 🤐" };
   const persMap: Record<string, string> = { calm: "Calmo 😌", strict: "Rígido 📏", tough: "Bravo ⚡" };
   const toneMap: Record<string, string> = {
     cold: "Frio 🧊",
@@ -571,19 +571,21 @@ export default function OnboardingScreen() {
                   {[
                     { id: "male", label: "Masculino ♂️" },
                     { id: "female", label: "Feminino ♀️" },
+                    { id: "other", label: "Não informar 🤐" },
                   ].map(item => (
                     <TouchableOpacity
                       key={item.id}
                       style={[
                         styles.gridCard,
                         gender === item.id && styles.gridCardActive,
-                        { width: "48%" }
+                        { width: "31%" }
                       ]}
                       onPress={() => setGender(item.id)}
                     >
                       <Text style={[
                         styles.gridCardText,
-                        gender === item.id && styles.gridCardTextActive
+                        gender === item.id && styles.gridCardTextActive,
+                        { fontSize: 12 }
                       ]}>
                         {item.label}
                       </Text>
