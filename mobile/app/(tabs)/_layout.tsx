@@ -45,11 +45,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="achievements"
         options={{
-          title: "Chat",
-          tabBarLabel: "Chat",
-          tabBarIcon: ({ color }) => <TabBarIcon name="comments" color={color} />,
+          title: "Conquistas",
+          tabBarLabel: "Conquistas",
+          tabBarIcon: ({ color }) => <TabBarIcon name="trophy" color={color} />,
         }}
       />
       <Tabs.Screen

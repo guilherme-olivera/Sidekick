@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -13,11 +13,14 @@ import {
   Platform,
   TouchableWithoutFeedback,
   TextInput,
+  FlatList,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
+import { apiService } from "@/src/services/apiService";
 import { MoodWidget } from "@/components/MoodWidget";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import notificationService from "@/src/services/notificationService";
@@ -72,6 +75,151 @@ export default function HomeScreen() {
   const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sharingWorkout, setSharingWorkout] = useState<any>(null);
+
+  // Companion Chat Overlay States
+  const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInputText, setChatInputText] = useState("");
+  const [chatIsTyping, setChatIsTyping] = useState(false);
+  const [chatSuggestions, setChatSuggestions] = useState<string[]>([]);
+  const chatFlatListRef = useRef<FlatList>(null);
+
+  const CHAT_STORAGE_KEY = "@sidekick:chat_history";
+
+  useEffect(() => {
+    if (chatModalVisible) {
+      loadChatHistory();
+    }
+  }, [chatModalVisible]);
+
+  useEffect(() => {
+    if (chatMessages.length <= 1) {
+      const QUICK_QUESTIONS = [
+        "O que é pace?",
+        "Qual o recorde da maratona?",
+        "Como evitar dores no joelho?",
+        "O que comer antes do treino?",
+        "Dicas para começar a correr",
+        "Como melhorar meu fôlego?",
+        "O que é treino de cadência?",
+        "Qual a melhor frequência cardíaca?",
+      ];
+      const shuffled = [...QUICK_QUESTIONS].sort(() => 0.5 - Math.random());
+      setChatSuggestions(shuffled.slice(0, 3));
+    } else {
+      setChatSuggestions([]);
+    }
+  }, [chatMessages]);
+
+  const loadChatHistory = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(CHAT_STORAGE_KEY);
+      if (raw) {
+        setChatMessages(JSON.parse(raw));
+      } else {
+        const cName = user?.profile?.companionName || "Rocky";
+        setChatMessages([
+          {
+            id: "welcome",
+            sender: "bot",
+            text: `Olá! Eu sou o seu companheiro ${cName}. Como estão os seus treinos hoje? Estou pronto para te ajudar a manter a consistência! 🏃‍♂️🚲`,
+            timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      }
+    } catch (e) {
+      console.warn("Failed to load chat history", e);
+    }
+  };
+
+  const saveChatHistory = async (history: any[]) => {
+    try {
+      await AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn("Failed to save chat history", e);
+    }
+  };
+
+  const handleClearChatHistory = async () => {
+    try {
+      await AsyncStorage.removeItem(CHAT_STORAGE_KEY);
+      const cName = user?.profile?.companionName || "Rocky";
+      setChatMessages([
+        {
+          id: "welcome",
+          sender: "bot",
+          text: `Conversa reiniciada. Eu sou o ${cName}! Como posso te ajudar agora?`,
+          timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    } catch (e) {
+      console.warn("Failed to clear chat history", e);
+    }
+  };
+
+  const handleSendChatMessage = async (customText?: string) => {
+    const textToSend = customText || chatInputText;
+    if (!textToSend.trim()) return;
+
+    if (!customText) {
+      setChatInputText("");
+    }
+
+    const userText = textToSend.trim();
+    const timestamp = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const userMsg = {
+      id: `user_${Date.now()}`,
+      sender: "user" as const,
+      text: userText,
+      timestamp,
+    };
+
+    const newHistory = [...chatMessages, userMsg];
+    setChatMessages(newHistory);
+    saveChatHistory(newHistory);
+    setChatIsTyping(true);
+
+    try {
+      const apiHistory = chatMessages.slice(-6).map((m) => ({
+        role: (m.sender === "user" ? "user" : "model") as "user" | "model",
+        parts: m.text,
+      }));
+
+      const res = await apiService.post("/chat", {
+        message: userText,
+        history: apiHistory,
+      });
+
+      if (res && res.success && res.response) {
+        const botMsg = {
+          id: `bot_${Date.now()}`,
+          sender: "bot" as const,
+          text: res.response,
+          timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        };
+        const updatedHistory = [...newHistory, botMsg];
+        setChatMessages(updatedHistory);
+        saveChatHistory(updatedHistory);
+      } else {
+        throw new Error("Chat api failed");
+      }
+    } catch (error) {
+      console.error("Chat response error:", error);
+      const errorMsg = {
+        id: `err_${Date.now()}`,
+        sender: "bot" as const,
+        text: "Desculpe, tive um probleminha para me conectar. Pode tentar me mandar a mensagem novamente? 🥹",
+        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setChatIsTyping(false);
+      // Scroll to bottom
+      setTimeout(() => {
+        chatFlatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  };
 
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
   const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>([]);
@@ -967,12 +1115,132 @@ export default function HomeScreen() {
       {/* Companion Chat Floating Button */}
       <TouchableOpacity
         style={styles.chatFloatingButton}
-        onPress={() => router.push("/chat")}
+        onPress={() => setChatModalVisible(true)}
       >
-        <Text style={styles.chatFloatingButtonText}>
-          💬 {user?.profile?.companionAvatar || "🦖"}
+        <Text style={styles.chatCompanionAvatarEmoji}>
+          {user?.profile?.companionAvatar || "🦖"}
         </Text>
+        <View style={styles.chatFloatingBadge}>
+          <Text style={styles.chatFloatingBadgeText}>💬</Text>
+        </View>
       </TouchableOpacity>
+
+      {/* Modal: Companion Chat Overlay */}
+      <Modal
+        visible={chatModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setChatModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <View style={styles.chatModalOverlay}>
+            <View style={styles.chatModalContent}>
+              {/* Chat Header */}
+              <View style={styles.chatModalHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={styles.chatHeaderAvatarBg}>
+                    <Text style={{ fontSize: 24 }}>
+                      {user?.profile?.companionAvatar || "🦖"}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.chatHeaderTitle}>
+                      {user?.profile?.companionName || "Rocky"}
+                    </Text>
+                    <Text style={styles.chatHeaderSubtitle}>Parceiro de Treinos IA</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 15 }}>
+                  <TouchableOpacity onPress={handleClearChatHistory}>
+                    <Text style={styles.chatClearHistoryText}>Limpar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setChatModalVisible(false)}>
+                    <Text style={styles.chatCloseButtonText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Message List */}
+              <FlatList
+                ref={chatFlatListRef}
+                data={chatMessages}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 10 }}
+                renderItem={({ item }) => {
+                  const isUser = item.sender === "user";
+                  return (
+                    <View style={[styles.chatMsgWrapper, isUser ? styles.chatMsgUserWrapper : styles.chatMsgBotWrapper]}>
+                      {!isUser && (
+                        <View style={styles.chatMsgAvatarBg}>
+                          <Text style={{ fontSize: 16 }}>
+                            {user?.profile?.companionAvatar || "🦖"}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={[styles.chatMsgBubble, isUser ? styles.chatMsgUserBubble : styles.chatMsgBotBubble]}>
+                        <Text style={styles.chatMsgText}>{item.text}</Text>
+                        <Text style={styles.chatMsgTime}>{item.timestamp}</Text>
+                      </View>
+                    </View>
+                  );
+                }}
+                ListFooterComponent={() =>
+                  chatIsTyping ? (
+                    <View style={styles.chatMsgBotWrapper}>
+                      <View style={styles.chatMsgAvatarBg}>
+                        <Text style={{ fontSize: 16 }}>
+                          {user?.profile?.companionAvatar || "🦖"}
+                        </Text>
+                      </View>
+                      <View style={[styles.chatMsgBubble, styles.chatMsgBotBubble, { paddingVertical: 8, paddingHorizontal: 12 }]}>
+                        <ActivityIndicator size="small" color="#ff6b6b" />
+                      </View>
+                    </View>
+                  ) : null
+                }
+              />
+
+              {/* Suggestions */}
+              {chatSuggestions.length > 0 && (
+                <View style={styles.chatSuggestionsWrapper}>
+                  {chatSuggestions.map((sug, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.chatSuggestionBubble}
+                      onPress={() => handleSendChatMessage(sug)}
+                    >
+                      <Text style={styles.chatSuggestionText}>{sug}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Input Row */}
+              <View style={styles.chatInputRow}>
+                <TextInput
+                  style={styles.chatTextInput}
+                  placeholder="Pergunte sobre treinos, pace, metas..."
+                  placeholderTextColor="#666"
+                  value={chatInputText}
+                  onChangeText={setChatInputText}
+                  multiline={false}
+                  onSubmitEditing={() => handleSendChatMessage()}
+                />
+                <TouchableOpacity
+                  style={styles.chatSendButton}
+                  onPress={() => handleSendChatMessage()}
+                >
+                  <Text style={styles.chatSendButtonText}>➔</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1906,9 +2174,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 20,
     right: 20,
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
     backgroundColor: Colors.primary,
     borderWidth: 2,
     borderColor: Colors.darkBorder,
@@ -1918,10 +2186,177 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    elevation: 6,
+    elevation: 8,
     zIndex: 10,
   },
-  chatFloatingButtonText: {
-    fontSize: 26,
+  chatCompanionAvatarEmoji: {
+    fontSize: 32,
+    marginTop: -2,
+  },
+  chatFloatingBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#111",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chatFloatingBadgeText: {
+    fontSize: 12,
+  },
+  chatModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "flex-end",
+  },
+  chatModalContent: {
+    height: "85%",
+    backgroundColor: Colors.darkCard,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
+  },
+  chatModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.darkBorder,
+    paddingBottom: 12,
+    marginBottom: 10,
+  },
+  chatHeaderAvatarBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chatHeaderTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  chatHeaderSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+  },
+  chatClearHistoryText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  chatCloseButtonText: {
+    color: Colors.primary,
+    fontSize: 22,
+    fontWeight: "600",
+  },
+  chatMsgWrapper: {
+    flexDirection: "row",
+    marginVertical: 6,
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  chatMsgUserWrapper: {
+    justifyContent: "flex-end",
+  },
+  chatMsgBotWrapper: {
+    justifyContent: "flex-start",
+  },
+  chatMsgAvatarBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chatMsgBubble: {
+    maxWidth: "75%",
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  chatMsgUserBubble: {
+    backgroundColor: Colors.primary,
+    borderBottomRightRadius: 4,
+  },
+  chatMsgBotBubble: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderBottomLeftRadius: 4,
+  },
+  chatMsgText: {
+    color: Colors.text,
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  chatMsgTime: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    alignSelf: "flex-end",
+    marginTop: 4,
+  },
+  chatSuggestionsWrapper: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginVertical: 8,
+  },
+  chatSuggestionBubble: {
+    backgroundColor: Colors.dark,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  chatSuggestionText: {
+    color: Colors.primary,
+    fontSize: 12,
+  },
+  chatInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+  },
+  chatTextInput: {
+    flex: 1,
+    height: 48,
+    backgroundColor: Colors.dark,
+    color: Colors.text,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    fontSize: 14,
+  },
+  chatSendButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chatSendButtonText: {
+    color: Colors.dark,
+    fontSize: 18,
+    fontWeight: "700",
   },
 });
