@@ -47,11 +47,11 @@ export async function handleDiagnosticsTest(req: any, res: Response) {
         <h2 style="color: #ff6b6b; text-align: center;">Teste de Diagnóstico Sidekick 👟</h2>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
         <p>Olá, <strong>${user.name || "Atleta"}</strong>!</p>
-        <p>Este é um e-mail de teste de diagnóstico enviado para confirmar que o seu serviço SMTP está configurado e funcionando corretamente a partir do servidor.</p>
+        <p>Este é um e-mail de teste de diagnóstico enviado para confirmar que o seu serviço de e-mail está configurado e funcionando corretamente a partir do servidor.</p>
         <div style="background-color: #f7f7f9; padding: 15px; border-radius: 6px; border: 1px solid #e1e4e8; margin: 20px 0;">
-          <span style="font-size: 14px; font-family: monospace; color: #555;">Status: Conexão SMTP Estabelecida!</span>
+          <span style="font-size: 14px; font-family: monospace; color: #555;">Status: Conexão E-mail (SMTP/Resend) Estabelecida!</span>
         </div>
-        <p style="color: #666; font-size: 13px;">Se você recebeu este e-mail, as configurações de SMTP na Render estão 100% corretas!</p>
+        <p style="color: #666; font-size: 13px;">Se você recebeu este e-mail, as configurações de envio de e-mails estão 100% corretas!</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;" />
         <p style="color: #999; font-size: 11px; text-align: center;">ID do usuário solicitante: ${req.userId}</p>
       </div>
@@ -69,7 +69,7 @@ export async function handleDiagnosticsTest(req: any, res: Response) {
       results.email.success = true;
     } else {
       const smtpError = getTransporterError();
-      throw new Error(smtpError || "Nodemailer falhou ao enviar sem erro específico gravado.");
+      throw new Error(smtpError || "O envio de e-mail falhou. Verifique os logs de erro ou API Key do Resend no servidor.");
     }
   } catch (err: any) {
     results.email.error = err instanceof Error ? err.message : String(err);
