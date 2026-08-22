@@ -20,6 +20,7 @@ interface UserProfile {
   companionName?: string;
   companionAvatar?: string;
   phoneNumber?: string;
+  gender?: string;
 }
 
 interface User {

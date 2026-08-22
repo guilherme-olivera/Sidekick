@@ -52,6 +52,7 @@ export default function OnboardingScreen() {
 
   // User States
   const [birthday, setBirthday] = useState("");
+  const [gender, setGender] = useState("male");
   const [experienceLevel, setExperienceLevel] = useState("intermediate");
   const [weeklyFrequency, setWeeklyFrequency] = useState(3);
   const [selectedInjuries, setSelectedInjuries] = useState<string[]>(["none"]);
@@ -76,6 +77,7 @@ export default function OnboardingScreen() {
       if (p.aiPersonality) setAiPersonality(p.aiPersonality);
       if (p.aiTone) setAiTone(p.aiTone);
       if (p.phoneNumber) setPhoneNumber(p.phoneNumber);
+      if (p.gender) setGender(p.gender);
       if (p.birthday) setBirthday(p.birthday);
       if (p.experienceLevel) setExperienceLevel(p.experienceLevel);
       if (p.weeklyFrequency) setWeeklyFrequency(p.weeklyFrequency);
@@ -240,6 +242,7 @@ export default function OnboardingScreen() {
         injuryNote: finalInjury,
         isConfigured: true,
         phoneNumber: phoneNumber.trim(),
+        gender,
       };
 
       const response = await apiService.put("/user/profile", payload);
@@ -351,6 +354,7 @@ export default function OnboardingScreen() {
 
   // Helper strings for summary
   const genderMap: Record<string, string> = { neutral: "Neutro 🤖", male: "Homem 👨", female: "Mulher 👩" };
+  const userGenderMap: Record<string, string> = { male: "Masculino ♂️", female: "Feminino ♀️" };
   const persMap: Record<string, string> = { calm: "Calmo 😌", strict: "Rígido 📏", tough: "Bravo ⚡" };
   const toneMap: Record<string, string> = {
     cold: "Frio 🧊",
@@ -558,6 +562,34 @@ export default function OnboardingScreen() {
                     setPhoneNumber(formatted);
                   }}
                 />
+              </View>
+
+              {/* Biological Sex (Gender) */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Sexo Biológico</Text>
+                <View style={styles.gridRow}>
+                  {[
+                    { id: "male", label: "Masculino ♂️" },
+                    { id: "female", label: "Feminino ♀️" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.gridCard,
+                        gender === item.id && styles.gridCardActive,
+                        { width: "48%" }
+                      ]}
+                      onPress={() => setGender(item.id)}
+                    >
+                      <Text style={[
+                        styles.gridCardText,
+                        gender === item.id && styles.gridCardTextActive
+                      ]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               {/* Experience Level */}
@@ -823,7 +855,7 @@ export default function OnboardingScreen() {
                 </Text>
 
                 <Text style={styles.summaryText}>
-                  Ele sabe que você tem nível {" "}
+                  Ele sabe que seu sexo biológico é <Text style={styles.summaryHighlight}>{userGenderMap[gender] || gender}</Text>, seu nível é {" "}
                   <Text style={styles.summaryHighlight}>{expMap[experienceLevel]}</Text>, planeja treinar {" "}
                   <Text style={styles.summaryHighlight}>{weeklyFrequency} vezes por semana</Text> e está monitorando o status de:{" "}
                   <Text style={styles.summaryHighlight}>{getInjuriesSummaryString()}</Text>.

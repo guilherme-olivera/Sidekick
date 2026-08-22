@@ -93,6 +93,7 @@ export async function handleGetMe(req: any, res: Response) {
             companionName: true,
             companionAvatar: true,
             phoneNumber: true,
+            gender: true,
           },
         },
       },

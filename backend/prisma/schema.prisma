@@ -124,6 +124,7 @@ model UserProfile {
   experienceLevel String?   // "beginner" | "intermediate" | "advanced"
   weeklyFrequency Int?      // 2 | 3 | 4 | 5
   phoneNumber     String?   // Telefone do usuário
+  gender          String?   // Gênero biológico ("male" | "female")
   
   isConfigured    Boolean   @default(false)
   

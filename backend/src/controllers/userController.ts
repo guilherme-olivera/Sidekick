@@ -40,6 +40,7 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
             companionName: true,
             companionAvatar: true,
             phoneNumber: true,
+            gender: true,
           },
         },
       },
@@ -80,6 +81,7 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
       companionName,
       companionAvatar,
       phoneNumber,
+      gender,
     } = req.body;
 
     if (!userId) {
@@ -106,10 +108,10 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         goalTargetTime,
         experienceLevel,
         weeklyFrequency: freq,
-        isConfigured: isConfigured ?? false,
         companionName: companionName !== undefined ? companionName : null,
         companionAvatar: companionAvatar !== undefined ? companionAvatar : null,
         phoneNumber: phoneNumber !== undefined ? phoneNumber : null,
+        gender: gender !== undefined ? gender : null,
       },
       update: {
         trainingGoal,
@@ -130,6 +132,7 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         companionName: companionName !== undefined ? companionName : undefined,
         companionAvatar: companionAvatar !== undefined ? companionAvatar : undefined,
         phoneNumber: phoneNumber !== undefined ? phoneNumber : undefined,
+        gender: gender !== undefined ? gender : undefined,
       },
     });
 
