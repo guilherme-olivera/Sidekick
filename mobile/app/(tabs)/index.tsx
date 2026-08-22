@@ -769,7 +769,7 @@ export default function HomeScreen() {
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>⚡</Text>
+                        <Text style={styles.modalMetricIcon}>🏃</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
                             ? formatPace(selectedWorkoutDetail.pace)
@@ -791,6 +791,15 @@ export default function HomeScreen() {
                         <Text style={styles.modalMetricSubLabel}>BPM Médio</Text>
                       </View>
                     )}
+                    {selectedWorkoutDetail.averageWatts ? (
+                      <View style={styles.modalMetricCard}>
+                        <Text style={styles.modalMetricIcon}>⚡</Text>
+                        <Text style={styles.modalMetricValue}>
+                          {selectedWorkoutDetail.averageWatts} W
+                        </Text>
+                        <Text style={styles.modalMetricSubLabel}>Potência</Text>
+                      </View>
+                    ) : null}
                     {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
                       <>
                         <View style={styles.modalMetricCard}>

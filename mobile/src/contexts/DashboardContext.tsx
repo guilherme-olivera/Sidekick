@@ -23,6 +23,7 @@ interface Workout {
   userNotes?: string;
   averageCadence?: number;
   elevationGain?: number;
+  averageWatts?: number;
   movingTime?: number;
   elapsedTime?: number;
   temperature?: number;

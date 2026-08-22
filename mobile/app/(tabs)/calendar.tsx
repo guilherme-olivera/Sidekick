@@ -515,7 +515,7 @@ export default function CalendarScreen() {
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>⚡</Text>
+                        <Text style={styles.workoutModalMetricIcon}>🏃</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
                             ? formatPace(selectedWorkoutDetail.pace)
@@ -537,6 +537,15 @@ export default function CalendarScreen() {
                         <Text style={styles.workoutModalMetricSubLabel}>BPM Médio</Text>
                       </View>
                     )}
+                    {selectedWorkoutDetail.averageWatts ? (
+                      <View style={styles.workoutModalMetricCard}>
+                        <Text style={styles.workoutModalMetricIcon}>⚡</Text>
+                        <Text style={styles.workoutModalMetricValue}>
+                          {selectedWorkoutDetail.averageWatts} W
+                        </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>Potência</Text>
+                      </View>
+                    ) : null}
                     {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
                       <>
                         <View style={styles.workoutModalMetricCard}>

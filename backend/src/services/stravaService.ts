@@ -35,6 +35,7 @@ interface StravaActivity {
   max_heartrate?: number;
   workout_type?: number;
   average_cadence?: number;
+  average_watts?: number;
   total_elevation_gain?: number;
   moving_time?: number;
   average_temp?: number;
@@ -199,6 +200,7 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     intensity,
     averageCadence: stravaActivity.average_cadence ? Math.round(stravaActivity.average_cadence) : undefined,
     elevationGain: stravaActivity.total_elevation_gain ? Math.round(stravaActivity.total_elevation_gain) : undefined,
+    averageWatts: stravaActivity.average_watts ? Math.round(stravaActivity.average_watts) : undefined,
     movingTime: stravaActivity.moving_time || undefined,
     elapsedTime: stravaActivity.elapsed_time || undefined,
     temperature: stravaActivity.average_temp || undefined,

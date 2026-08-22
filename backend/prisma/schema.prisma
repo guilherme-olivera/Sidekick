@@ -57,6 +57,7 @@ model Workout {
   maxHeartRate  Int?      // BPM máximo
   averageCadence Float?   // Cadência média
   elevationGain Float?    // Ganho de elevação
+  averageWatts  Float?    // Potência média (watts)
   movingTime    Int?      // Tempo em movimento (segundos)
   elapsedTime   Int?      // Tempo total decorrido (segundos)
   temperature   Float?    // Temperatura média
