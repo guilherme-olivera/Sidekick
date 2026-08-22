@@ -12,6 +12,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -41,9 +42,9 @@ export default function OnboardingScreen() {
   const [termsAccepted, setTermsAccepted] = useState(isEditMode);
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // IA Companion States
   const [companionName, setCompanionName] = useState("Sidekick");
-  const [companionAvatar, setCompanionAvatar] = useState("🤖");
+  const [companionAvatar, setCompanionAvatar] = useState("🦖");
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(true);
   const [aiGender, setAiGender] = useState("neutral");
   const [aiPersonality, setAiPersonality] = useState("calm");
   const [aiTone, setAiTone] = useState("motivational");
@@ -295,10 +296,12 @@ export default function OnboardingScreen() {
       }
     }
     setStep(s => s + 1);
+    setIsCommentModalVisible(true);
   };
 
   const prevStep = () => {
     setStep(s => s - 1);
+    setIsCommentModalVisible(true);
   };
 
   const getCompanionComment = () => {
@@ -852,14 +855,35 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* Dynamic Companion Comment Card */}
-          <View style={styles.companionCommentCard}>
-            <Text style={styles.companionCommentAvatar}>{companionAvatar}</Text>
-            <View style={styles.companionCommentTextContainer}>
-              <Text style={styles.companionCommentHeader}>{companionName}</Text>
-              <Text style={styles.companionCommentText}>{getCompanionComment()}</Text>
+          {/* Mascot Comment Popover Modal */}
+          <Modal
+            visible={isCommentModalVisible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={() => setIsCommentModalVisible(false)}
+          >
+            <View style={styles.mascotModalOverlay}>
+              <View style={styles.mascotModalContent}>
+                <View style={styles.mascotAvatarWrapper}>
+                  <Text style={styles.mascotModalAvatar}>{companionAvatar}</Text>
+                </View>
+                
+                <Text style={styles.mascotModalName}>{companionName}</Text>
+                
+                <View style={styles.speechBubble}>
+                  <Text style={styles.speechBubbleText}>{getCompanionComment()}</Text>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.mascotModalBtn}
+                  onPress={() => setIsCommentModalVisible(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.mascotModalBtnText}>Bora! 🚀</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </Modal>
         </ScrollView>
 
         {/* Bottom Actions Navigator */}
@@ -1315,32 +1339,80 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  companionCommentCard: {
-    flexDirection: "row",
-    backgroundColor: "#111115",
+  mascotModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(5, 5, 8, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  mascotModalContent: {
+    width: "90%",
+    backgroundColor: "#111116",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 24,
-    gap: 12,
+    borderRadius: 24,
+    padding: 24,
     alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
-  companionCommentAvatar: {
-    fontSize: 36,
+  mascotAvatarWrapper: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#1c1c24",
+    borderWidth: 2,
+    borderColor: Colors.primary + "33",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
   },
-  companionCommentTextContainer: {
-    flex: 1,
-    gap: 2,
+  mascotModalAvatar: {
+    fontSize: 48,
   },
-  companionCommentHeader: {
+  mascotModalName: {
     color: Colors.primary,
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 16,
+    letterSpacing: 0.5,
   },
-  companionCommentText: {
+  speechBubble: {
+    backgroundColor: "#1c1c24",
+    borderRadius: 16,
+    padding: 18,
+    width: "100%",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  speechBubbleText: {
     color: Colors.text,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+  },
+  mascotModalBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mascotModalBtnText: {
+    color: "#0a0a0c",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
