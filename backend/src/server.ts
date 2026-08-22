@@ -50,6 +50,7 @@ import {
 import { authMiddleware } from "./services/authService";
 import { chatHandler } from "./controllers/chatController";
 import { uploadAvatar } from "./middleware/uploadMiddleware";
+import { handleDiagnosticsTest } from "./controllers/diagnosticsController";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -113,6 +114,7 @@ app.post("/api/user/mood", authMiddleware, handleSaveMood);
 app.get("/api/user/mood/today", authMiddleware, handleGetTodayMood);
 app.get("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisCachedHandler);
 app.post("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisHandler);
+app.get("/api/diagnostics/test", authMiddleware, handleDiagnosticsTest);
 
 // ===== WORKOUT ROUTES =====
 app.get("/api/workouts", authMiddleware, getWorkoutsHandler);

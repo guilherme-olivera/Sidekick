@@ -370,3 +370,18 @@ Instruções cruciais:
     throw error;
   }
 }
+
+/**
+ * Test Gemini API connection
+ */
+export async function testGeminiConnection(): Promise<string> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured in environment variables");
+  }
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const text = await callGeminiWithRetry(async () => {
+    const result = await model.generateContent("Responder apenas: 'Gemini Ok!'");
+    return result.response.text();
+  });
+  return text.trim();
+}

@@ -62,6 +62,33 @@ export default function ProfileScreen() {
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
 
+  // Estados para diagnóstico do sistema
+  const [testingDiagnostics, setTestingDiagnostics] = useState(false);
+  const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
+  const [isDiagnosticModalVisible, setIsDiagnosticModalVisible] = useState(false);
+
+  const runDiagnostics = async () => {
+    setIsDiagnosticModalVisible(true);
+    setTestingDiagnostics(true);
+    setDiagnosticResults(null);
+    try {
+      const response = await apiService.get("/diagnostics/test");
+      if (response && response.success && response.results) {
+        setDiagnosticResults(response.results);
+      } else {
+        setDiagnosticResults({
+          error: response?.error || "Erro de resposta inesperado do servidor."
+        });
+      }
+    } catch (err: any) {
+      setDiagnosticResults({
+        error: err.message || "Não foi possível conectar ao servidor."
+      });
+    } finally {
+      setTestingDiagnostics(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.profile) {
       setCompanionName(user.profile.companionName || "");
@@ -916,6 +943,17 @@ export default function ProfileScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Diagnostics Button */}
+        <TouchableOpacity
+          style={styles.diagnosticButton}
+          onPress={runDiagnostics}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.diagnosticButtonText}>
+            🛠️ Testar Conexões (Diagnóstico)
+          </Text>
+        </TouchableOpacity>
+
         {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
@@ -935,6 +973,102 @@ export default function ProfileScreen() {
         </View>
 
         <View style={{ height: 30 }} />
+
+        {/* Diagnostic Modal */}
+        <Modal
+          visible={isDiagnosticModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsDiagnosticModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>🛠️ Painel de Diagnóstico</Text>
+              
+              <Text style={styles.modalSubtitle}>
+                Este painel executa testes em tempo real para verificar a integridade da comunicação do app com o servidor, a inteligência artificial (Gemini) e o servidor de e-mail (SMTP).
+              </Text>
+
+              <ScrollView style={{ maxHeight: 300, width: "100%", marginVertical: 15 }} keyboardShouldPersistTaps="handled">
+                {testingDiagnostics ? (
+                  <View style={styles.diagnosticLoading}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={[styles.loaderText, { marginTop: 10 }]}>Executando testes no servidor...</Text>
+                  </View>
+                ) : diagnosticResults ? (
+                  diagnosticResults.error ? (
+                    <View style={styles.diagnosticErrorBox}>
+                      <Text style={styles.diagnosticErrorText}>❌ Erro Geral de Rede:</Text>
+                      <Text style={styles.diagnosticErrorDetail}>{diagnosticResults.error}</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.diagnosticResultsContainer}>
+                      {/* Database Check */}
+                      <View style={styles.diagnosticItem}>
+                        <Text style={styles.diagnosticItemHeader}>
+                          {diagnosticResults.db?.success ? "✅ Banco de Dados: Conectado" : "❌ Banco de Dados: Erro"}
+                        </Text>
+                        {diagnosticResults.db?.error && (
+                          <Text style={styles.diagnosticErrorDetail}>{diagnosticResults.db.error}</Text>
+                        )}
+                      </View>
+
+                      {/* Gemini Check */}
+                      <View style={styles.diagnosticItem}>
+                        <Text style={styles.diagnosticItemHeader}>
+                          {diagnosticResults.gemini?.success ? "✅ Inteligência Artificial (Gemini): Ok" : "❌ Inteligência Artificial (Gemini): Erro"}
+                        </Text>
+                        {diagnosticResults.gemini?.result && (
+                          <Text style={styles.diagnosticSuccessDetail}>Resposta do Gemini: "{diagnosticResults.gemini.result}"</Text>
+                        )}
+                        {diagnosticResults.gemini?.error && (
+                          <Text style={styles.diagnosticErrorDetail}>{diagnosticResults.gemini.error}</Text>
+                        )}
+                      </View>
+
+                      {/* SMTP Check */}
+                      <View style={styles.diagnosticItem}>
+                        <Text style={styles.diagnosticItemHeader}>
+                          {diagnosticResults.email?.success ? "✅ Servidor de E-mail (SMTP): Ok" : "❌ Servidor de E-mail (SMTP): Erro"}
+                        </Text>
+                        {diagnosticResults.email?.success && (
+                          <Text style={styles.diagnosticSuccessDetail}>E-mail de teste enviado com sucesso para a sua caixa de entrada!</Text>
+                        )}
+                        {diagnosticResults.email?.error && (
+                          <View>
+                            <Text style={styles.diagnosticErrorDetail}>{diagnosticResults.email.error}</Text>
+                            <Text style={styles.diagnosticHint}>
+                              Dica: Verifique se a senha do app de 16 caracteres está correta e se a variável SMTP_PORT está como 465 na Render.
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )
+                ) : null}
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnCancel]}
+                  onPress={() => setIsDiagnosticModalVisible(false)}
+                >
+                  <Text style={styles.modalBtnCancelText}>Fechar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnConfirm]}
+                  onPress={runDiagnostics}
+                  disabled={testingDiagnostics}
+                >
+                  <Text style={styles.modalBtnConfirmText}>
+                    {testingDiagnostics ? "Testando..." : "Refazer Testes"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Companion Personalization Modal */}
         <Modal
@@ -1774,5 +1908,70 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     width: "100%",
+  },
+  diagnosticLoading: {
+    padding: 30,
+    alignItems: "center",
+  },
+  diagnosticErrorBox: {
+    backgroundColor: "#2c1515",
+    borderWidth: 1,
+    borderColor: "#ff6b6b55",
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 10,
+  },
+  diagnosticErrorText: {
+    color: "#ff6b6b",
+    fontWeight: "700",
+    fontSize: 15,
+    marginBottom: 4,
+  },
+  diagnosticErrorDetail: {
+    color: "#ff8787",
+    fontFamily: Platform.OS === "ios" ? "CourierNewPSMT" : "monospace",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  diagnosticSuccessDetail: {
+    color: "#8ce99a",
+    fontSize: 13,
+    marginTop: 4,
+  },
+  diagnosticResultsContainer: {
+    gap: 12,
+  },
+  diagnosticItem: {
+    backgroundColor: "#0d0d0f",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 12,
+    padding: 16,
+  },
+  diagnosticItemHeader: {
+    color: Colors.text,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  diagnosticHint: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+  diagnosticButton: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: "#1c1c24",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 6,
+  },
+  diagnosticButtonText: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

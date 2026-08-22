@@ -13,6 +13,7 @@ const SMTP_PASS = cleanEnvVar(process.env.SMTP_PASS || "");
 const SMTP_FROM = cleanEnvVar(process.env.SMTP_FROM || "") || (SMTP_USER ? `"Sidekick" <${SMTP_USER}>` : '"Sidekick" <no-reply@sidekick.com>');
 
 let transporter: nodemailer.Transporter | null = null;
+let lastVerifyError: string | null = null;
 
 // Initialize transporter if configuration is present
 if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
@@ -33,13 +34,28 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
   // Verify connection config on server startup
   transporter.verify((error, success) => {
     if (error) {
+      lastVerifyError = error.message || String(error);
       console.error("[EMAIL] ❌ SMTP Connection verification failed:", error);
     } else {
+      lastVerifyError = null;
       console.log("[EMAIL] ✅ SMTP Server is ready to send messages!");
     }
   });
 } else {
   console.log("[EMAIL] ⚠️ SMTP não configurado. O servidor usará e-mails simulados nos logs.");
+}
+
+/**
+ * Returns SMTP connection error diagnostics
+ */
+export function getTransporterError(): string | null {
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    return "Variáveis de ambiente SMTP não configuradas no back-end.";
+  }
+  if (!transporter) {
+    return "Transporter do Nodemailer não pôde ser inicializado.";
+  }
+  return lastVerifyError;
 }
 
 /**
