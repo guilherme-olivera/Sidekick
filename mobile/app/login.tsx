@@ -232,8 +232,8 @@ export default function LoginScreen({ navigation }: any) {
                   onPress={() => setShowPassword(!showPassword)}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ color: Colors.textSecondary, fontSize: 18 }}>
-                    {showPassword ? "👁️" : "🙈"}
+                  <Text style={{ color: Colors.textSecondary, fontSize: 14, fontWeight: "600" }}>
+                    {showPassword ? "Ocultar" : "Mostrar"}
                   </Text>
                 </TouchableOpacity>
               </View>

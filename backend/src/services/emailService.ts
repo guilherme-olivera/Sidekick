@@ -1,11 +1,16 @@
 import nodemailer from "nodemailer";
 
-// Retrieve configuration from environment variables
-const SMTP_HOST = process.env.SMTP_HOST || "";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
-const SMTP_FROM = process.env.SMTP_FROM || '"Sidekick" <no-reply@sidekick.com>';
+// Helper to strip accidental quotes and whitespace from environment variables
+const cleanEnvVar = (val: string) => {
+  if (!val) return "";
+  return val.replace(/^['"]|['"]$/g, "").trim();
+};
+
+const SMTP_HOST = cleanEnvVar(process.env.SMTP_HOST || "");
+const SMTP_PORT = parseInt(cleanEnvVar(process.env.SMTP_PORT || "587"), 10);
+const SMTP_USER = cleanEnvVar(process.env.SMTP_USER || "");
+const SMTP_PASS = cleanEnvVar(process.env.SMTP_PASS || "");
+const SMTP_FROM = cleanEnvVar(process.env.SMTP_FROM || "") || (SMTP_USER ? `"Sidekick" <${SMTP_USER}>` : '"Sidekick" <no-reply@sidekick.com>');
 
 let transporter: nodemailer.Transporter | null = null;
 
