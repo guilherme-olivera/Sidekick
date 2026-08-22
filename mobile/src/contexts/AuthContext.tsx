@@ -75,16 +75,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { apiService } = await import("../services/apiService");
       const response = await apiService.get("/auth/me");
-      if (response.success && response.user) {
+      if (response && response.success && response.user) {
         setUser(response.user);
         await AsyncStorage.setItem("user", JSON.stringify(response.user));
         return true;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to refresh user:", err);
+      // Apenas desloga se o erro for explicitamente 401 (não autorizado/token inválido ou expirado)
+      // Evita deslogar o usuário por falhas de rede temporárias ou servidor dormindo na Render
+      if (err && err.status === 401) {
+        await clearAuthState();
+      }
     }
-
-    await clearAuthState();
     return false;
   };
 
@@ -105,10 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(JSON.parse(savedUser));
         }
 
-        const refreshed = await refreshUser();
-        if (!refreshed) {
-          await clearAuthState();
-        }
+        // Tenta atualizar em segundo plano. Se falhar por token expirado, refreshUser já limpa o estado.
+        // Se falhar por conexão/rede, mantemos o token e usuário salvos localmente.
+        await refreshUser();
       }
     } catch (err) {
       console.error("Failed to restore token:", err);

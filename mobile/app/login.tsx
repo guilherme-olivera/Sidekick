@@ -157,10 +157,11 @@ export default function LoginScreen({ navigation }: any) {
     }
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
       if (isLogin) {
-        await login(email.trim(), password);
+        await login(cleanEmail, password);
       } else {
-        await register(email.trim(), password, name);
+        await register(cleanEmail, password, name);
       }
       // Navigation será feito automaticamente pelo App.tsx quando token existir
     } catch (err) {

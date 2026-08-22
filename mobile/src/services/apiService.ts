@@ -141,7 +141,9 @@ async function safeFetch(url: string, options: RequestInit = {}) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       console.error('[apiService] response error', fullUrl, response.status, data);
-      throw new Error(data.error || response.statusText || 'Request failed');
+      const error = new Error(data.error || response.statusText || 'Request failed') as any;
+      error.status = response.status;
+      throw error;
     }
     return data;
   } catch (error) {
