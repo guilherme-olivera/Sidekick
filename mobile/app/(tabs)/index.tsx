@@ -59,6 +59,7 @@ export default function HomeScreen() {
     currentMoodEmoji,
     loadWeeklyWorkouts,
     analyzeWorkout,
+    isLoading,
   } = useDashboard();
 
   const [analyzingWorkoutId, setAnalyzingWorkoutId] = useState<string | null>(null);
@@ -959,7 +960,19 @@ export default function HomeScreen() {
         onMoodSelect={handleMoodSelect}
         currentMood={currentMood}
         currentMoodEmoji={currentMoodEmoji}
+        autoShowIfUndefined={!isLoading && currentMood === undefined}
+        hideFloatingButton={true}
       />
+
+      {/* Companion Chat Floating Button */}
+      <TouchableOpacity
+        style={styles.chatFloatingButton}
+        onPress={() => router.push("/chat")}
+      >
+        <Text style={styles.chatFloatingButtonText}>
+          💬 {user?.profile?.companionAvatar || "🦖"}
+        </Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -1888,5 +1901,27 @@ const styles = StyleSheet.create({
     color: Colors.dark,
     fontSize: 15,
     fontWeight: "800",
+  },
+  chatFloatingButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: Colors.darkBorder,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+    zIndex: 10,
+  },
+  chatFloatingButtonText: {
+    fontSize: 26,
   },
 });

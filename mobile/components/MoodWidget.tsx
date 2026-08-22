@@ -30,14 +30,29 @@ interface MoodWidgetProps {
   onMoodSelect: (moodId: string, emoji: string) => void;
   currentMood?: string;
   currentMoodEmoji?: string;
+  autoShowIfUndefined?: boolean;
+  hideFloatingButton?: boolean;
 }
 
 export function MoodWidget({
   onMoodSelect,
   currentMood,
   currentMoodEmoji = "😐",
+  autoShowIfUndefined = false,
+  hideFloatingButton = false,
 }: MoodWidgetProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
+  React.useEffect(() => {
+    if (autoShowIfUndefined && currentMood === undefined && !hasAutoOpened) {
+      const timer = setTimeout(() => {
+        setShowMenu(true);
+        setHasAutoOpened(true);
+      }, 1000); // delay smooth loading
+      return () => clearTimeout(timer);
+    }
+  }, [currentMood, autoShowIfUndefined, hasAutoOpened]);
 
   const handleMoodSelect = (moodId: string, emoji: string) => {
     onMoodSelect(moodId, emoji);
@@ -47,12 +62,14 @@ export function MoodWidget({
   return (
     <>
       {/* Mood Icon (bottom right) */}
-      <TouchableOpacity
-        style={styles.moodButton}
-        onPress={() => setShowMenu(true)}
-      >
-        <Text style={styles.moodEmoji}>{currentMoodEmoji}</Text>
-      </TouchableOpacity>
+      {!hideFloatingButton && (
+        <TouchableOpacity
+          style={styles.moodButton}
+          onPress={() => setShowMenu(true)}
+        >
+          <Text style={styles.moodEmoji}>{currentMoodEmoji}</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Mood Menu Modal */}
       <Modal visible={showMenu} transparent animationType="fade">
