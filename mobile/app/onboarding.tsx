@@ -41,6 +41,8 @@ export default function OnboardingScreen() {
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   // IA Companion States
+  const [companionName, setCompanionName] = useState("Sidekick");
+  const [companionAvatar, setCompanionAvatar] = useState("🤖");
   const [aiGender, setAiGender] = useState("neutral");
   const [aiPersonality, setAiPersonality] = useState("calm");
   const [aiTone, setAiTone] = useState("motivational");
@@ -65,6 +67,8 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (user?.profile) {
       const p = user.profile;
+      if (p.companionName) setCompanionName(p.companionName);
+      if (p.companionAvatar) setCompanionAvatar(p.companionAvatar);
       if (p.aiGender) setAiGender(p.aiGender);
       if (p.aiPersonality) setAiPersonality(p.aiPersonality);
       if (p.aiTone) setAiTone(p.aiTone);
@@ -163,27 +167,33 @@ export default function OnboardingScreen() {
     }
 
     // Validation checks
+    if (!companionName.trim()) {
+      Alert.alert("Nome do Companheiro", "Por favor, insira um nome para o seu companheiro digital.");
+      setStep(1);
+      return;
+    }
+
     if (!validateBirthday(birthday)) {
       Alert.alert("Data de Nascimento", "Por favor, insira uma data de nascimento válida no formato DD/MM/AAAA.");
-      setStep(3);
+      setStep(2);
       return;
     }
 
     if (goalType === "pace" && !goalTargetTime) {
       Alert.alert("Tempo Alvo", "Por favor, insira o seu tempo alvo desejado.");
-      setStep(4);
+      setStep(3);
       return;
     }
 
     if (goalDistance === "custom" && !customDistance) {
       Alert.alert("Distância", "Por favor, preencha a distância personalizada.");
-      setStep(4);
+      setStep(3);
       return;
     }
 
     if (selectedInjuries.includes("custom") && !customInjury.trim()) {
       Alert.alert("Dor Customizada", "Por favor, preencha o campo com a descrição da sua lesão/dor.");
-      setStep(3);
+      setStep(2);
       return;
     }
 
@@ -204,6 +214,8 @@ export default function OnboardingScreen() {
       }
       
       const payload = {
+        companionName: companionName.trim(),
+        companionAvatar,
         aiGender,
         aiPersonality,
         aiTone,
@@ -222,7 +234,7 @@ export default function OnboardingScreen() {
       if (response.success) {
         await refreshUser();
         if (isEditMode) {
-          Alert.alert("Sucesso", "Configurações updated!", [
+          Alert.alert("Sucesso", "Configurações atualizadas!", [
             { text: "OK", onPress: () => router.back() }
           ]);
         } else {
@@ -241,31 +253,41 @@ export default function OnboardingScreen() {
 
   const nextStep = () => {
     if (step === 1) {
-      if (!isConnected) {
-        Alert.alert(
-          "Strava Não Conectado",
-          "Conecte seu Strava para que seu companheiro te conheça melhor, caso contrário você iniciará como um iniciante.",
-          [
-            { text: "Conectar Strava", style: "cancel" },
-            { text: "Avançar assim mesmo", style: "destructive", onPress: () => setStep(2) }
-          ]
-        );
+      if (!companionName.trim()) {
+        Alert.alert("Nome do Companheiro", "Por favor, insira um nome para o seu companheiro digital.");
         return;
       }
     }
-    if (step === 3) {
+    if (step === 2) {
       if (!validateBirthday(birthday)) {
         Alert.alert("Data de Nascimento", "Por favor, insira uma data de nascimento válida (DD/MM/AAAA).");
         return;
       }
+      if (selectedInjuries.includes("custom") && !customInjury.trim()) {
+        Alert.alert("Dor Customizada", "Por favor, descreva sua dor/restrição.");
+        return;
+      }
     }
-    if (step === 4) {
+    if (step === 3) {
       if (goalType === "pace" && !goalTargetTime) {
         Alert.alert("Meta de Pace", "Por favor, informe o tempo que você deseja alcançar.");
         return;
       }
       if (goalDistance === "custom" && !customDistance) {
         Alert.alert("Meta de Distância", "Por favor, informe a distância em quilômetros.");
+        return;
+      }
+    }
+    if (step === 4) {
+      if (!isConnected) {
+        Alert.alert(
+          "Strava Não Conectado",
+          "Deseja conectar sua conta do Strava agora para importar suas atividades históricas? Você também pode fazer isso mais tarde no seu Perfil.",
+          [
+            { text: "Conectar Strava", style: "cancel" },
+            { text: "Avançar assim mesmo", style: "destructive", onPress: () => setStep(5) }
+          ]
+        );
         return;
       }
     }
@@ -325,52 +347,50 @@ export default function OnboardingScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* STEP 1: STRAVA CONNECTION */}
+          {/* STEP 1: IA COMPANION */}
           {step === 1 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.title}>Conectar ao Strava</Text>
-              <Text style={styles.subtitle}>
-                Para que o Sidekick conheça seu histórico de treinos e calibre a IA, conecte seu Strava abaixo.
-              </Text>
+              <Text style={styles.title}>Crie o seu Companheiro</Text>
+              <Text style={styles.subtitle}>Personalize o nome, o avatar e a personalidade da IA que vai caminhar e treinar com você.</Text>
 
-              <View style={styles.stravaBox}>
-                {isConnected ? (
-                  <View style={styles.stravaConnectedContainer}>
-                    <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
-                    <Text style={styles.stravaConnectedDesc}>
-                      O Sidekick já está sincronizado com sua conta do Strava e seus treinos históricos foram importados com sucesso para calibrar sua jornada.
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={styles.stravaDisconnectedContainer}>
-                    <Text style={styles.stravaStatusText}>⚠️ Strava Não Conectado</Text>
-                    <Text style={styles.stravaHint}>
-                      Conecte sua conta para que seu companheiro conheça seu histórico de corrida e configure a IA da melhor maneira.
-                    </Text>
-                    
-                    <TouchableOpacity
-                      style={styles.connectButton}
-                      onPress={async () => {
-                        try {
-                          await connect();
-                        } catch (err) {
-                          Alert.alert("Erro", "Falha ao iniciar conexão com o Strava.");
-                        }
-                      }}
-                    >
-                      <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+              {/* Companion Name */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Nome do Companheiro</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Ex: Rocky, Athena, Bolt"
+                  placeholderTextColor="#666"
+                  value={companionName}
+                  onChangeText={setCompanionName}
+                />
               </View>
-            </View>
-          )}
 
-          {/* STEP 2: IA COMPANION */}
-          {step === 2 && (
-            <View style={styles.stepContainer}>
-              <Text style={styles.title}>Configure o seu Sidekick</Text>
-              <Text style={styles.subtitle}>Personalize o sexo, tom de voz e atitude da IA que vai te treinar.</Text>
+              {/* Companion Avatar */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Avatar / Mascote</Text>
+                <View style={styles.gridRowWrap}>
+                  {[
+                    { id: "🤖", label: "🤖 Robô" },
+                    { id: "🐶", label: "🐶 Cão" },
+                    { id: "🦁", label: "🦁 Leão" },
+                    { id: "🦉", label: "🦉 Coruja" },
+                    { id: "🦊", label: "🦊 Raposa" },
+                    { id: "🦖", label: "🦖 Dino" },
+                    { id: "🐯", label: "🐯 Tigre" },
+                  ].map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.avatarSelectorCard, companionAvatar === item.id && styles.gridCardActive]}
+                      onPress={() => setCompanionAvatar(item.id)}
+                    >
+                      <Text style={styles.avatarEmojiText}>{item.id}</Text>
+                      <Text style={[styles.avatarLabelText, companionAvatar === item.id && styles.gridCardTextActive]}>
+                        {item.label.split(" ")[1]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
 
               {/* AI Gender */}
               <View style={styles.optionSection}>
@@ -447,8 +467,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 3: USER METADATA */}
-          {step === 3 && (
+          {/* STEP 2: USER METADATA */}
+          {step === 2 && (
             <View style={styles.stepContainer}>
               <Text style={styles.title}>Sobre Você</Text>
               <Text style={styles.subtitle}>Preencha seus dados para a IA calibrar as recomendações biológicas e de descanso.</Text>
@@ -587,8 +607,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 4: ATHLETE GOALS */}
-          {step === 4 && (
+          {/* STEP 3: ATHLETE GOALS */}
+          {step === 3 && (
             <View style={styles.stepContainer}>
               <Text style={styles.title}>Sua Meta de Treino</Text>
               <Text style={styles.subtitle}>O que você está buscando conquistar nesse momento?</Text>
@@ -670,6 +690,47 @@ export default function OnboardingScreen() {
             </View>
           )}
 
+          {/* STEP 4: STRAVA CONNECTION */}
+          {step === 4 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.title}>Conectar ao Strava</Text>
+              <Text style={styles.subtitle}>
+                Passo final! Conecte seu Strava para que seu companheiro possa puxar sua telemetria de treino automaticamente.
+              </Text>
+
+              <View style={styles.stravaBox}>
+                {isConnected ? (
+                  <View style={styles.stravaConnectedContainer}>
+                    <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
+                    <Text style={styles.stravaConnectedDesc}>
+                      O Sidekick já está sincronizado com sua conta do Strava. Seus treinos históricos foram importados e estão calibrados!
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.stravaDisconnectedContainer}>
+                    <Text style={styles.stravaStatusText}>⚠️ Strava Não Conectado</Text>
+                    <Text style={styles.stravaHint}>
+                      A sincronização do Strava permite ao seu companheiro monitorar seu ritmo e batimentos em tempo real para estruturar os conselhos de evolução fisiológica.
+                    </Text>
+                    
+                    <TouchableOpacity
+                      style={styles.connectButton}
+                      onPress={async () => {
+                        try {
+                          await connect();
+                        } catch (err) {
+                          Alert.alert("Erro", "Falha ao iniciar conexão com o Strava.");
+                        }
+                      }}
+                    >
+                      <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* STEP 5: FINAL SUMMARY */}
           {step === 5 && (
             <View style={styles.stepContainer}>
@@ -677,9 +738,12 @@ export default function OnboardingScreen() {
               <Text style={styles.subtitle}>Olha só a síntese do companheiro digital que estruturamos para você:</Text>
 
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>🤖 Contrato do Sidekick Coach</Text>
+                <Text style={styles.summaryTitle}>🤖 Contrato do seu Sidekick</Text>
                 <Text style={styles.summaryText}>
-                  Seu companheiro será configurado como {" "}
+                  Seu parceiro de treinos se chamará <Text style={styles.summaryHighlight}>{companionName}</Text> e usará o mascote <Text style={styles.summaryHighlight}>{companionAvatar}</Text>.
+                </Text>
+                <Text style={styles.summaryText}>
+                  Ele será configurado como {" "}
                   <Text style={styles.summaryHighlight}>{genderMap[aiGender] || aiGender}</Text> com a atitude {" "}
                   <Text style={styles.summaryHighlight}>{persMap[aiPersonality]}</Text> e tom de voz {" "}
                   <Text style={styles.summaryHighlight}>{toneMap[aiTone]}</Text>.
@@ -1170,5 +1234,31 @@ const styles = StyleSheet.create({
   },
   finalButtonDisabled: {
     opacity: 0.5,
+  },
+  gridRowWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
+  avatarSelectorCard: {
+    width: "31%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  avatarEmojiText: {
+    fontSize: 24,
+    marginBottom: 2,
+  },
+  avatarLabelText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });
