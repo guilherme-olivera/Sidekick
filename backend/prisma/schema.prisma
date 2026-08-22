@@ -123,6 +123,7 @@ model UserProfile {
   // Detalhes Complementares
   experienceLevel String?   // "beginner" | "intermediate" | "advanced"
   weeklyFrequency Int?      // 2 | 3 | 4 | 5
+  phoneNumber     String?   // Telefone do usuário
   
   isConfigured    Boolean   @default(false)
   

@@ -19,6 +19,7 @@ interface UserProfile {
   isConfigured?: boolean;
   companionName?: string;
   companionAvatar?: string;
+  phoneNumber?: string;
 }
 
 interface User {

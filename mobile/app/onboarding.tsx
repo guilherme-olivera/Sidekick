@@ -38,7 +38,8 @@ export default function OnboardingScreen() {
   const { isConnected, athlete, connect, disconnect, syncActivities } = useStrava();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncedCount, setSyncedCount] = useState<number | null>(null);
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(isEditMode);
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   // IA Companion States
   const [companionName, setCompanionName] = useState("Sidekick");
@@ -72,6 +73,7 @@ export default function OnboardingScreen() {
       if (p.aiGender) setAiGender(p.aiGender);
       if (p.aiPersonality) setAiPersonality(p.aiPersonality);
       if (p.aiTone) setAiTone(p.aiTone);
+      if (p.phoneNumber) setPhoneNumber(p.phoneNumber);
       if (p.birthday) setBirthday(p.birthday);
       if (p.experienceLevel) setExperienceLevel(p.experienceLevel);
       if (p.weeklyFrequency) setWeeklyFrequency(p.weeklyFrequency);
@@ -227,6 +229,7 @@ export default function OnboardingScreen() {
         weeklyFrequency,
         injuryNote: finalInjury,
         isConfigured: true,
+        phoneNumber: phoneNumber.trim(),
       };
 
       const response = await apiService.put("/user/profile", payload);
@@ -296,6 +299,28 @@ export default function OnboardingScreen() {
 
   const prevStep = () => {
     setStep(s => s - 1);
+  };
+
+  const getCompanionComment = () => {
+    const name = companionName || "Sidekick";
+    const avatar = companionAvatar || "🤖";
+    
+    if (step === 1) {
+      return `Fala parceiro! Eu sou o ${name} ${avatar}. Escolha meu tom e personalidade e vamos botar para quebrar nos treinos!`;
+    }
+    if (step === 2) {
+      return `Legal! Agora preciso saber mais sobre você para podermos calcular a sua prontidão física (Readiness) e evitar lesões.`;
+    }
+    if (step === 3) {
+      return `Trace uma meta clara de distância ou ritmo (pace). Juntos, com base na ciência fisiológica e INSCYD, vamos buscar essa marca!`;
+    }
+    if (step === 4) {
+      return `Quase tudo pronto! Conecte seu Strava para que eu possa acompanhar sua telemetria física em tempo real!`;
+    }
+    if (step === 5) {
+      return `Pronto, contrato assinado! Agora é só calçar o tênis e ir para o asfalto. Estou pronto para te motivar!`;
+    }
+    return "";
   };
 
   // Helper strings for summary
@@ -484,6 +509,28 @@ export default function OnboardingScreen() {
                   maxLength={10}
                   value={birthday}
                   onChangeText={handleBirthdayChange}
+                />
+              </View>
+
+              {/* Phone Number */}
+              <View style={styles.optionSection}>
+                <Text style={styles.sectionLabel}>Telefone / WhatsApp</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="(11) 99999-9999"
+                  placeholderTextColor="#666"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={(text) => {
+                    const cleaned = text.replace(/\D/g, "");
+                    let formatted = cleaned;
+                    if (cleaned.length > 2 && cleaned.length <= 7) {
+                      formatted = `(${cleaned.substring(0, 2)}) ${cleaned.substring(2)}`;
+                    } else if (cleaned.length > 7) {
+                      formatted = `(${cleaned.substring(0, 2)}) ${cleaned.substring(2, 7)}-${cleaned.substring(7, 11)}`;
+                    }
+                    setPhoneNumber(formatted);
+                  }}
                 />
               </View>
 
@@ -768,20 +815,18 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
 
-              {!isEditMode && (
-                <TouchableOpacity
-                  style={styles.checkboxContainer}
-                  onPress={() => setTermsAccepted(!termsAccepted)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
-                    {termsAccepted && <Text style={styles.checkboxCheckMark}>✓</Text>}
-                  </View>
-                  <Text style={styles.checkboxLabel}>
-                    Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico.
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setTermsAccepted(!termsAccepted)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                  {termsAccepted && <Text style={styles.checkboxCheckMark}>✓</Text>}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico.
+                </Text>
+              </TouchableOpacity>
 
               <View style={styles.savingLoaderContainer}>
                 {isSaving ? (
@@ -806,6 +851,15 @@ export default function OnboardingScreen() {
               </View>
             </View>
           )}
+
+          {/* Dynamic Companion Comment Card */}
+          <View style={styles.companionCommentCard}>
+            <Text style={styles.companionCommentAvatar}>{companionAvatar}</Text>
+            <View style={styles.companionCommentTextContainer}>
+              <Text style={styles.companionCommentHeader}>{companionName}</Text>
+              <Text style={styles.companionCommentText}>{getCompanionComment()}</Text>
+            </View>
+          </View>
         </ScrollView>
 
         {/* Bottom Actions Navigator */}
@@ -1260,5 +1314,33 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 12,
     fontWeight: "600",
+  },
+  companionCommentCard: {
+    flexDirection: "row",
+    backgroundColor: "#111115",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 24,
+    gap: 12,
+    alignItems: "center",
+  },
+  companionCommentAvatar: {
+    fontSize: 36,
+  },
+  companionCommentTextContainer: {
+    flex: 1,
+    gap: 2,
+  },
+  companionCommentHeader: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  companionCommentText: {
+    color: Colors.text,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

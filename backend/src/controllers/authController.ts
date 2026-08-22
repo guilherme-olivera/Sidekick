@@ -92,6 +92,7 @@ export async function handleGetMe(req: any, res: Response) {
             isConfigured: true,
             companionName: true,
             companionAvatar: true,
+            phoneNumber: true,
           },
         },
       },
