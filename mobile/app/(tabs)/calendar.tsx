@@ -494,7 +494,7 @@ export default function CalendarScreen() {
                   {/* Metrics Grid */}
                   <View style={styles.workoutModalMetricsGrid}>
                     <View style={styles.workoutModalMetricCard}>
-                      <Text style={styles.workoutModalMetricLabel}>Duração</Text>
+                      <Text style={styles.workoutModalMetricIcon}>⏱️</Text>
                       <Text style={styles.workoutModalMetricValue}>
                         {Math.floor(selectedWorkoutDetail.duration / 3600) > 0
                           ? `${Math.floor(selectedWorkoutDetail.duration / 3600)}h ${Math.floor(
@@ -502,67 +502,77 @@ export default function CalendarScreen() {
                             )}m`
                           : `${Math.floor((selectedWorkoutDetail.duration % 3600) / 60)} min`}
                       </Text>
+                      <Text style={styles.workoutModalMetricSubLabel}>Duração</Text>
                     </View>
                     {selectedWorkoutDetail.distance && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>Distância</Text>
+                        <Text style={styles.workoutModalMetricIcon}>👟</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.distance.toFixed(1)} km
                         </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>Distância</Text>
                       </View>
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>
-                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
-                            ? "Pace Médio"
-                            : "Vel. Média"}
-                        </Text>
+                        <Text style={styles.workoutModalMetricIcon}>⚡</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
                             ? formatPace(selectedWorkoutDetail.pace)
                             : `${selectedWorkoutDetail.pace.toFixed(1)} km/h`}
                         </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>
+                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                            ? "Pace Médio"
+                            : "Vel. Média"}
+                        </Text>
                       </View>
                     )}
                     {selectedWorkoutDetail.avgHeartRate && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>BPM Médio</Text>
+                        <Text style={styles.workoutModalMetricIcon}>❤️</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.avgHeartRate} bpm
                         </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>BPM Médio</Text>
                       </View>
                     )}
                     {selectedWorkoutDetail.maxHeartRate && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>BPM Máximo</Text>
+                        <Text style={styles.workoutModalMetricIcon}>🔥</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.maxHeartRate} bpm
                         </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>BPM Máximo</Text>
                       </View>
                     )}
                     {selectedWorkoutDetail.effortRating && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>Esforço (RPE)</Text>
+                        <Text style={styles.workoutModalMetricIcon}>🥵</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.effortRating} / 5
                         </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>Esforço (RPE)</Text>
                       </View>
                     )}
                     {selectedWorkoutDetail.averageCadence && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>Cadência Média</Text>
+                        <Text style={styles.workoutModalMetricIcon}>🔄</Text>
                         <Text style={styles.workoutModalMetricValue}>
-                          {`${selectedWorkoutDetail.averageCadence} ${selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "spm" : "rpm"}`}
+                          {`${selectedWorkoutDetail.averageCadence}`}
+                        </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>
+                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
                         </Text>
                       </View>
                     )}
                     {selectedWorkoutDetail.elevationGain && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>Ganho Elevação</Text>
+                        <Text style={styles.workoutModalMetricIcon}>⛰️</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {`${selectedWorkoutDetail.elevationGain} m`}
                         </Text>
+                        <Text style={styles.workoutModalMetricSubLabel}>Ganho Elevação</Text>
                       </View>
                     )}
                   </View>
@@ -1071,27 +1081,38 @@ const styles = StyleSheet.create({
   workoutModalMetricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 8,
     marginBottom: 20,
   },
   workoutModalMetricCard: {
-    flex: 1,
-    minWidth: "45%",
+    width: "31%",
     backgroundColor: "#0a0a0a",
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  workoutModalMetricLabel: {
-    color: "#b0b0b0",
-    fontSize: 12,
-    marginBottom: 4,
+  workoutModalMetricIcon: {
+    fontSize: 20,
+    marginBottom: 6,
   },
   workoutModalMetricValue: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 13,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  workoutModalMetricSubLabel: {
+    color: "#b0b0b0",
+    fontSize: 9,
     fontWeight: "700",
+    textTransform: "uppercase",
+    marginTop: 4,
+    textAlign: "center",
+    letterSpacing: 0.5,
   },
   workoutModalIaSection: {
     marginTop: 8,
