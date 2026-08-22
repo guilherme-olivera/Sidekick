@@ -537,14 +537,25 @@ export default function CalendarScreen() {
                         <Text style={styles.workoutModalMetricSubLabel}>BPM Médio</Text>
                       </View>
                     )}
-                    {selectedWorkoutDetail.maxHeartRate && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>🔥</Text>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.maxHeartRate} bpm
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>BPM Máximo</Text>
-                      </View>
+                    {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
+                      <>
+                        <View style={styles.workoutModalMetricCard}>
+                          <Text style={styles.workoutModalMetricIcon}>🔄</Text>
+                          <Text style={styles.workoutModalMetricValue}>
+                            {selectedWorkoutDetail.averageCadence ? `${selectedWorkoutDetail.averageCadence}` : "--"}
+                          </Text>
+                          <Text style={styles.workoutModalMetricSubLabel}>
+                            {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
+                          </Text>
+                        </View>
+                        <View style={styles.workoutModalMetricCard}>
+                          <Text style={styles.workoutModalMetricIcon}>⛰️</Text>
+                          <Text style={styles.workoutModalMetricValue}>
+                            {selectedWorkoutDetail.elevationGain ? `${Math.round(selectedWorkoutDetail.elevationGain)} m` : "0 m"}
+                          </Text>
+                          <Text style={styles.workoutModalMetricSubLabel}>Ganho Elevação</Text>
+                        </View>
+                      </>
                     )}
                     {selectedWorkoutDetail.effortRating && (
                       <View style={styles.workoutModalMetricCard}>
@@ -553,26 +564,6 @@ export default function CalendarScreen() {
                           {selectedWorkoutDetail.effortRating} / 5
                         </Text>
                         <Text style={styles.workoutModalMetricSubLabel}>Esforço (RPE)</Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.averageCadence && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>🔄</Text>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {`${selectedWorkoutDetail.averageCadence}`}
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>
-                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
-                        </Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.elevationGain && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>⛰️</Text>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {`${selectedWorkoutDetail.elevationGain} m`}
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>Ganho Elevação</Text>
                       </View>
                     )}
                   </View>

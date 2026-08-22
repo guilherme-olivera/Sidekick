@@ -791,14 +791,25 @@ export default function HomeScreen() {
                         <Text style={styles.modalMetricSubLabel}>BPM Médio</Text>
                       </View>
                     )}
-                    {selectedWorkoutDetail.maxHeartRate && (
-                      <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>🔥</Text>
-                        <Text style={styles.modalMetricValue}>
-                          {selectedWorkoutDetail.maxHeartRate} bpm
-                        </Text>
-                        <Text style={styles.modalMetricSubLabel}>BPM Máximo</Text>
-                      </View>
+                    {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
+                      <>
+                        <View style={styles.modalMetricCard}>
+                          <Text style={styles.modalMetricIcon}>🔄</Text>
+                          <Text style={styles.modalMetricValue}>
+                            {selectedWorkoutDetail.averageCadence ? `${selectedWorkoutDetail.averageCadence}` : "--"}
+                          </Text>
+                          <Text style={styles.modalMetricSubLabel}>
+                            {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
+                          </Text>
+                        </View>
+                        <View style={styles.modalMetricCard}>
+                          <Text style={styles.modalMetricIcon}>⛰️</Text>
+                          <Text style={styles.modalMetricValue}>
+                            {selectedWorkoutDetail.elevationGain ? `${Math.round(selectedWorkoutDetail.elevationGain)} m` : "0 m"}
+                          </Text>
+                          <Text style={styles.modalMetricSubLabel}>Ganho Elevação</Text>
+                        </View>
+                      </>
                     )}
                     {selectedWorkoutDetail.effortRating && (
                       <View style={styles.modalMetricCard}>
@@ -807,26 +818,6 @@ export default function HomeScreen() {
                           {selectedWorkoutDetail.effortRating} / 5
                         </Text>
                         <Text style={styles.modalMetricSubLabel}>Esforço (RPE)</Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.averageCadence && (
-                      <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>🔄</Text>
-                        <Text style={styles.modalMetricValue}>
-                          {`${selectedWorkoutDetail.averageCadence}`}
-                        </Text>
-                        <Text style={styles.modalMetricSubLabel}>
-                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
-                        </Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.elevationGain && (
-                      <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>⛰️</Text>
-                        <Text style={styles.modalMetricValue}>
-                          {`${selectedWorkoutDetail.elevationGain} m`}
-                        </Text>
-                        <Text style={styles.modalMetricSubLabel}>Ganho Elevação</Text>
                       </View>
                     )}
                   </View>
