@@ -1,10 +1,14 @@
 import nodemailer from "nodemailer";
+import axios from "axios";
 
 // Helper to strip accidental quotes and whitespace from environment variables
 const cleanEnvVar = (val: string) => {
   if (!val) return "";
   return val.replace(/^['"]|['"]$/g, "").trim();
 };
+
+const RESEND_API_KEY = cleanEnvVar(process.env.RESEND_API_KEY || "");
+const RESEND_FROM = cleanEnvVar(process.env.RESEND_FROM || "") || "Sidekick <onboarding@resend.dev>";
 
 const SMTP_HOST = cleanEnvVar(process.env.SMTP_HOST || "");
 const SMTP_PORT = parseInt(cleanEnvVar(process.env.SMTP_PORT || "587"), 10);
@@ -49,8 +53,11 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
  * Returns SMTP connection error diagnostics
  */
 export function getTransporterError(): string | null {
+  if (RESEND_API_KEY) {
+    return null; // Resend REST API no connection test needed on boot
+  }
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    return "Variáveis de ambiente SMTP não configuradas no back-end.";
+    return "Variáveis de ambiente SMTP/Resend não configuradas no back-end.";
   }
   if (!transporter) {
     return "Transporter do Nodemailer não pôde ser inicializado.";
@@ -63,7 +70,27 @@ export function getTransporterError(): string | null {
  */
 export async function sendMail(to: string, subject: string, htmlContent: string, textContent?: string) {
   try {
-    if (transporter) {
+    if (RESEND_API_KEY) {
+      console.log(`[EMAIL] Enviando e-mail via Resend REST API para ${to}...`);
+      const response = await axios.post(
+        "https://api.resend.com/emails",
+        {
+          from: RESEND_FROM,
+          to: [to],
+          subject,
+          html: htmlContent,
+          text: textContent || "Esta mensagem exige visualização em HTML.",
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log(`[EMAIL] E-mail enviado com sucesso via Resend para ${to}. ID: ${response.data.id}`);
+      return true;
+    } else if (transporter) {
       const info = await transporter.sendMail({
         from: SMTP_FROM,
         to,
@@ -71,11 +98,11 @@ export async function sendMail(to: string, subject: string, htmlContent: string,
         text: textContent || "Esta mensagem exige visualização em HTML.",
         html: htmlContent,
       });
-      console.log(`[EMAIL] E-mail enviado com sucesso para ${to}. ID: ${info.messageId}`);
+      console.log(`[EMAIL] E-mail enviado com sucesso via SMTP para ${to}. ID: ${info.messageId}`);
       return true;
     } else {
       console.log("=========================================");
-      console.log(`[EMAIL SIMULADO - SMTP NÃO CONFIGURADO]`);
+      console.log(`[EMAIL SIMULADO - PROVEDOR NÃO CONFIGURADO]`);
       console.log(`Para: ${to}`);
       console.log(`Assunto: ${subject}`);
       console.log(`Mensagem:`);
@@ -85,6 +112,9 @@ export async function sendMail(to: string, subject: string, htmlContent: string,
     }
   } catch (error) {
     console.error("[EMAIL] Erro ao enviar e-mail:", error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("[EMAIL] Resposta detalhada do erro da API do Resend:", error.response.data);
+    }
     return false;
   }
 }
