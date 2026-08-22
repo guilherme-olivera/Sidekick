@@ -90,7 +90,7 @@ export default function OnboardingScreen() {
           const presets = ["joelho", "canela", "lombar"];
           const selected: string[] = [];
           const customParts: string[] = [];
-          
+
           parts.forEach(part => {
             if (presets.includes(part)) {
               selected.push(part);
@@ -98,17 +98,17 @@ export default function OnboardingScreen() {
               customParts.push(part);
             }
           });
-          
+
           if (customParts.length > 0) {
             selected.push("custom");
             setCustomInjury(customParts.join(", "));
           }
-          
+
           setSelectedInjuries(selected);
         }
       }
       if (p.goalType) setGoalType(p.goalType);
-      
+
       if (p.goalDistance) {
         if (["5k", "10k", "15k", "half_marathon", "marathon"].includes(p.goalDistance)) {
           setGoalDistance(p.goalDistance);
@@ -133,13 +133,13 @@ export default function OnboardingScreen() {
     // Remove formatting
     const cleaned = text.replace(/[^0-9]/g, "");
     let formatted = cleaned;
-    
+
     if (cleaned.length > 2 && cleaned.length <= 4) {
       formatted = cleaned.substring(0, 2) + "/" + cleaned.substring(2);
     } else if (cleaned.length > 4) {
       formatted = cleaned.substring(0, 2) + "/" + cleaned.substring(2, 4) + "/" + cleaned.substring(4, 8);
     }
-    
+
     setBirthday(formatted);
   };
 
@@ -147,18 +147,18 @@ export default function OnboardingScreen() {
     if (dateStr.length !== 10) return false;
     const parts = dateStr.split("/");
     if (parts.length !== 3) return false;
-    
+
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
     const year = parseInt(parts[2], 10);
-    
+
     if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
     if (day < 1 || day > 31) return false;
     if (month < 1 || month > 12) return false;
-    
+
     const currentYear = new Date().getFullYear();
     if (year < 1920 || year > currentYear) return false;
-    
+
     return true;
   };
 
@@ -213,7 +213,7 @@ export default function OnboardingScreen() {
 
     try {
       setIsSaving(true);
-      
+
       const distance = goalDistance === "custom" ? customDistance : goalDistance;
 
       // Build injury string
@@ -226,7 +226,7 @@ export default function OnboardingScreen() {
         }).filter(Boolean);
         finalInjury = parts.length > 0 ? parts.join(", ") : "none";
       }
-      
+
       const payload = {
         companionName: companionName.trim(),
         companionAvatar,
@@ -246,7 +246,7 @@ export default function OnboardingScreen() {
       };
 
       const response = await apiService.put("/user/profile", payload);
-      
+
       if (response.success) {
         await refreshUser();
         if (isEditMode) {
@@ -327,7 +327,7 @@ export default function OnboardingScreen() {
   const getCompanionComment = () => {
     const name = companionName || "Sidekick";
     const avatar = companionAvatar || "🦖";
-    
+
     if (step === 1) {
       return `Fala parceiro! Eu sou o ${name} ${avatar}. Escolha meu tom e personalidade e vamos botar para quebrar nos treinos!`;
     }
@@ -335,7 +335,7 @@ export default function OnboardingScreen() {
       return `Legal! Agora preciso saber mais sobre você para podermos calcular a sua prontidão física (Readiness) e evitar lesões.`;
     }
     if (step === 3) {
-      return `Trace uma meta clara de distância ou ritmo (pace). Juntos, com base na ciência fisiológica e INSCYD, vamos buscar essa marca!`;
+      return `Trace uma meta clara de distância ou ritmo (pace). Juntos, com base na ciência fisiológica e com muito Humor, vamos buscar essa marca!`;
     }
     if (step === 4) {
       if (isConnected) {
@@ -364,11 +364,11 @@ export default function OnboardingScreen() {
     funny: "Engraçado 🃏"
   };
   const expMap: Record<string, string> = { beginner: "Iniciante 🐢", intermediate: "Intermediário 🏃‍♂️", advanced: "Avançado 🚀" };
-  
+
   const getInjuriesSummaryString = () => {
     const filtered = selectedInjuries.filter(x => x !== "none");
     if (filtered.length === 0) return "Sem dores ✅";
-    
+
     const parts = filtered.map(x => {
       if (x === "joelho") return "Lombar/Joelho 🦵";
       if (x === "canela") return "Canelite/Canela 🦴";
@@ -819,7 +819,7 @@ export default function OnboardingScreen() {
                     <Text style={styles.stravaHint}>
                       A sincronização do Strava permite ao seu companheiro monitorar seu ritmo e batimentos em tempo real para estruturar os conselhos de evolução fisiológica.
                     </Text>
-                    
+
                     <TouchableOpacity
                       style={styles.connectButton}
                       onPress={async () => {
@@ -924,13 +924,13 @@ export default function OnboardingScreen() {
                 <View style={styles.mascotAvatarWrapper}>
                   <Text style={styles.mascotModalAvatar}>{companionAvatar}</Text>
                 </View>
-                
+
                 <Text style={styles.mascotModalName}>{companionName}</Text>
-                
+
                 <View style={styles.speechBubble}>
                   <Text style={styles.speechBubbleText}>{getCompanionComment()}</Text>
                 </View>
-                
+
                 <TouchableOpacity
                   style={styles.mascotModalBtn}
                   onPress={() => setIsCommentModalVisible(false)}

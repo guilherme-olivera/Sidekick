@@ -39,6 +39,7 @@ const Colors = {
   textSecondary: "#b0b0b0",
   primary: "#ff6b6b",
   success: "#51cf66",
+  warning: "#ffa94d",
   inactive: "#555555",
 };
 
@@ -68,6 +69,8 @@ export default function HomeScreen() {
   const [effortRating, setEffortRating] = useState<number>(3);
   const [userNotes, setUserNotes] = useState("");
   const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+  const [sharingWorkout, setSharingWorkout] = useState<any>(null);
 
   const [notificationsModalVisible, setNotificationsModalVisible] = useState(false);
   const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>([]);
@@ -90,6 +93,11 @@ export default function HomeScreen() {
 
   const dismissNotification = (id: string) => {
     setDismissedNotifIds(prev => [...prev, id]);
+  };
+
+  const handleGenerateShareCard = (workout: any) => {
+    setSharingWorkout(workout);
+    setShareCardVisible(true);
   };
 
   const clearAllNotifications = () => {
@@ -373,6 +381,61 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Readiness Score Card */}
+        {user?.readiness && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>🔋 Prontidão Física (Readiness)</Text>
+            <View style={styles.readinessCard}>
+              <View style={styles.readinessHeaderRow}>
+                <View>
+                  <Text style={[styles.readinessScoreText, { color: user.readiness.color }]}>
+                    {`${user.readiness.score}%`}
+                  </Text>
+                  <Text style={styles.readinessLabel}>{user.readiness.label}</Text>
+                </View>
+                <View style={styles.readinessIconWrapper}>
+                  <Text style={{ fontSize: 32 }}>
+                    {user.readiness.score >= 80 ? "⚡" : user.readiness.score >= 50 ? "🔋" : "😴"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Progress bar */}
+              <View style={styles.progressBarBg}>
+                <View 
+                  style={[
+                    styles.progressBarFill, 
+                    { 
+                      width: `${user.readiness.score}%`,
+                      backgroundColor: user.readiness.color
+                    }
+                  ]} 
+                />
+              </View>
+
+              {/* Details of metrics */}
+              <View style={styles.readinessDetailsGrid}>
+                <View style={styles.readinessDetailItem}>
+                  <Text style={styles.readinessDetailLabel}>Humor & Sono</Text>
+                  <Text style={styles.readinessDetailValue}>{`${user.readiness.details.sleepFactor}%`}</Text>
+                </View>
+                <View style={styles.readinessDetailItem}>
+                  <Text style={styles.readinessDetailLabel}>Estresse / Carga</Text>
+                  <Text style={[styles.readinessDetailValue, { color: user.readiness.details.fatiguePenalty > 0 ? Colors.warning : Colors.success }]}>
+                    {`-${user.readiness.details.fatiguePenalty}%`}
+                  </Text>
+                </View>
+                <View style={styles.readinessDetailItem}>
+                  <Text style={styles.readinessDetailLabel}>Fator Lesão</Text>
+                  <Text style={[styles.readinessDetailValue, { color: user.readiness.details.injuryPenalty > 0 ? Colors.primary : Colors.success }]}>
+                    {`-${user.readiness.details.injuryPenalty}%`}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Latest Workout */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -591,6 +654,22 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                     )}
+                    {selectedWorkoutDetail.averageCadence && (
+                      <View style={styles.modalMetricCard}>
+                        <Text style={styles.modalMetricLabel}>Cadência Média</Text>
+                        <Text style={styles.modalMetricValue}>
+                          {`${selectedWorkoutDetail.averageCadence} ${selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "spm" : "rpm"}`}
+                        </Text>
+                      </View>
+                    )}
+                    {selectedWorkoutDetail.elevationGain && (
+                      <View style={styles.modalMetricCard}>
+                        <Text style={styles.modalMetricLabel}>Ganho Elevação</Text>
+                        <Text style={styles.modalMetricValue}>
+                          {`${selectedWorkoutDetail.elevationGain} m`}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* IA Analysis Narrative Section */}
@@ -624,6 +703,15 @@ export default function HomeScreen() {
                         </Text>
                       )}
                     </TouchableOpacity>
+
+                    {selectedWorkoutDetail.aiNarrative && (
+                      <TouchableOpacity
+                        style={styles.modalShareStoriesButton}
+                        onPress={() => handleGenerateShareCard(selectedWorkoutDetail)}
+                      >
+                        <Text style={styles.modalShareStoriesButtonText}>📸 Compartilhar no Instagram</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </ScrollView>
               </>
@@ -764,6 +852,104 @@ export default function HomeScreen() {
                 ))
               )}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Instagram Stories Share Mockup Modal */}
+      <Modal
+        visible={shareCardVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShareCardVisible(false)}
+      >
+        <View style={styles.shareModalOverlay}>
+          <View style={styles.shareModalContent}>
+            <View style={styles.shareModalHeader}>
+              <Text style={styles.shareModalTitle}>Visualização dos Stories</Text>
+              <TouchableOpacity onPress={() => setShareCardVisible(false)}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 22 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {sharingWorkout && (
+              <ScrollView contentContainerStyle={{ alignItems: "center" }} showsVerticalScrollIndicator={false}>
+                {/* 9:16 Instagram Story Preview */}
+                <View style={styles.storiesCardFrame}>
+                  {/* Decorative Header (Sidekick Premium Logo) */}
+                  <View style={styles.storiesCardHeader}>
+                    <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
+                    <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
+                  </View>
+
+                  {/* Character Avatar bubble */}
+                  <View style={styles.storiesCompanionWrapper}>
+                    <View style={styles.storiesCompanionAvatarBg}>
+                      <Text style={styles.storiesCompanionAvatar}>
+                        {user?.profile?.companionAvatar || "🦖"}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.storiesCompanionName}>
+                        {user?.profile?.companionName || "Rocky"}
+                      </Text>
+                      <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
+                    </View>
+                  </View>
+
+                  {/* Bubble Dialogue */}
+                  <View style={styles.storiesSpeechBubble}>
+                    <Text style={styles.storiesSpeechText}>
+                      "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
+                    </Text>
+                  </View>
+
+                  {/* Workout Info Box */}
+                  <View style={styles.storiesWorkoutBox}>
+                    <Text style={styles.storiesWorkoutTitle}>
+                      {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
+                       sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
+                    </Text>
+                    <Text style={styles.storiesWorkoutDate}>
+                      {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
+                    </Text>
+
+                    <View style={styles.storiesStatsRow}>
+                      <View style={styles.storiesStatItem}>
+                        <Text style={styles.storiesStatLabel}>Duração</Text>
+                        <Text style={styles.storiesStatValue}>
+                          {Math.floor(sharingWorkout.duration / 3600) > 0
+                            ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                            : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                        </Text>
+                      </View>
+                      {sharingWorkout.distance && (
+                        <View style={styles.storiesStatItem}>
+                          <Text style={styles.storiesStatLabel}>Distância</Text>
+                          <Text style={styles.storiesStatValue}>
+                            {sharingWorkout.distance.toFixed(1)} km
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                {/* Actions */}
+                <TouchableOpacity
+                  style={styles.shareSaveButton}
+                  onPress={() => {
+                    setShareCardVisible(false);
+                    Alert.alert(
+                      "Card Pronto! 📸",
+                      "O card foi gerado e salvo na sua galeria com sucesso! Abra o Instagram e cole nos seus Stories para comemorar mais essa conquista! 🔥👟"
+                    );
+                  }}
+                >
+                  <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -1345,6 +1531,61 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 18,
   },
+  readinessCard: {
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 16,
+    padding: 16,
+  },
+  readinessHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  readinessScoreText: {
+    fontSize: 28,
+    fontWeight: "800",
+  },
+  readinessLabel: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  readinessIconWrapper: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 48,
+    height: 48,
+  },
+  readinessDetailsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+    gap: 8,
+  },
+  readinessDetailItem: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    alignItems: "center",
+  },
+  readinessDetailLabel: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  readinessDetailValue: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
   effortModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.75)",
@@ -1482,5 +1723,170 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 13,
     fontWeight: "700",
+  },
+  modalShareStoriesButton: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  modalShareStoriesButtonText: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  shareModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  shareModalContent: {
+    width: "95%",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+    maxHeight: "90%",
+  },
+  shareModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.darkBorder,
+    paddingBottom: 10,
+  },
+  shareModalTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  storiesCardFrame: {
+    width: 290,
+    height: 480,
+    backgroundColor: Colors.dark,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    padding: 20,
+    justifyContent: "space-between",
+    position: "relative",
+    overflow: "hidden",
+  },
+  storiesCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  storiesCardLogo: {
+    color: Colors.text,
+    fontWeight: "900",
+    letterSpacing: 2,
+    fontSize: 14,
+  },
+  storiesCardWatermark: {
+    color: Colors.textSecondary,
+    fontSize: 10.5,
+    opacity: 0.5,
+  },
+  storiesCompanionWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 20,
+  },
+  storiesCompanionAvatarBg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  storiesCompanionAvatar: {
+    fontSize: 26,
+  },
+  storiesCompanionName: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  storiesCompanionSub: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+  },
+  storiesSpeechBubble: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    marginTop: 15,
+    flex: 1,
+    justifyContent: "center",
+  },
+  storiesSpeechText: {
+    color: Colors.text,
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  storiesWorkoutBox: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    marginTop: 16,
+    opacity: 0.95,
+  },
+  storiesWorkoutTitle: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  storiesWorkoutDate: {
+    color: Colors.textSecondary,
+    fontSize: 10.5,
+    marginBottom: 10,
+  },
+  storiesStatsRow: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  storiesStatItem: {
+    flex: 1,
+  },
+  storiesStatLabel: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+  },
+  storiesStatValue: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  shareSaveButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    marginTop: 20,
+    width: 290,
+  },
+  shareSaveButtonText: {
+    color: Colors.dark,
+    fontSize: 15,
+    fontWeight: "800",
   },
 });

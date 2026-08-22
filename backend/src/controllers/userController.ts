@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 import { getAiUsageStatus } from "../services/usageService";
+import { calculateReadiness } from "../utils/readiness";
 
 export const getUserProfileHandler = async (req: any, res: Response) => {
   try {
@@ -51,8 +52,9 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
     }
 
     const usage = await getAiUsageStatus(userId);
+    const readiness = await calculateReadiness(userId, user.profile);
 
-    res.json({ success: true, user, usage });
+    res.json({ success: true, user: { ...user, readiness }, usage });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ error: "Falha ao buscar perfil do usuário" });

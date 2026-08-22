@@ -34,6 +34,20 @@ interface StravaActivity {
   average_heartrate?: number;
   max_heartrate?: number;
   workout_type?: number;
+  average_cadence?: number;
+  total_elevation_gain?: number;
+  moving_time?: number;
+  average_temp?: number;
+  suffer_score?: number;
+  splits_metric?: Array<{
+    distance: number;
+    elapsed_time: number;
+    elevation_difference: number;
+    moving_time: number;
+    split: number;
+    average_speed: number;
+    average_heartrate?: number;
+  }>;
 }
 
 /**
@@ -183,6 +197,13 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     avgHeartRate: stravaActivity.average_heartrate ? Math.round(stravaActivity.average_heartrate) : undefined,
     maxHeartRate: stravaActivity.max_heartrate ? Math.round(stravaActivity.max_heartrate) : undefined,
     intensity,
+    averageCadence: stravaActivity.average_cadence ? Math.round(stravaActivity.average_cadence) : undefined,
+    elevationGain: stravaActivity.total_elevation_gain ? Math.round(stravaActivity.total_elevation_gain) : undefined,
+    movingTime: stravaActivity.moving_time || undefined,
+    elapsedTime: stravaActivity.elapsed_time || undefined,
+    temperature: stravaActivity.average_temp || undefined,
+    sufferScore: stravaActivity.suffer_score || undefined,
+    splits: stravaActivity.splits_metric ? JSON.stringify(stravaActivity.splits_metric) : undefined,
   };
 }
 

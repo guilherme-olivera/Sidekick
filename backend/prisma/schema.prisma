@@ -55,6 +55,13 @@ model Workout {
   pace          Float?    // velocidade média (km/h)
   avgHeartRate  Int?      // BPM médio
   maxHeartRate  Int?      // BPM máximo
+  averageCadence Float?   // Cadência média
+  elevationGain Float?    // Ganho de elevação
+  movingTime    Int?      // Tempo em movimento (segundos)
+  elapsedTime   Int?      // Tempo total decorrido (segundos)
+  temperature   Float?    // Temperatura média
+  sufferScore   Int?      // Score de sofrimento/esforço
+  splits        Json?     // splits detalhados por km
   
   // Tipo e intensidade
   type          String    // "run", "cycling", "strength", etc

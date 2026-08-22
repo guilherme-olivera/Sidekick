@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { loginUser, registerUser } from "../services/authService";
 import { prisma } from "../utils/prisma";
+import { calculateReadiness } from "../utils/readiness";
 
 /**
  * POST /api/auth/register
@@ -103,7 +104,8 @@ export async function handleGetMe(req: any, res: Response) {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
-    res.json({ success: true, user });
+    const readiness = await calculateReadiness(userId, user.profile);
+    res.json({ success: true, user: { ...user, readiness } });
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Erro ao buscar usuário",

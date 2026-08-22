@@ -17,6 +17,7 @@ import {
 import { useRouter } from "expo-router";
 import Calendar from "@/components/Calendar";
 import { useDashboard } from "@/src/contexts/DashboardContext";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { CalendarEvent } from "@/src/services/calendarMockService";
 import * as Speech from "expo-speech";
 const formatPace = (speedKmH: number | null | undefined) => {
@@ -30,6 +31,7 @@ const formatPace = (speedKmH: number | null | undefined) => {
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     loadWorkouts,
     workouts,
@@ -56,6 +58,13 @@ export default function CalendarScreen() {
   const [effortRating, setEffortRating] = useState<number>(3);
   const [userNotes, setUserNotes] = useState("");
   const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+  const [sharingWorkout, setSharingWorkout] = useState<any>(null);
+
+  const handleGenerateShareCard = (workout: any) => {
+    setSharingWorkout(workout);
+    setShareCardVisible(true);
+  };
 
   const selectedWorkoutDetail = workouts.find((w) => w.id === selectedWorkoutId);
 
@@ -540,6 +549,22 @@ export default function CalendarScreen() {
                         </Text>
                       </View>
                     )}
+                    {selectedWorkoutDetail.averageCadence && (
+                      <View style={styles.workoutModalMetricCard}>
+                        <Text style={styles.workoutModalMetricLabel}>Cadência Média</Text>
+                        <Text style={styles.workoutModalMetricValue}>
+                          {`${selectedWorkoutDetail.averageCadence} ${selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "spm" : "rpm"}`}
+                        </Text>
+                      </View>
+                    )}
+                    {selectedWorkoutDetail.elevationGain && (
+                      <View style={styles.workoutModalMetricCard}>
+                        <Text style={styles.workoutModalMetricLabel}>Ganho Elevação</Text>
+                        <Text style={styles.workoutModalMetricValue}>
+                          {`${selectedWorkoutDetail.elevationGain} m`}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* IA Analysis Narrative Section */}
@@ -594,6 +619,15 @@ export default function CalendarScreen() {
                         </Text>
                       )}
                     </TouchableOpacity>
+
+                    {selectedWorkoutDetail.aiNarrative && (
+                      <TouchableOpacity
+                        style={styles.workoutModalShareStoriesButton}
+                        onPress={() => handleGenerateShareCard(selectedWorkoutDetail)}
+                      >
+                        <Text style={styles.workoutModalShareStoriesButtonText}>📸 Compartilhar no Instagram</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </>
@@ -686,6 +720,104 @@ export default function CalendarScreen() {
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Instagram Stories Share Mockup Modal */}
+      <Modal
+        visible={shareCardVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShareCardVisible(false)}
+      >
+        <View style={styles.shareModalOverlay}>
+          <View style={styles.shareModalContent}>
+            <View style={styles.shareModalHeader}>
+              <Text style={styles.shareModalTitle}>Visualização dos Stories</Text>
+              <TouchableOpacity onPress={() => setShareCardVisible(false)}>
+                <Text style={{ color: "#b0b0b0", fontSize: 22 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {sharingWorkout && (
+              <ScrollView contentContainerStyle={{ alignItems: "center" }} showsVerticalScrollIndicator={false}>
+                {/* 9:16 Instagram Story Preview */}
+                <View style={styles.storiesCardFrame}>
+                  {/* Decorative Header (Sidekick Premium Logo) */}
+                  <View style={styles.storiesCardHeader}>
+                    <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
+                    <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
+                  </View>
+
+                  {/* Character Avatar bubble */}
+                  <View style={styles.storiesCompanionWrapper}>
+                    <View style={styles.storiesCompanionAvatarBg}>
+                      <Text style={styles.storiesCompanionAvatar}>
+                        {user?.profile?.companionAvatar || "🦖"}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.storiesCompanionName}>
+                        {user?.profile?.companionName || "Rocky"}
+                      </Text>
+                      <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
+                    </View>
+                  </View>
+
+                  {/* Bubble Dialogue */}
+                  <View style={styles.storiesSpeechBubble}>
+                    <Text style={styles.storiesSpeechText}>
+                      "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
+                    </Text>
+                  </View>
+
+                  {/* Workout Info Box */}
+                  <View style={styles.storiesWorkoutBox}>
+                    <Text style={styles.storiesWorkoutTitle}>
+                      {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
+                       sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
+                    </Text>
+                    <Text style={styles.storiesWorkoutDate}>
+                      {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
+                    </Text>
+
+                    <View style={styles.storiesStatsRow}>
+                      <View style={styles.storiesStatItem}>
+                        <Text style={styles.storiesStatLabel}>Duração</Text>
+                        <Text style={styles.storiesStatValue}>
+                          {Math.floor(sharingWorkout.duration / 3600) > 0
+                            ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                            : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                        </Text>
+                      </View>
+                      {sharingWorkout.distance && (
+                        <View style={styles.storiesStatItem}>
+                          <Text style={styles.storiesStatLabel}>Distância</Text>
+                          <Text style={styles.storiesStatValue}>
+                            {sharingWorkout.distance.toFixed(1)} km
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                {/* Actions */}
+                <TouchableOpacity
+                  style={styles.shareSaveButton}
+                  onPress={() => {
+                    setShareCardVisible(false);
+                    Alert.alert(
+                      "Card Pronto! 📸",
+                      "O card foi gerado e salvo na sua galeria com sucesso! Abra o Instagram e cole nos seus Stories para comemorar mais essa conquista! 🔥👟"
+                    );
+                  }}
+                >
+                  <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1151,5 +1283,170 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 6,
     marginTop: 12,
+  },
+  workoutModalShareStoriesButton: {
+    backgroundColor: "#0a0a0a",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  workoutModalShareStoriesButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  shareModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  shareModalContent: {
+    width: "95%",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#333",
+    padding: 16,
+    maxHeight: "90%",
+  },
+  shareModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+    paddingBottom: 10,
+  },
+  shareModalTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  storiesCardFrame: {
+    width: 290,
+    height: 480,
+    backgroundColor: "#0a0a0a",
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "#ff6b6b",
+    padding: 20,
+    justifyContent: "space-between",
+    position: "relative",
+    overflow: "hidden",
+  },
+  storiesCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  storiesCardLogo: {
+    color: "#fff",
+    fontWeight: "900",
+    letterSpacing: 2,
+    fontSize: 14,
+  },
+  storiesCardWatermark: {
+    color: "#b0b0b0",
+    fontSize: 10.5,
+    opacity: 0.5,
+  },
+  storiesCompanionWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 20,
+  },
+  storiesCompanionAvatarBg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#ff6b6b",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  storiesCompanionAvatar: {
+    fontSize: 26,
+  },
+  storiesCompanionName: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  storiesCompanionSub: {
+    color: "#b0b0b0",
+    fontSize: 11,
+  },
+  storiesSpeechBubble: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#333",
+    marginTop: 15,
+    flex: 1,
+    justifyContent: "center",
+  },
+  storiesSpeechText: {
+    color: "#fff",
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  storiesWorkoutBox: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    marginTop: 16,
+    opacity: 0.95,
+  },
+  storiesWorkoutTitle: {
+    color: "#ff6b6b",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  storiesWorkoutDate: {
+    color: "#b0b0b0",
+    fontSize: 10.5,
+    marginBottom: 10,
+  },
+  storiesStatsRow: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  storiesStatItem: {
+    flex: 1,
+  },
+  storiesStatLabel: {
+    color: "#b0b0b0",
+    fontSize: 10,
+  },
+  storiesStatValue: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  shareSaveButton: {
+    backgroundColor: "#ff6b6b",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    marginTop: 20,
+    width: 290,
+  },
+  shareSaveButtonText: {
+    color: "#0a0a0a",
+    fontSize: 15,
+    fontWeight: "800",
   },
 });

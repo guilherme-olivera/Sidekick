@@ -33,6 +33,16 @@ interface User {
   stravaAthleteUsername?: string;
   stravaAthleteProfile?: string;
   profile?: UserProfile;
+  readiness?: {
+    score: number;
+    label: string;
+    color: string;
+    details: {
+      sleepFactor: number;
+      fatiguePenalty: number;
+      injuryPenalty: number;
+    };
+  };
 }
 
 interface AuthContextType {

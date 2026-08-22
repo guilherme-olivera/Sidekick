@@ -160,14 +160,14 @@ export async function analyzeWorkoutWithGemini(
     - EVITE repetir de forma mecânica e literal os números básicos que o usuário já lê nos cards (ex: não diga "você treinou por 38 minutos a 104 bpm"). Em vez disso, interprete o que esses dados significam fisicamente.
     - Analise o treino atual baseando-se nas métricas e compare-o construtivamente com o histórico recente, se disponível.
     - Avalie se o treino aproxima o atleta de sua Meta Principal.
-    - Discuta a resposta fisiológica baseando-se no BPM médio/máximo em relação ao tipo de atividade:
-      * Em treinos aeróbicos (corrida/ciclismo): comente se foi regenerativo (FC mais baixa) ou se atingiu limiar cardiovascular anaeróbico.
-      * Em treinos de força (musculação): comente sobre a constância e o controle metabólico (manter o coração ativo sem picos exagerados).
-    - Considere a percepção de esforço (RPE) do atleta (se for alta como 4 ou 5, valorize seu empenho e recomende cuidado; se for baixa, comente sobre a facilidade do treino) e as notas sobre como se sentiu.
-    - Se houver lesão ativa registrada no perfil do atleta, atue de forma cuidadosa fazendo um alerta/recomendação de prevenção relevante para a lesão mencionada!
-    - Se houver condições climatológicas desafiadoras (ex: chuva forte, ventania ou calor extremo de 34°C), comente sobre elas no conselho e recomende alternativas preventivas ou cuidados especiais (ex: hidratação extra no calor, treinar na esteira ou musculação indoor em caso de chuva).
-    - Adapte a linguagem ao nível de experiência do atleta (ex: seja mais didático para iniciantes e mais técnico para avançados).
-    - O feedback deve ser curto (máx 130 palavras), focado e em tom conversacional rico, natural e empolgante de acordo com sua personalidade. Fale diretamente ao atleta ("você").
+    - Traga conceitos científicos inspirados na Metodologia INSCYD e fisiologia do esporte:
+      * Discuta a relação entre VO2max (potência aeróbica) e VLaMax (taxa de produção de lactato).
+      * Explique brevemente o metabolismo predominante: oxidação de gorduras/lipídios (FatMax / Zona 2 aeróbica regenerativa) versus combustão anaeróbica de glicogênio (picos de ácido lático) de acordo com o ritmo (pace) e a intensidade cardíaca.
+      * Explique a importância do controle metabólico de acordo com o nível de experiência do atleta.
+    - Considere a percepção de esforço (RPE) do atleta (se for alta como 4 ou 5, valorize seu empenho e recomende cuidado/descanso; se for baixa, comente sobre a facilidade do treino) e as notas sobre como se sentiu.
+    - Se o atleta possuir lesão ativa ou cansaço excessivo: sugira alternativas educativas de Cross-Training (ex: ciclismo indoor/spinning de baixo impacto, remo, natação ou caminhada inclinada na esteira) para manter o condicionamento cardiovascular poupando a articulação. Mantenha os avisos preventivos e não prescreva tratamentos médicos.
+    - Se houver condições climatológicas desafiadoras (ex: chuva forte, ventania ou calor extremo), sugira adaptações inteligentes de treino (musculação indoor, esteira ou hidratação extra).
+    - O feedback deve ser curto (máx 140 palavras), focado e em tom conversacional rico, natural e empolgante de acordo com sua personalidade. Fale diretamente ao atleta ("você").
 
     Escreva a narrativa em português:
     `;

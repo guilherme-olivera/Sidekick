@@ -21,6 +21,13 @@ interface Workout {
   description?: string;
   effortRating?: number;
   userNotes?: string;
+  averageCadence?: number;
+  elevationGain?: number;
+  movingTime?: number;
+  elapsedTime?: number;
+  temperature?: number;
+  sufferScore?: number;
+  splits?: string;
 }
 
 interface WorkoutByDay {
@@ -189,12 +196,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setWorkouts(prevWorkouts =>
         prevWorkouts.map(workout =>
           workout.id === workoutId
-            ? { 
-                ...workout, 
-                aiNarrative: response.narrative,
-                effortRating: effortRating ?? workout.effortRating,
-                userNotes: userNotes ?? workout.userNotes
-              }
+            ? {
+              ...workout,
+              aiNarrative: response.narrative,
+              effortRating: effortRating ?? workout.effortRating,
+              userNotes: userNotes ?? workout.userNotes
+            }
             : workout
         )
       );
@@ -299,7 +306,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       await loadManualEvents();
       return res.event;
     }
-    
+
     const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00Z` : payload.date;
     const body = {
       title: payload.title,
@@ -308,7 +315,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       type: payload.type,
       completed: payload.completed
     };
-    
+
     const res = await apiService.post('/events', body);
     try {
       if (res.event) {
@@ -347,7 +354,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       await loadManualEvents();
       return res.event;
     }
-    
+
     const eventDateStr = payload.date && payload.time ? `${payload.date}T${payload.time}:00Z` : payload.date;
     const body = {
       title: payload.title,
@@ -356,7 +363,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       type: payload.type,
       completed: payload.completed
     };
-    
+
     const res = await apiService.put(`/events/${id}`, body);
     try {
       await notificationService.cancelEventNotifications(id);
@@ -395,7 +402,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       await loadManualEvents();
       return res;
     }
-    
+
     const res = await apiService.delete(`/events/${id}`);
     try {
       await notificationService.cancelEventNotifications(id);

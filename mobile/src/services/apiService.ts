@@ -5,9 +5,9 @@ import Constants from 'expo-constants';
 // Comunicação com o backend
 
 const rawApiBase =
+  process.env.EXPO_PUBLIC_API_URL ||
   ((Constants.expoConfig?.extra as any)?.API_URL as string) ||
   ((Constants.manifest?.extra as any)?.API_URL as string) ||
-  process.env.EXPO_PUBLIC_API_URL ||
   'https://sidekick-jtne.onrender.com';
 
 export let API_BASE_URL = rawApiBase;
