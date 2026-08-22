@@ -2,6 +2,30 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// Helper to wrap API calls with automatic retry on Google 503 Service Unavailable / 429 Rate Limit
+async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const isRetryable = 
+      error?.status === 503 || 
+      error?.status === 429 || 
+      errorMsg.includes("503") || 
+      errorMsg.includes("429") || 
+      errorMsg.includes("high demand") || 
+      errorMsg.includes("Service Unavailable") ||
+      errorMsg.includes("overloaded");
+
+    if (isRetryable && retries > 0) {
+      console.warn(`[GEMINI] ⚠️ API returned retryable error (retries left: ${retries}). Retrying in ${delay}ms... Error: ${errorMsg}`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callGeminiWithRetry(fn, retries - 1, delay * 2); // Exponential backoff
+    }
+    throw error;
+  }
+}
+
 function calculateAge(birthdayStr?: string | null): number | null {
   if (!birthdayStr) return null;
   const parts = birthdayStr.split("/");
@@ -144,11 +168,12 @@ export async function analyzeWorkoutWithGemini(
     Escreva a narrativa em português:
     `;
 
-    const result = await model.generateContent(prompt);
-    const narrative =
-      result.response.text() ||
-      "Não foi possível gerar a análise. Tente novamente.";
+    const text = await callGeminiWithRetry(async () => {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    });
 
+    const narrative = text || "Não foi possível gerar a análise. Tente novamente.";
     return narrative;
   } catch (error) {
     console.error("Gemini API Error:", error);
@@ -264,11 +289,12 @@ export async function analyzeHistoryWithGemini(
     Escreva o relatório em português:
     `;
 
-    const result = await model.generateContent(prompt);
-    const narrative =
-      result.response.text() ||
-      "Não foi possível gerar o relatório de progresso do histórico.";
+    const text = await callGeminiWithRetry(async () => {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    });
 
+    const narrative = text || "Não foi possível gerar o relatório de progresso do histórico.";
     return narrative;
   } catch (error) {
     console.error("Gemini API History Error:", error);
@@ -333,9 +359,12 @@ Instruções cruciais:
       },
     });
 
-    const result = await chat.sendMessage(message);
-    const response = await result.response;
-    return response.text().trim();
+    const text = await callGeminiWithRetry(async () => {
+      const result = await chat.sendMessage(message);
+      return result.response.text();
+    });
+
+    return text.trim();
   } catch (error) {
     console.error("Error in generateChatResponse:", error);
     throw error;
