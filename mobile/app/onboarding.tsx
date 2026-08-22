@@ -41,6 +41,7 @@ export default function OnboardingScreen() {
   const [syncedCount, setSyncedCount] = useState<number | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(isEditMode);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [hasSkippedStrava, setHasSkippedStrava] = useState(false);
 
   const [companionName, setCompanionName] = useState("Sidekick");
   const [companionAvatar, setCompanionAvatar] = useState("🦖");
@@ -117,6 +118,14 @@ export default function OnboardingScreen() {
       if (p.goalTargetTime) setGoalTargetTime(p.goalTargetTime);
     }
   }, [user]);
+
+  // Trigger comment modal when Strava links successfully
+  useEffect(() => {
+    if (step === 4 && isConnected) {
+      setHasSkippedStrava(false);
+      setIsCommentModalVisible(true);
+    }
+  }, [isConnected, step]);
 
   const handleBirthdayChange = (text: string) => {
     // Remove formatting
@@ -289,7 +298,15 @@ export default function OnboardingScreen() {
           "Deseja conectar sua conta do Strava agora para importar suas atividades históricas? Você também pode fazer isso mais tarde no seu Perfil.",
           [
             { text: "Conectar Strava", style: "cancel" },
-            { text: "Avançar assim mesmo", style: "destructive", onPress: () => setStep(5) }
+            {
+              text: "Avançar assim mesmo",
+              style: "destructive",
+              onPress: () => {
+                setHasSkippedStrava(true);
+                setStep(5);
+                setIsCommentModalVisible(true);
+              }
+            }
           ]
         );
         return;
@@ -306,7 +323,7 @@ export default function OnboardingScreen() {
 
   const getCompanionComment = () => {
     const name = companionName || "Sidekick";
-    const avatar = companionAvatar || "🤖";
+    const avatar = companionAvatar || "🦖";
     
     if (step === 1) {
       return `Fala parceiro! Eu sou o ${name} ${avatar}. Escolha meu tom e personalidade e vamos botar para quebrar nos treinos!`;
@@ -318,9 +335,15 @@ export default function OnboardingScreen() {
       return `Trace uma meta clara de distância ou ritmo (pace). Juntos, com base na ciência fisiológica e INSCYD, vamos buscar essa marca!`;
     }
     if (step === 4) {
+      if (isConnected) {
+        return `Conexão realizada com sucesso! Já estou puxando seus treinos do Strava para fazer a pré-análise do seu perfil. Você é fera! 🏃‍♂️💨`;
+      }
       return `Quase tudo pronto! Conecte seu Strava para que eu possa acompanhar sua telemetria física em tempo real!`;
     }
     if (step === 5) {
+      if (hasSkippedStrava) {
+        return `Só consigo te acompanhar de verdade se eu conseguir ver seus treinos! Não esqueça de fazer essa integração com o Strava mais tarde lá no seu perfil, combinado? 😉`;
+      }
       return `Pronto, contrato assinado! Agora é só calçar o tênis e ir para o asfalto. Estou pronto para te motivar!`;
     }
     return "";
