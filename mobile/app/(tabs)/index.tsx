@@ -22,6 +22,15 @@ import { MoodWidget } from "@/components/MoodWidget";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import notificationService from "@/src/services/notificationService";
 
+const formatPace = (speedKmH: number | null | undefined) => {
+  if (!speedKmH || speedKmH <= 0) return "-";
+  const totalMinutes = 60 / speedKmH;
+  const minutes = Math.floor(totalMinutes);
+  const seconds = Math.round((totalMinutes - minutes) * 60);
+  const secondsStr = seconds < 10 ? `0${seconds}` : seconds;
+  return `${minutes}:${secondsStr} /km`;
+};
+
 const Colors = {
   dark: "#0a0a0a",
   darkCard: "#1a1a1a",
@@ -546,9 +555,15 @@ export default function HomeScreen() {
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricLabel}>Velocidade</Text>
+                        <Text style={styles.modalMetricLabel}>
+                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                            ? "Pace Médio"
+                            : "Vel. Média"}
+                        </Text>
                         <Text style={styles.modalMetricValue}>
-                          {selectedWorkoutDetail.pace.toFixed(1)} km/h
+                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                            ? formatPace(selectedWorkoutDetail.pace)
+                            : `${selectedWorkoutDetail.pace.toFixed(1)} km/h`}
                         </Text>
                       </View>
                     )}
@@ -557,6 +572,22 @@ export default function HomeScreen() {
                         <Text style={styles.modalMetricLabel}>BPM Médio</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.avgHeartRate} bpm
+                        </Text>
+                      </View>
+                    )}
+                    {selectedWorkoutDetail.maxHeartRate && (
+                      <View style={styles.modalMetricCard}>
+                        <Text style={styles.modalMetricLabel}>BPM Máximo</Text>
+                        <Text style={styles.modalMetricValue}>
+                          {selectedWorkoutDetail.maxHeartRate} bpm
+                        </Text>
+                      </View>
+                    )}
+                    {selectedWorkoutDetail.effortRating && (
+                      <View style={styles.modalMetricCard}>
+                        <Text style={styles.modalMetricLabel}>Esforço (RPE)</Text>
+                        <Text style={styles.modalMetricValue}>
+                          {selectedWorkoutDetail.effortRating} / 5
                         </Text>
                       </View>
                     )}

@@ -12,13 +12,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Calendar from "@/components/Calendar";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { CalendarEvent } from "@/src/services/calendarMockService";
 import * as Speech from "expo-speech";
-import { ActivityIndicator } from "react-native";
+const formatPace = (speedKmH: number | null | undefined) => {
+  if (!speedKmH || speedKmH <= 0) return "-";
+  const totalMinutes = 60 / speedKmH;
+  const minutes = Math.floor(totalMinutes);
+  const seconds = Math.round((totalMinutes - minutes) * 60);
+  const secondsStr = seconds < 10 ? `0${seconds}` : seconds;
+  return `${minutes}:${secondsStr} /km`;
+};
 
 export default function CalendarScreen() {
   const router = useRouter();
@@ -496,9 +504,15 @@ export default function CalendarScreen() {
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricLabel}>Velocidade</Text>
+                        <Text style={styles.workoutModalMetricLabel}>
+                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                            ? "Pace Médio"
+                            : "Vel. Média"}
+                        </Text>
                         <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.pace.toFixed(1)} km/h
+                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                            ? formatPace(selectedWorkoutDetail.pace)
+                            : `${selectedWorkoutDetail.pace.toFixed(1)} km/h`}
                         </Text>
                       </View>
                     )}
@@ -507,6 +521,22 @@ export default function CalendarScreen() {
                         <Text style={styles.workoutModalMetricLabel}>BPM Médio</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.avgHeartRate} bpm
+                        </Text>
+                      </View>
+                    )}
+                    {selectedWorkoutDetail.maxHeartRate && (
+                      <View style={styles.workoutModalMetricCard}>
+                        <Text style={styles.workoutModalMetricLabel}>BPM Máximo</Text>
+                        <Text style={styles.workoutModalMetricValue}>
+                          {selectedWorkoutDetail.maxHeartRate} bpm
+                        </Text>
+                      </View>
+                    )}
+                    {selectedWorkoutDetail.effortRating && (
+                      <View style={styles.workoutModalMetricCard}>
+                        <Text style={styles.workoutModalMetricLabel}>Esforço (RPE)</Text>
+                        <Text style={styles.workoutModalMetricValue}>
+                          {selectedWorkoutDetail.effortRating} / 5
                         </Text>
                       </View>
                     )}
