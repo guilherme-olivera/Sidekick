@@ -70,6 +70,7 @@ export function getTransporterError(): string | null {
  */
 export async function sendMail(to: string, subject: string, htmlContent: string, textContent?: string) {
   try {
+    const startTime = Date.now();
     if (RESEND_API_KEY) {
       console.log(`[EMAIL] Enviando e-mail via Resend REST API para ${to}...`);
       const response = await axios.post(
@@ -88,7 +89,8 @@ export async function sendMail(to: string, subject: string, htmlContent: string,
           },
         }
       );
-      console.log(`[EMAIL] E-mail enviado com sucesso via Resend para ${to}. ID: ${response.data.id}`);
+      const duration = Date.now() - startTime;
+      console.log(`[EMAIL] ⚡ Envio via Resend resolvido em ${duration}ms para ${to}. ID: ${response.data.id}`);
       return true;
     } else if (transporter) {
       const info = await transporter.sendMail({
@@ -98,7 +100,8 @@ export async function sendMail(to: string, subject: string, htmlContent: string,
         text: textContent || "Esta mensagem exige visualização em HTML.",
         html: htmlContent,
       });
-      console.log(`[EMAIL] E-mail enviado com sucesso via SMTP para ${to}. ID: ${info.messageId}`);
+      const duration = Date.now() - startTime;
+      console.log(`[EMAIL] ⚡ Envio via SMTP resolvido em ${duration}ms para ${to}. ID: ${info.messageId}`);
       return true;
     } else {
       console.log("=========================================");

@@ -4,10 +4,16 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // Helper to wrap API calls with automatic retry on Google 503 Service Unavailable / 429 Rate Limit
 async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  const startTime = Date.now();
   try {
-    return await fn();
+    const result = await fn();
+    const duration = Date.now() - startTime;
+    console.log(`[GEMINI] ⚡ API call resolved in ${duration}ms`);
+    return result;
   } catch (error: any) {
+    const duration = Date.now() - startTime;
     const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[GEMINI] ❌ API call failed in ${duration}ms: ${errorMsg}`);
     const isRetryable = 
       error?.status === 503 || 
       error?.status === 429 || 

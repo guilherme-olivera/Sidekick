@@ -104,6 +104,7 @@ export async function exchangeCodeForTokens(
       throw new Error("STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be configured");
     }
 
+    const startTime = Date.now();
     const response = await axios.post<StravaTokenResponse>(
       "https://www.strava.com/oauth/token",
       {
@@ -113,10 +114,12 @@ export async function exchangeCodeForTokens(
         grant_type: "authorization_code",
       }
     );
+    const duration = Date.now() - startTime;
+    console.log(`[STRAVA] ⚡ exchangeCodeForTokens resolved in ${duration}ms`);
 
     return response.data;
   } catch (error) {
-    console.error("Strava token exchange error:", error);
+    console.error("[STRAVA] ❌ Token exchange error:", error);
     throw new Error("Failed to exchange Strava authorization code");
   }
 }
@@ -137,6 +140,7 @@ export async function fetchStravaActivities(
       params.after = after;
     }
 
+    const startTime = Date.now();
     const response = await axios.get<StravaActivity[]>(
       `${STRAVA_BASE_URL}/athlete/activities`,
       {
@@ -146,10 +150,12 @@ export async function fetchStravaActivities(
         params,
       }
     );
+    const duration = Date.now() - startTime;
+    console.log(`[STRAVA] ⚡ fetchStravaActivities resolved in ${duration}ms`);
 
     return response.data;
   } catch (error) {
-    console.error("Strava activities fetch error:", error);
+    console.error("[STRAVA] ❌ Activities fetch error:", error);
     throw new Error("Failed to fetch Strava activities");
   }
 }
@@ -221,6 +227,7 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
       throw new Error("STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be configured");
     }
 
+    const startTime = Date.now();
     const response = await axios.post<StravaTokenResponse>(
       "https://www.strava.com/oauth/token",
       {
@@ -230,16 +237,19 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
         grant_type: "refresh_token",
       }
     );
+    const duration = Date.now() - startTime;
+    console.log(`[STRAVA] ⚡ refreshStravaToken resolved in ${duration}ms`);
 
     return response.data;
   } catch (error) {
-    console.error("Strava token refresh error:", error);
+    console.error("[STRAVA] ❌ Token refresh error:", error);
     throw new Error("Failed to refresh Strava token");
   }
 }
 
 export async function fetchStravaStats(accessToken: string, stravaId: string): Promise<any> {
   try {
+    const startTime = Date.now();
     const response = await axios.get(
       `${STRAVA_BASE_URL}/athletes/${stravaId}/stats`,
       {
@@ -248,9 +258,12 @@ export async function fetchStravaStats(accessToken: string, stravaId: string): P
         },
       }
     );
+    const duration = Date.now() - startTime;
+    console.log(`[STRAVA] ⚡ fetchStravaStats resolved in ${duration}ms`);
+
     return response.data;
   } catch (error) {
-    console.error("Strava stats fetch error:", error);
+    console.error("[STRAVA] ❌ Stats fetch error:", error);
     throw new Error("Failed to fetch Strava athlete stats");
   }
 }
