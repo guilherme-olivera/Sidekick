@@ -183,23 +183,52 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
 
     // Busca todos os treinos que já existem para este usuário e possuem stravaId na lista
     const stravaIds = activities.map((a: any) => a.id.toString());
+    const force = req.query.force === "true";
+
     const existingWorkouts = await prisma.workout.findMany({
       where: {
         userId,
         stravaId: { in: stravaIds },
       },
-      select: { stravaId: true },
+      select: {
+        stravaId: true,
+        averageCadence: true,
+        elevationGain: true,
+        averageWatts: true,
+      },
     });
 
-    const existingStravaIds = new Set(existingWorkouts.map((w: any) => w.stravaId));
+    const existingWorkoutMap = new Map(existingWorkouts.map((w: any) => [w.stravaId, w]));
 
     // Converte e salva atividades
     const workouts = [];
     for (const activity of activities) {
       const workoutData = convertStravaActivityToWorkout(activity);
 
-      // Se já foi importado, pula para evitar duplicados e queries extras
-      if (existingStravaIds.has(workoutData.stravaId)) {
+      const existing = existingWorkoutMap.get(workoutData.stravaId);
+      if (existing) {
+        // Self-healing: update missing telemetry fields if currently null in db
+        const needsUpdate =
+          (workoutData.averageCadence !== undefined && existing.averageCadence === null) ||
+          (workoutData.elevationGain !== undefined && existing.elevationGain === null) ||
+          (workoutData.averageWatts !== undefined && existing.averageWatts === null);
+
+        if (needsUpdate || force) {
+          const updatedWorkout = await prisma.workout.update({
+            where: { stravaId: workoutData.stravaId },
+            data: {
+              averageCadence: workoutData.averageCadence,
+              elevationGain: workoutData.elevationGain,
+              averageWatts: workoutData.averageWatts,
+              movingTime: workoutData.movingTime,
+              elapsedTime: workoutData.elapsedTime,
+              temperature: workoutData.temperature,
+              sufferScore: workoutData.sufferScore,
+              splits: workoutData.splits,
+            },
+          });
+          workouts.push(updatedWorkout);
+        }
         continue;
       }
 
