@@ -4,6 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -77,7 +78,14 @@ function RootLayoutNav() {
   }, [token, user, isLoading]);
 
   if (isLoading) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#ff6b6b" />
+        <Text style={{ color: '#ffffff', marginTop: 20, fontSize: 16, fontWeight: '600', letterSpacing: 0.5 }}>
+          Conectando ao Sidekick... 👟
+        </Text>
+      </View>
+    );
   }
 
   return (
