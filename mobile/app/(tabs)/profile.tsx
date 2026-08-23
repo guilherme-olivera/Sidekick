@@ -3130,7 +3130,7 @@ const styles = StyleSheet.create({
   },
   settingsInfoRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 6,
     borderBottomWidth: 0.5,
@@ -3139,11 +3139,13 @@ const styles = StyleSheet.create({
   settingsInfoLabel: {
     color: Colors.textSecondary,
     fontSize: 13,
+    width: 65,
   },
   settingsInfoVal: {
     color: Colors.text,
     fontSize: 13,
     fontWeight: "600",
+    flex: 1,
   },
   settingsOptionItem: {
     flexDirection: "row",
