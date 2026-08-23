@@ -15,7 +15,7 @@ import {
   TextInput,
   FlatList,
 } from "react-native";
-import Svg, { Path, Circle, Defs, LinearGradient, Stop } from "react-native-svg";
+import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
@@ -366,17 +366,15 @@ export default function HomeScreen() {
     const maxVal = Math.max(...thisWeekDaily, ...lastWeekDaily, 5.0);
     const range = maxVal || 1.0;
 
-    // Coordinate mapping (Width 280, height 110)
-    // Left offset = 30, right offset = 260
-    // spacing = 230 / 6 = 38.3
+    // Coordinate mapping (Width 280, height 125, plot area X: 35 to 265, Y: 15 to 90)
     const coralPoints = thisWeekDaily.map((dist, i) => {
-      const x = 30 + i * (230 / 6);
+      const x = 35 + i * (230 / 6);
       const y = 90 - (dist / range) * 75;
       return { x, y };
     });
 
     const lastWeekPoints = lastWeekDaily.map((dist, i) => {
-      const x = 30 + i * (230 / 6);
+      const x = 35 + i * (230 / 6);
       const y = 90 - (dist / range) * 75;
       return { x, y };
     });
@@ -384,17 +382,17 @@ export default function HomeScreen() {
     const coralPath = `M ${coralPoints.map(pt => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" L ")}`;
     const lastWeekPath = `M ${lastWeekPoints.map(pt => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" L ")}`;
 
-    const coralArea = `${coralPath} L ${coralPoints[6].x.toFixed(1)} 100 L ${coralPoints[0].x.toFixed(1)} 100 Z`;
-    const lastWeekArea = `${lastWeekPath} L ${lastWeekPoints[6].x.toFixed(1)} 100 L ${lastWeekPoints[0].x.toFixed(1)} 100 Z`;
+    const coralArea = `${coralPath} L ${coralPoints[6].x.toFixed(1)} 90 L ${coralPoints[0].x.toFixed(1)} 90 Z`;
+    const lastWeekArea = `${lastWeekPath} L ${lastWeekPoints[6].x.toFixed(1)} 90 L ${lastWeekPoints[0].x.toFixed(1)} 90 Z`;
 
     const labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
     
-    // Y-axis gridline labels (4 intervals)
+    // Y-axis gridline labels (4 intervals, from top to bottom)
     const yLabels = [
-      "0.0k",
-      `${(maxVal * 0.33).toFixed(1)}k`,
-      `${(maxVal * 0.66).toFixed(1)}k`,
       `${maxVal.toFixed(1)}k`,
+      `${(maxVal * 0.66).toFixed(1)}k`,
+      `${(maxVal * 0.33).toFixed(1)}k`,
+      "0.0k",
     ];
 
     return {
@@ -682,22 +680,7 @@ export default function HomeScreen() {
 
               {/* Chart Grid Area */}
               <View style={styles.chartWrapper}>
-                {/* Horizontal gridlines */}
-                <View style={styles.gridline} />
-                <View style={[styles.gridline, { top: "33%" }]} />
-                <View style={[styles.gridline, { top: "66%" }]} />
-                <View style={[styles.gridline, { top: "100%" }]} />
-
-                {/* Left Y axis labels */}
-                <View style={styles.yAxisLabels}>
-                  <Text style={styles.yLabel}>{volumeData.yLabels[0]}</Text>
-                  <Text style={styles.yLabel}>{volumeData.yLabels[1]}</Text>
-                  <Text style={styles.yLabel}>{volumeData.yLabels[2]}</Text>
-                  <Text style={styles.yLabel}>{volumeData.yLabels[3]}</Text>
-                </View>
-
-                {/* Vector Paths SVG canvas */}
-                <Svg height="110" style={styles.svgCanvas}>
+                <Svg width="100%" height="125" viewBox="0 0 280 125" style={styles.svgCanvas}>
                   <Defs>
                     <LinearGradient id="coralGradient" x1="0" y1="0" x2="0" y2="1">
                       <Stop offset="0%" stopColor="#ff6b6b" stopOpacity="0.25" />
@@ -708,6 +691,18 @@ export default function HomeScreen() {
                       <Stop offset="100%" stopColor="#a0a0b0" stopOpacity="0.0" />
                     </LinearGradient>
                   </Defs>
+
+                  {/* Horizontal gridlines */}
+                  <Line x1="35" y1="15" x2="265" y2="15" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="35" y1="40" x2="265" y2="40" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="35" y1="65" x2="265" y2="65" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="35" y1="90" x2="265" y2="90" stroke="#22222b" strokeWidth="1" />
+
+                  {/* Y Axis Labels */}
+                  <SvgText x="27" y="18" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[0]}</SvgText>
+                  <SvgText x="27" y="43" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[1]}</SvgText>
+                  <SvgText x="27" y="68" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[2]}</SvgText>
+                  <SvgText x="27" y="93" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[3]}</SvgText>
 
                   {/* Fills under path */}
                   <Path d={volumeData.lastWeekArea} fill="url(#greyGradient)" />
@@ -742,6 +737,24 @@ export default function HomeScreen() {
                     />
                   ))}
 
+                  {/* X Axis Labels */}
+                  {volumeData.labels.map((lbl, idx) => {
+                    const x = 35 + idx * (230 / 6);
+                    return (
+                      <SvgText
+                        key={`x-${idx}`}
+                        x={x.toFixed(1)}
+                        y="112"
+                        fill="#a0a0b0"
+                        fontSize="9"
+                        fontWeight="600"
+                        textAnchor="middle"
+                      >
+                        {lbl}
+                      </SvgText>
+                    );
+                  })}
+
                   {/* Invisible touch targets */}
                   {volumeData.coralPoints.map((pt, i) => (
                     <Circle 
@@ -754,13 +767,6 @@ export default function HomeScreen() {
                     />
                   ))}
                 </Svg>
-              </View>
- 
-              {/* Bottom X axis labels */}
-              <View style={styles.xAxisLabels}>
-                {volumeData.labels.map((lbl, idx) => (
-                  <Text key={`x-${idx}`} style={styles.xLabel}>{lbl}</Text>
-                ))}
               </View>
 
               {/* Interactive Tooltip area */}
@@ -2190,60 +2196,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   chartWrapper: {
-    height: 110,
+    height: 125,
     position: "relative",
     marginHorizontal: 4,
   },
-  gridline: {
-    position: "absolute",
-    left: 40,
-    right: 28,
-    height: 1,
-    backgroundColor: "#22222b",
-  },
-  yAxisLabels: {
-    position: "absolute",
-    left: 0,
-    top: -5,
-    bottom: -5,
-    width: 32,
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  yLabel: {
-    color: Colors.textSecondary,
-    fontSize: 9,
-    fontWeight: "600",
-  },
-  yAxisLabelsRight: {
-    position: "absolute",
-    right: 0,
-    top: -5,
-    bottom: -5,
-    width: 24,
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  yLabelRight: {
-    color: Colors.textSecondary,
-    fontSize: 9,
-    fontWeight: "600",
-  },
   svgCanvas: {
-    marginLeft: 36,
-    marginRight: 24,
-  },
-  xAxisLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingLeft: 56,
-    paddingRight: 44,
-    marginTop: 8,
-  },
-  xLabel: {
-    color: Colors.textSecondary,
-    fontSize: 9,
-    fontWeight: "600",
+    width: "100%",
+    height: 125,
   },
   chartInteractiveLegend: {
     marginTop: 10,
