@@ -3131,7 +3131,8 @@ const styles = StyleSheet.create({
   settingsInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderBottomWidth: 0.5,
     borderBottomColor: "#222",
   },
