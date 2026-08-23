@@ -67,6 +67,10 @@ export default function ProfileScreen() {
   const [diagnosticResults, setDiagnosticResults] = useState<any>(null);
   const [isDiagnosticModalVisible, setIsDiagnosticModalVisible] = useState(false);
 
+  // Novos estados para aba Perfil Unificada
+  const [activeProfileTab, setActiveProfileTab] = useState<"evolucao" | "conquistas">("evolucao");
+  const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+
   const runDiagnostics = async () => {
     setIsDiagnosticModalVisible(true);
     setTestingDiagnostics(true);
@@ -410,6 +414,140 @@ export default function ProfileScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // ----- LEVEL, XP, CHALLENGES AND TROPHIES CALCULATIONS -----
+  const totalWorkouts = allWorkouts.length;
+  const companionNameStr = user?.profile?.companionName || "Rocky";
+  const hasStrava = !!user?.stravaAthleteName;
+
+  // Weekly running distance
+  const currentWeekDistance = allWorkouts.filter(w => {
+    const d = new Date(w.date);
+    const today = new Date();
+    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + offset);
+    monday.setHours(0,0,0,0);
+    return d >= monday && w.type === "run";
+  }).reduce((sum, w) => sum + (w.distance || 0), 0);
+
+  // Weekly workouts count
+  const currentWeekWorkoutsCount = allWorkouts.filter(w => {
+    const d = new Date(w.date);
+    const today = new Date();
+    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + offset);
+    monday.setHours(0,0,0,0);
+    return d >= monday;
+  }).length;
+
+  const challenge1Complete = currentWeekDistance >= 15;
+  const challenge2Complete = currentWeekWorkoutsCount >= 3;
+  const challenge3Complete = allWorkouts.some(w => w.sufferScore && w.sufferScore >= 100);
+
+  // Monthly Running distance (50k challenge!)
+  const currentMonthDistance = allWorkouts.filter(w => {
+    const d = new Date(w.date);
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+    return d >= firstDayOfMonth && w.type === "run";
+  }).reduce((sum, w) => sum + (w.distance || 0), 0);
+
+  const monthlyChallengeComplete = currentMonthDistance >= 50;
+
+  // Total XP
+  let challengeXp = 0;
+  if (challenge1Complete) challengeXp += 200;
+  if (challenge2Complete) challengeXp += 150;
+  if (challenge3Complete) challengeXp += 150;
+  if (monthlyChallengeComplete) challengeXp += 500;
+
+  const totalXp = totalWorkouts * 150 + (hasStrava ? 200 : 0) + (user?.profile?.companionName ? 100 : 0) + challengeXp;
+  const xpPerLevel = 500;
+  const currentLevel = Math.max(1, Math.floor(totalXp / xpPerLevel) + 1);
+  const currentXpInLevel = totalXp % xpPerLevel;
+  const xpProgressPct = (currentXpInLevel / xpPerLevel) * 100;
+
+  const trophies = [
+    {
+      id: "partner",
+      title: "Parceria Fechada",
+      description: `Deu um nome ao seu companheiro digital (${companionNameStr}).`,
+      emoji: "🦖",
+      unlocked: !!user?.profile?.companionName,
+    },
+    {
+      id: "strava",
+      title: "Dev do Asfalto",
+      description: "Conectou sua conta do Strava com o Sidekick.",
+      emoji: "🔌",
+      unlocked: hasStrava,
+    },
+    {
+      id: "first_workout",
+      title: "Primeiro Passo",
+      description: "Concluiu e sincronizou sua primeira atividade física.",
+      emoji: "🥉",
+      unlocked: totalWorkouts >= 1,
+    },
+    {
+      id: "consistency_5",
+      title: "Fogo no Tênis",
+      description: "Alcançou um histórico de 5 treinos concluídos.",
+      emoji: "🔥",
+      unlocked: totalWorkouts >= 5,
+    },
+    {
+      id: "runner_10k",
+      title: "Destruidor de 10K",
+      description: "Correu uma distância maior ou igual a 10km.",
+      emoji: "🏃‍♂️",
+      unlocked: allWorkouts.some(w => w.type === "run" && (w.distance || 0) >= 10),
+    },
+    {
+      id: "monthly_50k",
+      title: "Desafio 50K",
+      description: "Correu 50 km acumulados neste mês.",
+      emoji: "🏆",
+      unlocked: monthlyChallengeComplete,
+    },
+  ];
+
+  const handleTrophyPress = (trophy: any) => {
+    if (!trophy.unlocked) {
+      Alert.alert(
+        "Troféu Bloqueado",
+        `${trophy.description}\n\nContinue treinando para desbloquear esta conquista!`
+      );
+      return;
+    }
+    setSelectedBadge({
+      emoji: trophy.emoji,
+      name: trophy.title,
+      desc: trophy.description,
+    });
+    setShareModalVisible(true);
+  };
+
+  // ----- ANNUAL SVG CHART CALCULATIONS -----
+  const currentYear = new Date().getFullYear();
+  const monthsAbbr = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  
+  const monthlyData = monthsAbbr.map((label, index) => {
+    const monthWorkouts = allWorkouts.filter(w => {
+      const d = new Date(w.date);
+      return d.getFullYear() === currentYear && d.getMonth() === index && w.type === "run";
+    });
+    const distance = monthWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
+    return { label, distance };
+  });
+
+  const maxMonthlyDistance = Math.max(...monthlyData.map(d => d.distance), 10);
+  const currentMonthIdx = new Date().getMonth();
+  const monthsToAverage = monthlyData.slice(0, currentMonthIdx + 1);
+  const totalYearDistance = monthsToAverage.reduce((sum, m) => sum + m.distance, 0);
+  const averageMonthlyDistance = totalYearDistance / (currentMonthIdx + 1);
+
   // ----- SPORT-SPECIFIC LOCAL WORKOUTS FILTERING -----
   const sportWorkouts = allWorkouts.filter(w => {
     if (activeSportTab === "run") return w.type === "run";
@@ -547,30 +685,82 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handlePickImage}
-            disabled={uploadingAvatar}
-            activeOpacity={0.7}
-          >
-            {uploadingAvatar ? (
-              <ActivityIndicator color={Colors.primary} size="large" />
-            ) : user?.avatar ? (
-              <Image
-                source={{ uri: getAvatarUri(user.avatar) }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Text style={styles.avatar}>👤</Text>
-            )}
-            <View style={styles.editBadge}>
-              <Text style={styles.editBadgeIcon}>📷</Text>
-            </View>
-          </TouchableOpacity>
+        <View style={styles.profileHeaderNew}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              style={styles.avatarContainerNew}
+              onPress={handlePickImage}
+              disabled={uploadingAvatar}
+              activeOpacity={0.7}
+            >
+              {uploadingAvatar ? (
+                <ActivityIndicator color={Colors.primary} size="small" />
+              ) : user?.avatar ? (
+                <Image
+                  source={{ uri: getAvatarUri(user.avatar) }}
+                  style={styles.avatarImageNew}
+                />
+              ) : (
+                <Text style={styles.avatarPlaceholderNew}>👤</Text>
+              )}
+              <View style={styles.editBadgeNew}>
+                <Text style={styles.editBadgeIconNew}>📷</Text>
+              </View>
+            </TouchableOpacity>
 
-          {user?.profile?.isConfigured && (
-            <View style={{ width: "100%", marginTop: 16, marginBottom: 10 }}>
+            <View style={styles.headerInfoCol}>
+              <Text style={styles.profileNameNew}>{user?.name || "Atleta"}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setCompanionName(user?.profile?.companionName || "");
+                  setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
+                  setIsCompanionModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.personalizeLinkNew}>
+                  🦖 personalize seu sidekick
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.settingsGearBtn}
+              onPress={() => setIsSettingsModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.settingsGearIcon}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Sub Tab Bar selector */}
+        <View style={styles.subTabBarContainer}>
+          <TouchableOpacity
+            style={[styles.subTabItem, activeProfileTab === "evolucao" && styles.subTabItemActive]}
+            onPress={() => setActiveProfileTab("evolucao")}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.subTabText, activeProfileTab === "evolucao" && styles.subTabTextActive]}>
+              Evolução
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.subTabItem, activeProfileTab === "conquistas" && styles.subTabItemActive]}
+            onPress={() => setActiveProfileTab("conquistas")}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.subTabText, activeProfileTab === "conquistas" && styles.subTabTextActive]}>
+              Conquistas
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Active Tab: Evolução Content */}
+        {activeProfileTab === "evolucao" && (
+          <View style={{ width: "100%" }}>
+            {user?.profile?.isConfigured && (
               <View style={styles.goalCard}>
                 <View style={styles.goalHeaderRow}>
                   <Text style={styles.goalName}>
@@ -630,29 +820,175 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               </View>
+            )}
+            {/* Card 2: Evolução & Nível (IA) */}
+            <View style={styles.levelCardNew}>
+              <View style={styles.levelHeaderNew}>
+                <View>
+                  <Text style={styles.levelLabelNew}>NÍVEL DE ATLETA</Text>
+                  <Text style={styles.levelValueNew}>Atleta Lvl {currentLevel}</Text>
+                </View>
+                <Text style={styles.xpTextNew}>{currentXpInLevel} / {xpPerLevel} XP</Text>
+              </View>
+
+              {/* Progress Bar */}
+              <View style={styles.progressBarBgNew}>
+                <View style={[styles.progressBarFillNew, { width: `${xpProgressPct}%` }]} />
+              </View>
+
+              <Text style={styles.xpTipTextNew}>
+                Você ganha 150 XP por treino sincronizado e bônus extras ao bater desafios semanais e mensais!
+              </Text>
+
+              {/* Weekly IA Progress Narrative */}
+              <View style={styles.iaNarrativeSectionNew}>
+                <View style={styles.iaNarrativeHeaderNew}>
+                  <Text style={styles.iaNarrativeTitleNew}>🦖 Feedback do seu Sidekick</Text>
+                  <TouchableOpacity
+                    style={styles.iaNarrativeUpdateBtnNew}
+                    onPress={handleUpdateHistoryAnalysis}
+                    disabled={updatingHistoryAnalysis}
+                    activeOpacity={0.7}
+                  >
+                    {updatingHistoryAnalysis ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <Text style={styles.iaNarrativeUpdateBtnTextNew}>🔄 Atualizar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {historyAnalysis ? (
+                  <View style={styles.iaNarrativeBoxNew}>
+                    <Text style={styles.iaNarrativeTextNew}>{historyAnalysis}</Text>
+                    {historyAnalysisUpdatedAt && (
+                      <Text style={styles.iaNarrativeTimeNew}>
+                        Atualizado em: {new Date(historyAnalysisUpdatedAt).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.iaNarrativeEmptyNew}>
+                    <Text style={styles.iaNarrativeEmptyTextNew}>
+                      Seu companheiro ainda não analisou seu histórico desta semana.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.iaNarrativeGenBtnNew}
+                      onPress={handleUpdateHistoryAnalysis}
+                      disabled={updatingHistoryAnalysis}
+                      activeOpacity={0.7}
+                    >
+                      {updatingHistoryAnalysis ? (
+                        <ActivityIndicator color="#0a0a0a" size="small" />
+                      ) : (
+                        <Text style={styles.iaNarrativeGenBtnTextNew}>Analisar Evolução com IA</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             </View>
-          )}
 
-          <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
+            {/* Card 3: Annual Volume Chart */}
+            <View style={styles.annualChartCardNew}>
+              <Text style={styles.annualChartTitleNew}>📊 Volume de Corrida Anual ({currentYear})</Text>
+              <Text style={styles.annualChartSubtitleNew}>Corrida acumulada mês a mês (km)</Text>
+              
+              <View style={styles.chartContainerNew}>
+                {/* Dashed Horizontal Average Line */}
+                {averageMonthlyDistance > 0 && (
+                  <View 
+                    style={[
+                      styles.averageLineNew, 
+                      { 
+                        bottom: `${Math.min(90, (averageMonthlyDistance / maxMonthlyDistance) * 85) + 12}%` 
+                      }
+                    ]}
+                  >
+                    <View style={styles.averageLineDashedNew} />
+                    <Text style={styles.averageLineLabelNew}>Média: {averageMonthlyDistance.toFixed(1)} km</Text>
+                  </View>
+                )}
 
-          <TouchableOpacity
-            style={styles.customizeCompanionBtn}
-            onPress={() => {
-              setCompanionName(user?.profile?.companionName || "");
-              setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
-              setIsCompanionModalVisible(true);
-            }}
-          >
-            <Text style={styles.customizeCompanionText}>
-              {user?.profile?.companionAvatar || "🤖"} Personalizar {user?.profile?.companionName || "Companheiro"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+                {monthlyData.map((d, index) => {
+                  const heightPct = d.distance > 0 ? (d.distance / maxMonthlyDistance) * 85 : 0;
+                  const isCurrentMonth = index === currentMonthIdx;
+                  return (
+                    <View key={index} style={styles.chartColumnWrapperNew}>
+                      {d.distance > 0 && (
+                        <Text style={styles.chartBarValNew}>{d.distance.toFixed(0)}</Text>
+                      )}
+                      <View style={styles.chartBarTrackNew}>
+                        <View 
+                          style={[
+                            styles.chartBarFillNew, 
+                            isCurrentMonth && styles.chartBarFillActiveNew,
+                            { height: `${Math.max(heightPct, 3)}%` }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={[styles.chartBarLabelNew, isCurrentMonth && styles.chartBarLabelActiveNew]}>
+                        {d.label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        )}
 
-        {/* Section: Minhas Estatísticas style Strava */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitleMain}>Minhas estatísticas</Text>
+        {/* Active Tab: Conquistas Content */}
+        {activeProfileTab === "conquistas" && (
+          <View style={{ width: "100%" }}>
+            {/* Trophy Shelf Container */}
+            <View style={styles.trophyShelfNew}>
+              <Text style={styles.trophyShelfTitleNew}>🏆 Coleção de Troféus</Text>
+              <Text style={styles.trophyShelfSubtitleNew}>Toque em um troféu conquistado para comemorar nos Stories!</Text>
+              
+              <View style={styles.trophyGridNew}>
+                {trophies.map(trophy => {
+                  return (
+                    <TouchableOpacity
+                      key={trophy.id}
+                      style={[styles.trophyPinNew, trophy.unlocked ? styles.trophyPinUnlockedNew : styles.trophyPinLockedNew]}
+                      onPress={() => handleTrophyPress(trophy)}
+                      activeOpacity={trophy.unlocked ? 0.7 : 1}
+                    >
+                      <View style={[styles.trophyHexagonNew, trophy.unlocked ? styles.trophyHexagonUnlockedNew : styles.trophyHexagonLockedNew]}>
+                        <Text style={[styles.trophyEmojiNew, !trophy.unlocked && { opacity: 0.4 }]}>
+                          {trophy.unlocked ? trophy.emoji : "🔒"}
+                        </Text>
+                      </View>
+                      <Text style={styles.trophyTitleNew}>{trophy.title}</Text>
+                      {trophy.id === "monthly_50k" && !trophy.unlocked && (
+                        <View style={styles.trophyMiniProgressRowNew}>
+                          <View style={styles.trophyProgressBarBgNew}>
+                            <View style={[styles.trophyProgressBarFillNew, { width: `${Math.min(100, (currentMonthDistance / 50) * 100)}%` }]} />
+                          </View>
+                          <Text style={styles.trophyProgressTextNew}>
+                            {currentMonthDistance.toFixed(0)}/50k
+                          </Text>
+                        </View>
+                      )}
+                      {trophy.unlocked && (
+                        <Text style={styles.trophyUnlockedLabelNew}>Conquistado</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Section: Minhas Estatísticas style Strava */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitleMain}>Minhas estatísticas</Text>
 
           {/* Sport Selector Tabs */}
           <View style={styles.sportTabsContainer}>
@@ -975,101 +1311,137 @@ export default function ProfileScreen() {
             </>
           )}
         </View>
-
-        {/* Strava Integration Section (Moved to the bottom, before logout) */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Integrações</Text>
-          <View style={styles.stravaBox}>
-            {isConnected ? (
-              <View style={styles.stravaConnectedContainer}>
-                <Text style={styles.stravaStatusText}>✅ Strava Conectado!</Text>
-                {athlete && (
-                  <View style={styles.athleteProfile}>
-                    {athlete.profile ? (
-                      <Image source={{ uri: athlete.profile }} style={styles.athleteImage} />
-                    ) : (
-                      <View style={[styles.athleteImage, styles.athleteImagePlaceholder]}>
-                        <Text style={{ fontSize: 24 }}>🏃</Text>
-                      </View>
-                    )}
-                    <Text style={styles.athleteName}>{athlete.name || athlete.username}</Text>
-                  </View>
-                )}
-
-                <View style={styles.integrationRowButtons}>
-                  <TouchableOpacity
-                    style={styles.syncButton}
-                    onPress={handleStravaSync}
-                  >
-                    <Text style={styles.syncButtonText}>🔄 Sincronizar</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.disconnectButton}
-                    onPress={handleStravaDisconnect}
-                  >
-                    <Text style={styles.disconnectButtonText}>❌ Desconectar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.stravaDisconnectedContainer}>
-                <Text style={styles.stravaStatusText}>❌ Nenhuma conta do Strava conectada</Text>
-                
-                <TouchableOpacity
-                  style={styles.connectButton}
-                  onPress={handleStravaConnect}
-                >
-                  <Text style={styles.connectButtonText}>👟 Conectar Conta Strava</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.stravaHint}>
-                  Vincule sua conta para trazer suas atividades e métricas automaticamente.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Ajustar Sidekick & Metas Button */}
-        <TouchableOpacity
-          style={styles.adjustButton}
-          onPress={() => router.push("/onboarding?edit=true")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.adjustButtonText}>
-            ⚙️ Ajustar Sidekick & Metas
-          </Text>
-        </TouchableOpacity>
-
-        {/* Diagnostics Button */}
-        <TouchableOpacity
-          style={styles.diagnosticButton}
-          onPress={runDiagnostics}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.diagnosticButtonText}>
-            🛠️ Testar Conexões (Diagnóstico)
-          </Text>
-        </TouchableOpacity>
-
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          disabled={isLoading}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.logoutButtonText}>
-            {isLoading ? "Saindo..." : "Sair da Conta"}
-          </Text>
-        </TouchableOpacity>
+      </View>
+    )}
 
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Sidekick v1.0.0</Text>
           <Text style={styles.footerText}>© 2026 - Seu Companheiro Digital</Text>
         </View>
+
+        <View style={{ height: 30 }} />
+
+        {/* Settings Modal (Ajustes da Conta) */}
+        <Modal
+          visible={isSettingsModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsSettingsModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setIsSettingsModalVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.settingsModalContainer}>
+                  <View style={styles.settingsModalHeader}>
+                    <Text style={styles.settingsModalTitle}>⚙️ Configurações</Text>
+                    <TouchableOpacity onPress={() => setIsSettingsModalVisible(false)}>
+                      <Text style={styles.settingsModalCloseBtn}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                    {/* Section: Conta */}
+                    <View style={styles.settingsSection}>
+                      <Text style={styles.settingsSectionTitle}>Sua Conta</Text>
+                      <View style={styles.settingsInfoRow}>
+                        <Text style={styles.settingsInfoLabel}>Nome:</Text>
+                        <Text style={styles.settingsInfoVal}>{user?.name}</Text>
+                      </View>
+                      <View style={styles.settingsInfoRow}>
+                        <Text style={styles.settingsInfoLabel}>E-mail:</Text>
+                        <Text style={styles.settingsInfoVal}>{user?.email}</Text>
+                      </View>
+                    </View>
+
+                    {/* Section: Configurações */}
+                    <View style={styles.settingsSection}>
+                      <Text style={styles.settingsSectionTitle}>Ajustes do App</Text>
+                      
+                      <TouchableOpacity
+                        style={styles.settingsOptionItem}
+                        onPress={() => {
+                          setIsSettingsModalVisible(false);
+                          router.push("/onboarding?edit=true");
+                        }}
+                      >
+                        <Text style={styles.settingsOptionIcon}>🎯</Text>
+                        <Text style={styles.settingsOptionText}>Ajustar Metas e Plano</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.settingsOptionItem}
+                        onPress={() => {
+                          setIsSettingsModalVisible(false);
+                          setCompanionName(user?.profile?.companionName || "");
+                          setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
+                          setIsCompanionModalVisible(true);
+                        }}
+                      >
+                        <Text style={styles.settingsOptionIcon}>🦖</Text>
+                        <Text style={styles.settingsOptionText}>Personalizar Sidekick</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Section: Strava */}
+                    <View style={styles.settingsSection}>
+                      <Text style={styles.settingsSectionTitle}>Integração Strava</Text>
+                      {isConnected ? (
+                        <View style={styles.settingsStravaStatusRow}>
+                          <Text style={styles.settingsStravaText}>✅ Conectado ({athlete?.name || athlete?.username})</Text>
+                          <TouchableOpacity
+                            style={styles.settingsStravaBtnMini}
+                            onPress={() => {
+                              setIsSettingsModalVisible(false);
+                              handleStravaDisconnect();
+                            }}
+                          >
+                            <Text style={styles.settingsStravaBtnMiniText}>Desconectar</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.settingsStravaBtnConnect}
+                          onPress={() => {
+                            setIsSettingsModalVisible(false);
+                            handleStravaConnect();
+                          }}
+                        >
+                          <Text style={styles.settingsStravaBtnConnectText}>👟 Conectar Strava</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </ScrollView>
+
+                  <View style={styles.settingsActionsRow}>
+                    <TouchableOpacity
+                      style={styles.settingsDiagBtn}
+                      onPress={() => {
+                        setIsSettingsModalVisible(false);
+                        runDiagnostics();
+                      }}
+                    >
+                      <Text style={styles.settingsDiagBtnText}>🛠️ Diagnóstico</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.settingsLogoutBtn}
+                      onPress={() => {
+                        setIsSettingsModalVisible(false);
+                        handleLogout();
+                      }}
+                      disabled={isLoading}
+                    >
+                      <Text style={styles.settingsLogoutBtnText}>
+                        {isLoading ? "Saindo..." : "Log Out"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
 
         <View style={{ height: 30 }} />
 
@@ -2150,6 +2522,583 @@ const styles = StyleSheet.create({
   goalStatMiniValue: {
     color: Colors.text,
     fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // Styles for unified profile header
+  profileHeaderNew: {
+    paddingHorizontal: 8,
+    paddingTop: 16,
+    paddingBottom: 8,
+    width: "100%",
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  avatarContainerNew: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.darkCard,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    position: "relative",
+  },
+  avatarImageNew: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 36,
+  },
+  avatarPlaceholderNew: {
+    fontSize: 32,
+    color: Colors.textSecondary,
+  },
+  editBadgeNew: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.dark,
+  },
+  editBadgeIconNew: {
+    fontSize: 10,
+    color: "#0a0a0c",
+  },
+  headerInfoCol: {
+    flex: 1,
+    marginLeft: 14,
+    justifyContent: "center",
+  },
+  profileNameNew: {
+    color: Colors.text,
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  personalizeLinkNew: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginTop: 4,
+    textDecorationLine: "underline",
+  },
+  settingsGearBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.darkCard,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  settingsGearIcon: {
+    fontSize: 18,
+  },
+
+  // Sub Tab Bar Styles
+  subTabBarContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.darkCard,
+    borderRadius: 12,
+    padding: 4,
+    marginVertical: 14,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    width: "100%",
+  },
+  subTabItem: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+  subTabItemActive: {
+    backgroundColor: "#2a2a2a",
+  },
+  subTabText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  subTabTextActive: {
+    color: Colors.text,
+    fontWeight: "700",
+  },
+
+  // Evolution Level Card
+  levelCardNew: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+    marginBottom: 16,
+    width: "100%",
+  },
+  levelHeaderNew: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 10,
+  },
+  levelLabelNew: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  levelValueNew: {
+    color: Colors.primary,
+    fontSize: 18,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  xpTextNew: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  progressBarBgNew: {
+    height: 8,
+    backgroundColor: Colors.dark,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 10,
+    width: "100%",
+  },
+  progressBarFillNew: {
+    height: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 4,
+  },
+  xpTipTextNew: {
+    color: Colors.textSecondary,
+    fontSize: 10.5,
+    lineHeight: 14,
+    marginBottom: 16,
+  },
+
+  // IA Narrative Section inside level card
+  iaNarrativeSectionNew: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.darkBorder,
+    paddingTop: 14,
+  },
+  iaNarrativeHeaderNew: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  iaNarrativeTitleNew: {
+    color: Colors.text,
+    fontSize: 13.5,
+    fontWeight: "700",
+  },
+  iaNarrativeUpdateBtnNew: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#1c1c24",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  iaNarrativeUpdateBtnTextNew: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  iaNarrativeBoxNew: {
+    backgroundColor: Colors.dark,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  iaNarrativeTextNew: {
+    color: Colors.text,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  iaNarrativeTimeNew: {
+    color: Colors.textSecondary,
+    fontSize: 9.5,
+    marginTop: 8,
+    textAlign: "right",
+    opacity: 0.6,
+  },
+  iaNarrativeEmptyNew: {
+    alignItems: "center",
+    padding: 14,
+    backgroundColor: Colors.dark,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  iaNarrativeEmptyTextNew: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  iaNarrativeGenBtnNew: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  iaNarrativeGenBtnTextNew: {
+    color: "#0a0a0c",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // Annual Volume Chart Styles
+  annualChartCardNew: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+    marginBottom: 20,
+    width: "100%",
+  },
+  annualChartTitleNew: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  annualChartSubtitleNew: {
+    color: Colors.textSecondary,
+    fontSize: 11.5,
+    marginTop: 2,
+    marginBottom: 24,
+  },
+  chartContainerNew: {
+    flexDirection: "row",
+    height: 140,
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    position: "relative",
+    paddingTop: 15,
+    width: "100%",
+  },
+  averageLineNew: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  averageLineDashedNew: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.primary,
+    borderStyle: "dashed",
+    opacity: 0.45,
+    width: "100%",
+  },
+  averageLineLabelNew: {
+    color: Colors.primary,
+    fontSize: 9,
+    fontWeight: "700",
+    position: "absolute",
+    right: 0,
+    top: -12,
+    backgroundColor: Colors.darkCard,
+    paddingHorizontal: 4,
+  },
+  chartColumnWrapperNew: {
+    flex: 1,
+    alignItems: "center",
+    height: "100%",
+    justifyContent: "flex-end",
+  },
+  chartBarValNew: {
+    color: Colors.text,
+    fontSize: 8,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  chartBarTrackNew: {
+    width: 10,
+    height: "75%",
+    backgroundColor: Colors.dark,
+    borderRadius: 5,
+    overflow: "hidden",
+  },
+  chartBarFillNew: {
+    width: "100%",
+    backgroundColor: "#3a3a44",
+    borderRadius: 5,
+  },
+  chartBarFillActiveNew: {
+    backgroundColor: Colors.primary,
+  },
+  chartBarLabelNew: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    marginTop: 6,
+    fontWeight: "500",
+  },
+  chartBarLabelActiveNew: {
+    color: Colors.text,
+    fontWeight: "700",
+  },
+
+  // Trophy Shelf Styles
+  trophyShelfNew: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+    marginBottom: 16,
+    width: "100%",
+  },
+  trophyShelfTitleNew: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  trophyShelfSubtitleNew: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
+    marginBottom: 16,
+  },
+  trophyGridNew: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 16,
+  },
+  trophyPinNew: {
+    width: "30%",
+    alignItems: "center",
+  },
+  trophyPinUnlockedNew: {
+    opacity: 1,
+  },
+  trophyPinLockedNew: {
+    opacity: 0.65,
+  },
+  trophyHexagonNew: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  trophyHexagonUnlockedNew: {
+    backgroundColor: "#2a2200",
+    borderWidth: 2,
+    borderColor: Colors.gold,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  trophyHexagonLockedNew: {
+    backgroundColor: "#111",
+    borderWidth: 1.5,
+    borderColor: "#333",
+  },
+  trophyEmojiNew: {
+    fontSize: 26,
+  },
+  trophyTitleNew: {
+    color: Colors.text,
+    fontSize: 10,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  trophyUnlockedLabelNew: {
+    color: Colors.gold,
+    fontSize: 8,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  trophyMiniProgressRowNew: {
+    width: "80%",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  trophyProgressBarBgNew: {
+    height: 3,
+    backgroundColor: Colors.dark,
+    borderRadius: 1.5,
+    width: "100%",
+    overflow: "hidden",
+  },
+  trophyProgressBarFillNew: {
+    height: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 1.5,
+  },
+  trophyProgressTextNew: {
+    color: Colors.textSecondary,
+    fontSize: 7.5,
+    marginTop: 1,
+  },
+
+  // Settings Cog Modal Styles
+  settingsModalContainer: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+    width: "90%",
+  },
+  settingsModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.darkBorder,
+  },
+  settingsModalTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  settingsModalCloseBtn: {
+    color: Colors.textSecondary,
+    fontSize: 18,
+    fontWeight: "600",
+    padding: 4,
+  },
+  settingsSection: {
+    marginBottom: 16,
+  },
+  settingsSectionTitle: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  settingsInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#222",
+  },
+  settingsInfoLabel: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+  },
+  settingsInfoVal: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  settingsOptionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.dark,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 12,
+    marginVertical: 4,
+    gap: 12,
+  },
+  settingsOptionIcon: {
+    fontSize: 18,
+  },
+  settingsOptionText: {
+    color: Colors.text,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  settingsStravaStatusRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#161616",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 12,
+  },
+  settingsStravaText: {
+    color: Colors.text,
+    fontSize: 12.5,
+    fontWeight: "600",
+  },
+  settingsStravaBtnMini: {
+    backgroundColor: "#2c1c1c",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#ff6b6b33",
+  },
+  settingsStravaBtnMiniText: {
+    color: "#ff6b6b",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  settingsStravaBtnConnect: {
+    backgroundColor: "#fc4c02",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+  },
+  settingsStravaBtnConnectText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  settingsActionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    gap: 12,
+  },
+  settingsDiagBtn: {
+    flex: 1,
+    backgroundColor: "#2c2c35",
+    borderWidth: 1,
+    borderColor: "#444",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  settingsDiagBtnText: {
+    color: Colors.text,
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  settingsLogoutBtn: {
+    flex: 1,
+    backgroundColor: "#2c1c1c",
+    borderWidth: 1,
+    borderColor: "#ff6b6b33",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  settingsLogoutBtnText: {
+    color: "#ff6b6b",
+    fontSize: 13.5,
     fontWeight: "700",
   },
 });
