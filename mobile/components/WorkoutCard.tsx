@@ -22,6 +22,9 @@ interface Workout {
   avgHeartRate?: number;
   intensity: "low" | "moderate" | "high";
   aiNarrative?: string;
+  averageCadence?: number;
+  elevationGain?: number;
+  averageWatts?: number;
 }
 
 interface WorkoutCardProps {
@@ -42,19 +45,6 @@ const getTypeEmoji = (type: string) => {
       return "🏋️";
     default:
       return "⚡";
-  }
-};
-
-const getTypeLabel = (type: string) => {
-  switch (type) {
-    case "run":
-      return "Corrida";
-    case "cycling":
-      return "Ciclismo";
-    case "strength":
-      return "Musculação";
-    default:
-      return "Treino";
   }
 };
 
@@ -89,8 +79,91 @@ const formatDate = (date: Date) => {
   });
 };
 
+const formatPace = (paceKmh: number, type: string) => {
+  if (type !== "run" || paceKmh <= 0) {
+    return `${paceKmh.toFixed(1)} km/h`;
+  }
+  const decimalMin = 60 / paceKmh;
+  const mins = Math.floor(decimalMin);
+  const secs = Math.round((decimalMin - mins) * 60);
+  const secsStr = secs < 10 ? `0${secs}` : secs;
+  return `${mins}:${secsStr} /km`;
+};
+
 export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact }: WorkoutCardProps) {
   const intensityStyle = getIntensityColor(workout.intensity);
+
+  // Expose active metrics list dynamically
+  const metrics = [];
+
+  // 1. Duration
+  metrics.push({
+    key: "duration",
+    icon: "⏱️",
+    label: "Duração",
+    value: formatDuration(workout.duration)
+  });
+
+  // 2. Distance
+  if (workout.distance !== undefined && workout.distance !== null) {
+    metrics.push({
+      key: "distance",
+      icon: "🏃",
+      label: "Distância",
+      value: `${workout.distance.toFixed(1)} km`
+    });
+  }
+
+  // 3. Pace / Speed
+  if (workout.pace) {
+    metrics.push({
+      key: "pace",
+      icon: "⚡",
+      label: workout.type === "run" ? "Ritmo Médio" : "Velocidade",
+      value: formatPace(workout.pace, workout.type)
+    });
+  }
+
+  // 4. Heart Rate
+  if (workout.avgHeartRate) {
+    metrics.push({
+      key: "heartrate",
+      icon: "❤️",
+      label: "BPM Médio",
+      value: `${workout.avgHeartRate} bpm`
+    });
+  }
+
+  // 5. Cadence (SPM for Running, RPM for Cycling)
+  if (workout.averageCadence) {
+    const unit = workout.type === "run" ? "ppm" : "rpm";
+    metrics.push({
+      key: "cadence",
+      icon: "🔄",
+      label: "Cadência",
+      value: `${Math.round(workout.averageCadence)} ${unit}`
+    });
+  }
+
+  // 6. Elevation Gain
+  if (workout.elevationGain) {
+    metrics.push({
+      key: "elevation",
+      icon: "⛰️",
+      label: "Elevação",
+      value: `+${Math.round(workout.elevationGain)}m`
+    });
+  }
+
+  // 7. Average Power (Watts)
+  if (workout.averageWatts) {
+    metrics.push({
+      key: "watts",
+      icon: "🔌",
+      label: "Potência",
+      value: `${Math.round(workout.averageWatts)} W`
+    });
+  }
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
@@ -98,8 +171,8 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.typeEmoji}>{getTypeEmoji(workout.type)}</Text>
-          <View>
-            <Text style={styles.title}>{workout.title}</Text>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.title} numberOfLines={2}>{workout.title}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={styles.date}>{formatDate(workout.date)}</Text>
               {!!workout.aiNarrative && (
@@ -126,18 +199,11 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
         </View>
       </View>
 
-      {/* Metrics */}
+      {/* Metrics Grid */}
       <View style={styles.metricsContainer}>
-        <MetricItem label="Duração" value={formatDuration(workout.duration)} />
-        {workout.distance ? (
-          <MetricItem label="Distância" value={`${workout.distance.toFixed(1)} km`} />
-        ) : null}
-        {workout.pace ? (
-          <MetricItem label="Velocidade" value={`${workout.pace.toFixed(1)} km/h`} />
-        ) : null}
-        {workout.avgHeartRate ? (
-          <MetricItem label="BPM Médio" value={`${workout.avgHeartRate} bpm`} />
-        ) : null}
+        {metrics.map((m) => (
+          <MetricItem key={m.key} icon={m.icon} label={m.label} value={m.value} />
+        ))}
       </View>
 
       {/* AI Narrative or Analyze Button */}
@@ -164,15 +230,19 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
 }
 
 interface MetricItemProps {
+  icon: string;
   label: string;
   value: string;
 }
 
-function MetricItem({ label, value }: MetricItemProps) {
+function MetricItem({ icon, label, value }: MetricItemProps) {
   return (
     <View style={styles.metricItem}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricIcon}>{icon}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.metricLabel}>{label}</Text>
+        <Text style={styles.metricValue} numberOfLines={1}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -181,8 +251,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.darkCard,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
   },
@@ -190,7 +260,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   titleContainer: {
     flexDirection: "row",
@@ -198,51 +268,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   typeEmoji: {
-    fontSize: 32,
-    marginRight: 12,
+    fontSize: 28,
+    marginRight: 10,
   },
   title: {
     color: Colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 2,
   },
   date: {
     color: Colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11,
   },
   intensityBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 6,
   },
   intensityText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
   },
   metricsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: 12,
-    gap: 12,
+    justifyContent: "space-between",
+    marginBottom: 4,
+    gap: 8,
   },
   metricItem: {
-    backgroundColor: Colors.dark,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0d0d11",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
-    minWidth: "23%",
+    borderWidth: 1,
+    borderColor: "#222",
+    width: "48%",
+    gap: 8,
+  },
+  metricIcon: {
+    fontSize: 14,
   },
   metricLabel: {
     color: Colors.textSecondary,
-    fontSize: 11,
-    marginBottom: 2,
+    fontSize: 9,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
   },
   metricValue: {
     color: Colors.text,
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 1,
   },
   narrativeContainer: {
     backgroundColor: Colors.dark,
@@ -251,12 +332,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
+    marginTop: 8,
   },
   narrativeLabel: {
     color: Colors.primary,
     fontSize: 12,
     fontWeight: "600",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   narrative: {
     color: Colors.textSecondary,
@@ -269,6 +351,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 8,
   },
   analyzeButtonText: {
     color: Colors.text,

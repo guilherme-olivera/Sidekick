@@ -193,10 +193,17 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     else intensity = "low";
   }
 
+  const mappedType = typeMapping[stravaActivity.type] || "run";
+
+  let averageCadence = stravaActivity.average_cadence ? Math.round(stravaActivity.average_cadence) : undefined;
+  if (averageCadence && mappedType === "run") {
+    averageCadence = averageCadence * 2;
+  }
+
   return {
     stravaId: stravaActivity.id.toString(),
     title: stravaActivity.name,
-    type: typeMapping[stravaActivity.type] || "run",
+    type: mappedType,
     date: new Date(stravaActivity.start_date),
     duration: stravaActivity.elapsed_time,
     distance: Math.round((stravaActivity.distance / 1000) * 100) / 100, // km with 2 decimals
@@ -204,7 +211,7 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     avgHeartRate: stravaActivity.average_heartrate ? Math.round(stravaActivity.average_heartrate) : undefined,
     maxHeartRate: stravaActivity.max_heartrate ? Math.round(stravaActivity.max_heartrate) : undefined,
     intensity,
-    averageCadence: stravaActivity.average_cadence ? Math.round(stravaActivity.average_cadence) : undefined,
+    averageCadence,
     elevationGain: stravaActivity.total_elevation_gain ? Math.round(stravaActivity.total_elevation_gain) : undefined,
     averageWatts: stravaActivity.average_watts ? Math.round(stravaActivity.average_watts) : undefined,
     movingTime: stravaActivity.moving_time || undefined,

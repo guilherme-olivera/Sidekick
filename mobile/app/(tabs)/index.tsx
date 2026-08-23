@@ -69,6 +69,7 @@ export default function HomeScreen() {
   const [analyzingWorkoutId, setAnalyzingWorkoutId] = useState<string | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [selectedWorkoutIdForDetail, setSelectedWorkoutIdForDetail] = useState<string | null>(null);
+  const [selectedSplitIndex, setSelectedSplitIndex] = useState<number | null>(null);
 
   const [effortModalVisible, setEffortModalVisible] = useState(false);
   const [effortRating, setEffortRating] = useState<number>(3);
@@ -433,7 +434,9 @@ export default function HomeScreen() {
       distanceStr,
       thisWeekAvgStr,
       lastWeekAvgStr,
-      elevationGainStr
+      elevationGainStr,
+      thisWeekPaces,
+      lastWeekPaces,
     };
   };
 
@@ -560,6 +563,27 @@ export default function HomeScreen() {
   const totalDistance = weeklyWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
   const totalDistanceStr = `${totalDistance.toFixed(1)} km`;
 
+  const formatDecimalPace = (decimalMin: number) => {
+    if (!decimalMin) return "0:00";
+    const mins = Math.floor(decimalMin);
+    const secs = Math.round((decimalMin - mins) * 60);
+    const secsStr = secs < 10 ? `0${secs}` : secs;
+    return `${mins}:${secsStr}`;
+  };
+
+  const handleShowReadinessInfo = () => {
+    Alert.alert(
+      "Prontidão Atlética (Athletic Readiness)",
+      "Este índice avalia seu estado físico atual para treinar:\n\n" +
+      "• Recuperação: Tempo de descanso diário sugerido com base no cansaço acumulado.\n" +
+      "• Sono: Projeção de repouso ideal com base no humor do seu check-in diário.\n" +
+      "• HRV (Variabilidade Cardíaca): Indica o equilíbrio do seu sistema nervoso autônomo. Valores maiores representam menor cansaço.\n" +
+      "• Estresse: Nível de fadiga muscular calculado a partir dos treinos anteriores.\n\n" +
+      "O índice diário é gerado ponderando o humor do check-in, dores/lesões e o volume total semanal.",
+      [{ text: "Entendido", style: "default" }]
+    );
+  };
+
   const selectedWorkoutDetail = 
     workouts.find(w => w.id === selectedWorkoutIdForDetail) || 
     selectedDayWorkouts.find(w => w.id === selectedWorkoutIdForDetail);
@@ -595,29 +619,38 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🔋 ATHLETIC READINESS</Text>
+              <TouchableOpacity 
+                onPress={handleShowReadinessInfo}
+                style={styles.infoButton}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.infoButtonText}>ℹ️ Info</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.readinessCardNew}>
               <View style={styles.readinessSplitRow}>
                 {/* Circular Gauge Arc on Left */}
-                <View style={styles.readinessGaugeContainer}>
-                  <View style={styles.readinessGaugeBackground} />
-                  <View 
-                    style={[
-                      styles.readinessGaugeActiveArc,
-                      {
-                        borderLeftColor: user.readiness.score >= 35 ? user.readiness.color : "transparent",
-                        borderTopColor: user.readiness.score >= 65 ? user.readiness.color : "transparent",
-                        borderRightColor: user.readiness.score >= 85 ? user.readiness.color : "transparent",
-                      }
-                    ]} 
-                  />
-                  <View style={styles.readinessGaugeValueContainer}>
-                    <Text style={styles.readinessGaugeScore}>{user.readiness.score}</Text>
-                    <Text style={styles.readinessGaugeOutOf}>/ 100</Text>
-                    <Text style={[styles.readinessGaugeLabel, { color: user.readiness.color }]}>
-                      {user.readiness.label}
-                    </Text>
+                <View style={{ alignItems: "center", width: 110 }}>
+                  <View style={styles.readinessGaugeContainer}>
+                    <View style={styles.readinessGaugeBackground} />
+                    <View 
+                      style={[
+                        styles.readinessGaugeActiveArc,
+                        {
+                          borderLeftColor: user.readiness.score >= 35 ? user.readiness.color : "transparent",
+                          borderTopColor: user.readiness.score >= 65 ? user.readiness.color : "transparent",
+                          borderRightColor: user.readiness.score >= 85 ? user.readiness.color : "transparent",
+                        }
+                      ]} 
+                    />
+                    <View style={styles.readinessGaugeValueContainer}>
+                      <Text style={styles.readinessGaugeScore}>{user.readiness.score}</Text>
+                      <Text style={styles.readinessGaugeOutOf}>/ 100</Text>
+                    </View>
                   </View>
+                  <Text style={[styles.readinessGaugeLabel, { color: user.readiness.color, marginTop: 8 }]}>
+                    {user.readiness.label}
+                  </Text>
                 </View>
 
                 {/* 2x2 Grid of Sub-metrics on Right */}
@@ -720,21 +753,66 @@ export default function HomeScreen() {
                   <Path d={telemetry.lastWeekPath} fill="none" stroke="#a0a0b0" strokeWidth="2.5" strokeDasharray="3 3" />
                   <Path d={telemetry.coralPath} fill="none" stroke="#ff6b6b" strokeWidth="3" />
 
-                  {/* Dot Markers */}
+                  {/* Dot Markers (Last Week) */}
                   {telemetry.lastWeekPoints.map((pt, i) => (
-                    <Circle key={`lw-${i}`} cx={pt.x.toFixed(1)} cy={pt.y.toFixed(1)} r="4" fill="#a0a0b0" stroke="#1a1a1a" strokeWidth="1.5" />
+                    <Circle 
+                      key={`lw-vis-${i}`} 
+                      cx={pt.x.toFixed(1)} 
+                      cy={pt.y.toFixed(1)} 
+                      r="4" 
+                      fill={selectedSplitIndex === i ? "#ffffff" : "#a0a0b0"} 
+                      stroke="#1a1a1a" 
+                      strokeWidth="1.5" 
+                    />
                   ))}
+                  {/* Dot Markers (This Week) */}
                   {telemetry.coralPoints.map((pt, i) => (
-                    <Circle key={`c-${i}`} cx={pt.x.toFixed(1)} cy={pt.y.toFixed(1)} r="4.5" fill="#ff6b6b" stroke="#1a1a1a" strokeWidth="1.5" />
+                    <Circle 
+                      key={`c-vis-${i}`} 
+                      cx={pt.x.toFixed(1)} 
+                      cy={pt.y.toFixed(1)} 
+                      r="4.5" 
+                      fill={selectedSplitIndex === i ? "#ffffff" : "#ff6b6b"} 
+                      stroke="#1a1a1a" 
+                      strokeWidth="1.5" 
+                    />
+                  ))}
+
+                  {/* Invisible touch targets */}
+                  {telemetry.coralPoints.map((pt, i) => (
+                    <Circle 
+                      key={`touch-${i}`} 
+                      cx={pt.x.toFixed(1)} 
+                      cy={pt.y.toFixed(1)} 
+                      r="20" 
+                      fill="transparent" 
+                      onPress={() => setSelectedSplitIndex(selectedSplitIndex === i ? null : i)} 
+                    />
                   ))}
                 </Svg>
               </View>
-
+ 
               {/* Bottom X axis labels */}
               <View style={styles.xAxisLabels}>
                 {telemetry.labels.map((lbl, idx) => (
                   <Text key={`x-${idx}`} style={styles.xLabel}>{lbl}</Text>
                 ))}
+              </View>
+
+              {/* Interactive Tooltip area */}
+              <View style={styles.chartInteractiveLegend}>
+                {selectedSplitIndex !== null ? (
+                  <View style={styles.chartTooltip}>
+                    <Text style={styles.chartTooltipLabel}>KM {selectedSplitIndex + 1}</Text>
+                    <Text style={styles.chartTooltipText}>
+                      Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "700" }}>{formatDecimalPace(telemetry.thisWeekPaces[selectedSplitIndex])}/km</Text>  |  Semana anterior: <Text style={{ color: "#a0a0b0", fontWeight: "700" }}>{formatDecimalPace(telemetry.lastWeekPaces[selectedSplitIndex])}/km</Text>
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.chartLegendHelp}>
+                    💡 Toque nos marcadores do gráfico para comparar as parciais por KM!
+                  </Text>
+                )}
               </View>
             </View>
           </View>
@@ -2046,10 +2124,24 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   readinessGaugeLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "800",
-    marginTop: 4,
     textTransform: "uppercase",
+    textAlign: "center",
+    lineHeight: 13,
+  },
+  infoButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#161622",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  infoButtonText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: "600",
   },
   readinessSubGrid: {
     flex: 1,
@@ -2169,6 +2261,45 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 9,
     fontWeight: "600",
+  },
+  chartInteractiveLegend: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#222",
+    alignItems: "center",
+    width: "100%",
+  },
+  chartTooltip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#161622",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#333",
+    gap: 8,
+  },
+  chartTooltipLabel: {
+    color: "#ff6b6b",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    borderRightWidth: 1,
+    borderRightColor: "#333",
+    paddingRight: 8,
+  },
+  chartTooltipText: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  chartLegendHelp: {
+    color: Colors.textSecondary,
+    fontSize: 10.5,
+    fontStyle: "italic",
+    textAlign: "center",
   },
   effortModalOverlay: {
     flex: 1,
