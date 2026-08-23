@@ -445,7 +445,8 @@ export default function ProfileScreen() {
     // Scale or fetch best duration
     const bestDuration = Math.min(...matches.map(w => {
       const ratio = targetDistance / w.distance;
-      return w.duration * ratio;
+      const durationVal = w.movingTime || w.duration || 0;
+      return durationVal * ratio;
     }));
     
     const hrs = Math.floor(bestDuration / 3600);
@@ -1175,14 +1176,14 @@ export default function ProfileScreen() {
                   );
                 })()}
 
-                {/* Column: 2 km */}
+                {/* Column: 2 milhas */}
                 {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 2.0);
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 3.22);
                   const hasPR = !!bestTime;
                   return (
                     <View style={styles.stravaBestsCol}>
                       <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>2 km</Text>
+                      <Text style={styles.stravaBestsLabel}>2 milhas</Text>
                       <View style={styles.stravaBestsTimeRow}>
                         <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                         <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
