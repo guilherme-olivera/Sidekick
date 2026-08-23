@@ -164,6 +164,40 @@ export default function ProfileScreen() {
   const chartData = getWeeklyWorkloadData();
   const maxDistanceScale = Math.max(...chartData.map(d => d.distance), 10);
 
+  // Dynamic weekly statistics calculation for Goal Card
+  const currentWeekWorkouts = () => {
+    const todayDate = new Date();
+    const monday = new Date(todayDate);
+    const offset = todayDate.getDay() === 0 ? -6 : 1 - todayDate.getDay();
+    monday.setDate(todayDate.getDate() + offset);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const weeklyWorkouts = allWorkouts.filter(w => {
+      const d = new Date(w.date);
+      return d >= monday && d <= sunday;
+    });
+
+    const totalSecs = weeklyWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+
+    const totalDist = weeklyWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
+    const distanceStr = `${totalDist.toFixed(1)} km`;
+
+    return {
+      weeklyWorkouts,
+      timeStr,
+      distanceStr,
+    };
+  };
+
+  const currentWeekData = currentWeekWorkouts();
+
   const loadAllWorkouts = async () => {
     try {
       setIsLoadingAllWorkouts(true);
@@ -536,6 +570,70 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.email}>{user?.email}</Text>
+
+          {user?.profile?.isConfigured && (
+            <View style={{ width: "100%", marginTop: 16, marginBottom: 10 }}>
+              <View style={styles.goalCard}>
+                <View style={styles.goalHeaderRow}>
+                  <Text style={styles.goalName}>
+                    🎯 {user.profile.goalDistance === "5k" ? "Corrida de 5km" :
+                     user.profile.goalDistance === "10k" ? "Corrida de 10km" :
+                     user.profile.goalDistance === "15k" ? "Corrida de 15km" :
+                     user.profile.goalDistance === "half_marathon" ? "Meia Maratona (21km)" :
+                     user.profile.goalDistance === "marathon" ? "Maratona (42km)" : "Meta Personalizada"}
+                  </Text>
+                  {user.profile.goalTargetTime && (
+                    <Text style={styles.goalTarget}>Tempo alvo: {user.profile.goalTargetTime}</Text>
+                  )}
+                </View>
+
+                {/* Progress: Weekly frequency */}
+                <View style={styles.goalMetricRow}>
+                  <View style={{ flex: 1, marginBottom: 8 }}>
+                    <Text style={styles.goalMetricLabel}>Frequência Semanal</Text>
+                    <Text style={styles.goalMetricValue}>
+                      {currentWeekData.weeklyWorkouts.length} de {user.profile.weeklyFrequency || 3} treinos realizados
+                    </Text>
+                  </View>
+                  {/* Progress bar */}
+                  <View style={styles.progressBarBg}>
+                    <View 
+                      style={[
+                        styles.progressBarFill, 
+                        { 
+                          width: `${Math.min(100, (currentWeekData.weeklyWorkouts.length / (user.profile.weeklyFrequency || 3)) * 100)}%`,
+                          backgroundColor: currentWeekData.weeklyWorkouts.length >= (user.profile.weeklyFrequency || 3) ? Colors.success : Colors.primary
+                        }
+                      ]} 
+                    />
+                  </View>
+                </View>
+
+                {/* Weekly accumulated metrics inside the goal card */}
+                <View style={styles.goalStatsRow}>
+                  <View style={styles.goalStatMiniCard}>
+                    <Text style={styles.goalStatMiniLabel}>Tempo Acumulado</Text>
+                    <Text style={styles.goalStatMiniValue}>⏱️ {currentWeekData.timeStr}</Text>
+                  </View>
+                  <View style={styles.goalStatMiniCard}>
+                    <Text style={styles.goalStatMiniLabel}>Distância Semanal</Text>
+                    <Text style={styles.goalStatMiniValue}>🏃 {currentWeekData.distanceStr}</Text>
+                  </View>
+                </View>
+
+                {/* Highlight best workout against target */}
+                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.darkBorder }}>
+                  <Text style={styles.goalAdviseText}>
+                    {currentWeekData.weeklyWorkouts.length === 0 
+                      ? "Nenhum treino realizado ainda esta semana. Calce os tênis e comece!"
+                      : currentWeekData.weeklyWorkouts.length >= (user.profile.weeklyFrequency || 3)
+                      ? "Meta de frequência semanal batida! Excelente consistência! 🔥"
+                      : "Continue firme! Você está no caminho certo para cumprir sua planilha."}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.customizeCompanionBtn}
@@ -1973,5 +2071,84 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 15,
     fontWeight: "600",
+  },
+  goalCard: {
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 16,
+    padding: 16,
+    width: "100%",
+  },
+  goalHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  goalName: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  goalTarget: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  goalMetricRow: {
+    marginBottom: 6,
+  },
+  goalMetricLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  goalMetricValue: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: Colors.dark,
+    borderRadius: 3,
+    width: "100%",
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  goalAdviseText: {
+    color: Colors.textSecondary,
+    fontSize: 12.5,
+    fontStyle: "italic",
+    lineHeight: 18,
+  },
+  goalStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    marginBottom: 8,
+    gap: 12,
+  },
+  goalStatMiniCard: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  goalStatMiniLabel: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  goalStatMiniValue: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

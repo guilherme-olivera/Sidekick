@@ -493,7 +493,7 @@ export default function HomeScreen() {
       syncActivities()
         .then((res) => {
           if (res && res.syncedActivities > 0) {
-            setNewWorkoutsSyncedMessage("Novo treino detectado! Clique para analisar.");
+            setNewWorkoutsSyncedMessage("Novo treino detectado! Acesse seus treinos para ter uma análise.");
             loadWeeklyWorkouts(monday);
           }
         })
@@ -588,71 +588,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Goal Progress Card */}
-        {user?.profile?.isConfigured && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🎯 Meta de Evolução</Text>
-            <View style={styles.goalCard}>
-              <View style={styles.goalHeaderRow}>
-                <Text style={styles.goalName}>
-                  {user.profile.goalDistance === "5k" ? "Corrida de 5km" :
-                   user.profile.goalDistance === "10k" ? "Corrida de 10km" :
-                   user.profile.goalDistance === "15k" ? "Corrida de 15km" :
-                   user.profile.goalDistance === "half_marathon" ? "Meia Maratona (21km)" :
-                   user.profile.goalDistance === "marathon" ? "Maratona (42km)" : "Meta Personalizada"}
-                </Text>
-                {user.profile.goalTargetTime && (
-                  <Text style={styles.goalTarget}>Tempo alvo: {user.profile.goalTargetTime}</Text>
-                )}
-              </View>
 
-              {/* Progress: Weekly frequency */}
-              <View style={styles.goalMetricRow}>
-                <View style={{ flex: 1, marginBottom: 8 }}>
-                  <Text style={styles.goalMetricLabel}>Frequência Semanal</Text>
-                  <Text style={styles.goalMetricValue}>
-                    {weeklyWorkouts.length} de {user.profile.weeklyFrequency || 3} treinos realizados
-                  </Text>
-                </View>
-                {/* Progress bar */}
-                <View style={styles.progressBarBg}>
-                  <View 
-                    style={[
-                      styles.progressBarFill, 
-                      { 
-                        width: `${Math.min(100, (weeklyWorkouts.length / (user.profile.weeklyFrequency || 3)) * 100)}%`,
-                        backgroundColor: weeklyWorkouts.length >= (user.profile.weeklyFrequency || 3) ? Colors.success : Colors.primary
-                      }
-                    ]} 
-                  />
-                </View>
-              </View>
-
-              {/* Weekly accumulated metrics inside the goal card */}
-              <View style={styles.goalStatsRow}>
-                <View style={styles.goalStatMiniCard}>
-                  <Text style={styles.goalStatMiniLabel}>Tempo Acumulado</Text>
-                  <Text style={styles.goalStatMiniValue}>⏱️ {totalTimeStr}</Text>
-                </View>
-                <View style={styles.goalStatMiniCard}>
-                  <Text style={styles.goalStatMiniLabel}>Distância Semanal</Text>
-                  <Text style={styles.goalStatMiniValue}>🏃 {totalDistanceStr}</Text>
-                </View>
-              </View>
-
-              {/* Highlight best workout against target */}
-              <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.darkBorder }}>
-                <Text style={styles.goalAdviseText}>
-                  {weeklyWorkouts.length === 0 
-                    ? "Nenhum treino realizado ainda esta semana. Calce os tênis e comece!"
-                    : weeklyWorkouts.length >= (user.profile.weeklyFrequency || 3)
-                    ? "Meta de frequência semanal batida! Excelente consistência! 🔥"
-                    : "Continue firme! Você está no caminho certo para cumprir sua planilha."}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* Athletic Readiness */}
         {user?.readiness && (
