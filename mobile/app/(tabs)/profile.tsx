@@ -1490,7 +1490,9 @@ export default function ProfileScreen() {
                       <Text style={styles.settingsSectionTitle}>Integração Strava</Text>
                       {isConnected ? (
                         <View style={styles.settingsStravaStatusRow}>
-                          <Text style={styles.settingsStravaText}>✅ Conectado ({athlete?.name || athlete?.username})</Text>
+                          <Text style={styles.settingsStravaText} numberOfLines={1} ellipsizeMode="tail">
+                            ✅ Strava Ativo
+                          </Text>
                           <TouchableOpacity
                             style={styles.settingsStravaBtnMini}
                             onPress={() => {
@@ -3175,6 +3177,8 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 12.5,
     fontWeight: "600",
+    flex: 1,
+    marginRight: 8,
   },
   settingsStravaBtnMini: {
     backgroundColor: "#2c1c1c",
