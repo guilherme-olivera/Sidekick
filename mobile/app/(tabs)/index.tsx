@@ -14,6 +14,7 @@ import {
   TouchableWithoutFeedback,
   TextInput,
   FlatList,
+  Image,
 } from "react-native";
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +22,7 @@ import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
-import { apiService } from "@/src/services/apiService";
+import { apiService, API_BASE_URL } from "@/src/services/apiService";
 import { MoodWidget } from "@/components/MoodWidget";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import notificationService from "@/src/services/notificationService";
@@ -33,6 +34,14 @@ const formatPace = (speedKmH: number | null | undefined) => {
   const seconds = Math.round((totalMinutes - minutes) * 60);
   const secondsStr = seconds < 10 ? `0${seconds}` : seconds;
   return `${minutes}:${secondsStr} /km`;
+};
+
+const getAvatarUri = (avatarPath?: string | null): string | undefined => {
+  if (!avatarPath) return undefined;
+  if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://")) {
+    return avatarPath;
+  }
+  return `${API_BASE_URL}${avatarPath.startsWith("/") ? "" : "/"}${avatarPath}`;
 };
 
 const Colors = {
@@ -78,6 +87,7 @@ export default function HomeScreen() {
   const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sharingWorkout, setSharingWorkout] = useState<any>(null);
+  const [activeTemplateIdx, setActiveTemplateIdx] = useState(0);
 
   // Companion Chat Overlay States
   const [chatModalVisible, setChatModalVisible] = useState(false);
@@ -86,6 +96,15 @@ export default function HomeScreen() {
   const [chatIsTyping, setChatIsTyping] = useState(false);
   const [chatSuggestions, setChatSuggestions] = useState<string[]>([]);
   const chatFlatListRef = useRef<FlatList>(null);
+  const templateScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (shareCardVisible) {
+      setTimeout(() => {
+        templateScrollRef.current?.scrollTo({ x: activeTemplateIdx * 290, animated: true });
+      }, 80);
+    }
+  }, [activeTemplateIdx, shareCardVisible]);
 
   const CHAT_STORAGE_KEY = "@sidekick:chat_history";
 
@@ -248,7 +267,9 @@ export default function HomeScreen() {
   };
 
   const handleGenerateShareCard = (workout: any) => {
+    setSelectedWorkoutIdForDetail(null);
     setSharingWorkout(workout);
+    setActiveTemplateIdx(0);
     setShareCardVisible(true);
   };
 
@@ -808,7 +829,7 @@ export default function HomeScreen() {
             <WorkoutCard
               workout={latestWorkout}
               onPress={() => setSelectedWorkoutIdForDetail(latestWorkout.id)}
-              compact={true}
+              descriptionOnly={true}
             />
           ) : (
             <View style={styles.emptyState}>
@@ -1030,6 +1051,15 @@ export default function HomeScreen() {
                         </View>
                       </>
                     )}
+                    {selectedWorkoutDetail.sufferScore ? (
+                      <View style={styles.modalMetricCard}>
+                        <Text style={styles.modalMetricIcon}>❤️‍🔥</Text>
+                        <Text style={styles.modalMetricValue}>
+                          {selectedWorkoutDetail.sufferScore}
+                        </Text>
+                        <Text style={styles.modalMetricSubLabel}>Esforço Relativo</Text>
+                      </View>
+                    ) : null}
                     {selectedWorkoutDetail.effortRating && (
                       <View style={styles.modalMetricCard}>
                         <Text style={styles.modalMetricIcon}>🥵</Text>
@@ -1059,19 +1089,19 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    <TouchableOpacity
-                      style={[styles.modalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.modalAnalyzeButtonDisabled]}
-                      onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
-                      disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
-                    >
-                      {analyzingWorkoutId === selectedWorkoutDetail.id ? (
-                        <ActivityIndicator color="#ffffff" size="small" />
-                      ) : (
-                        <Text style={styles.modalAnalyzeButtonText}>
-                          {selectedWorkoutDetail.aiNarrative ? "🔄 Reanalisar com IA" : "🧠 Analisar com IA"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
+                    {!selectedWorkoutDetail.aiNarrative && (
+                      <TouchableOpacity
+                        style={[styles.modalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.modalAnalyzeButtonDisabled]}
+                        onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
+                        disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
+                      >
+                        {analyzingWorkoutId === selectedWorkoutDetail.id ? (
+                          <ActivityIndicator color="#ffffff" size="small" />
+                        ) : (
+                          <Text style={styles.modalAnalyzeButtonText}>🧠 Analisar com IA</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
 
                     {selectedWorkoutDetail.aiNarrative && (
                       <TouchableOpacity
@@ -1088,10 +1118,10 @@ export default function HomeScreen() {
             
             {/* Close action */}
             <TouchableOpacity
-              style={styles.modalCloseAction}
-              onPress={() => setSelectedWorkoutIdForDetail(null)}
+              style={styles.modalShareAction}
+              onPress={() => handleGenerateShareCard(selectedWorkoutDetail)}
             >
-              <Text style={styles.modalCloseActionText}>Fechar</Text>
+              <Text style={styles.modalShareActionText}>Compartilhar Treino 📤</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1241,84 +1271,275 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {sharingWorkout && (
-              <ScrollView contentContainerStyle={{ alignItems: "center" }} showsVerticalScrollIndicator={false}>
-                {/* 9:16 Instagram Story Preview */}
-                <View style={styles.storiesCardFrame}>
-                  {/* Decorative Header (Sidekick Premium Logo) */}
-                  <View style={styles.storiesCardHeader}>
-                    <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
-                    <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
+            {sharingWorkout && (() => {
+              const isPersonalRecord = (sharingWorkout.prCount && sharingWorkout.prCount > 0) || 
+                                       sharingWorkout.title?.toLowerCase().includes("pr") || 
+                                       sharingWorkout.title?.toLowerCase().includes("rp") ||
+                                       sharingWorkout.title?.toLowerCase().includes("recorde");
+
+              const getWantedStatusText = (workout: any) => {
+                if (workout.type === "run") return "CORRENDO OU CAMINHANDO";
+                if (workout.type === "cycling") return "PEDALANDO OU CORRENDO";
+                return "TREINANDO OU DESCANSANDO";
+              };
+
+              const getWantedCrimeDesc = (workout: any) => {
+                const personality = user?.profile?.aiPersonality || "calm";
+                const typeName = workout.type === "run" ? "Corrida" : workout.type === "cycling" ? "Ciclismo" : "Treino";
+                const distStr = workout.distance ? `${workout.distance.toFixed(2)} km` : "um super treino";
+                const paceStr = workout.pace ? formatPace(workout.pace) : "";
+                const paceAndDist = paceStr ? `${distStr} no ritmo de ${paceStr}` : distStr;
+                
+                switch (personality) {
+                  case "strict":
+                    return `Exceder os limites estabelecidos e acumular ${paceAndDist} com foco implacável e disciplina militar!`;
+                  case "tough":
+                    return `Ignorar a preguiça, engolir o cansaço e esmagar ${paceAndDist} sem dar nenhuma desculpa!`;
+                  case "funny":
+                    return `Correr de boletos imaginários e registrar ${paceAndDist} antes que o despertador soubesse!`;
+                  default:
+                    return `Inspirar a comunidade de atletas registrando ${paceAndDist} com consistência e evolução constante!`;
+                }
+              };
+
+              return (
+                <ScrollView contentContainerStyle={{ alignItems: "center", paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+                  
+                  {/* Template Selector Carousel Header */}
+                  <View style={styles.carouselSelectorRow}>
+                    <TouchableOpacity 
+                      onPress={() => setActiveTemplateIdx(prev => prev === 0 ? 2 : prev - 1)}
+                      style={styles.carouselSelectorArrow}
+                    >
+                      <Text style={styles.carouselSelectorArrowText}>◀</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.carouselSelectorTitle}>
+                      {activeTemplateIdx === 0 ? "Sidekick Clássico 🦖" :
+                       activeTemplateIdx === 1 ? "Procura-se! (Wanted) 🤠" :
+                       "Minimalista Esportivo ⚡"}
+                    </Text>
+                    <TouchableOpacity 
+                      onPress={() => setActiveTemplateIdx(prev => prev === 2 ? 0 : prev + 1)}
+                      style={styles.carouselSelectorArrow}
+                    >
+                      <Text style={styles.carouselSelectorArrowText}>▶</Text>
+                    </TouchableOpacity>
                   </View>
 
-                  {/* Character Avatar bubble */}
-                  <View style={styles.storiesCompanionWrapper}>
-                    <View style={styles.storiesCompanionAvatarBg}>
-                      <Text style={styles.storiesCompanionAvatar}>
-                        {user?.profile?.companionAvatar || "🦖"}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={styles.storiesCompanionName}>
-                        {user?.profile?.companionName || "Rocky"}
-                      </Text>
-                      <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
-                    </View>
-                  </View>
+                  {/* Horizontal ScrollView supporting Swipe */}
+                  <ScrollView
+                    ref={templateScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    style={{ width: 290, height: 480 }}
+                    onMomentumScrollEnd={(e) => {
+                      const offsetX = e.nativeEvent.contentOffset.x;
+                      const index = Math.round(offsetX / 290);
+                      setActiveTemplateIdx(index);
+                    }}
+                  >
+                    
+                    {/* Template 0: Sidekick Clássico */}
+                    <View style={{ width: 290, height: 480 }}>
+                      <View style={styles.storiesCardFrame}>
+                        {/* Classic Gradient Overlay */}
+                        <View style={styles.storiesCardHeader}>
+                          <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
+                          <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
+                        </View>
+                        
+                        {isPersonalRecord && (
+                          <View style={styles.classicPRBadge}>
+                            <Text style={styles.classicPRBadgeText}>🏆 RECORDE PESSOAL</Text>
+                          </View>
+                        )}
 
-                  {/* Bubble Dialogue */}
-                  <View style={styles.storiesSpeechBubble}>
-                    <Text style={styles.storiesSpeechText}>
-                      "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
-                    </Text>
-                  </View>
+                        <View style={styles.storiesCompanionWrapper}>
+                          <View style={styles.storiesCompanionAvatarBg}>
+                            <Text style={styles.storiesCompanionAvatar}>
+                              {user?.profile?.companionAvatar || "🦖"}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text style={styles.storiesCompanionName}>
+                              {user?.profile?.companionName || "Rocky"}
+                            </Text>
+                            <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
+                          </View>
+                        </View>
 
-                  {/* Workout Info Box */}
-                  <View style={styles.storiesWorkoutBox}>
-                    <Text style={styles.storiesWorkoutTitle}>
-                      {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
-                       sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
-                    </Text>
-                    <Text style={styles.storiesWorkoutDate}>
-                      {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
-                    </Text>
-
-                    <View style={styles.storiesStatsRow}>
-                      <View style={styles.storiesStatItem}>
-                        <Text style={styles.storiesStatLabel}>Duração</Text>
-                        <Text style={styles.storiesStatValue}>
-                          {Math.floor(sharingWorkout.duration / 3600) > 0
-                            ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                            : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                        </Text>
-                      </View>
-                      {sharingWorkout.distance && (
-                        <View style={styles.storiesStatItem}>
-                          <Text style={styles.storiesStatLabel}>Distância</Text>
-                          <Text style={styles.storiesStatValue}>
-                            {sharingWorkout.distance.toFixed(1)} km
+                        <View style={styles.storiesSpeechBubble}>
+                          <Text style={styles.storiesSpeechText}>
+                            "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
                           </Text>
                         </View>
-                      )}
-                    </View>
-                  </View>
-                </View>
 
-                {/* Actions */}
-                <TouchableOpacity
-                  style={styles.shareSaveButton}
-                  onPress={() => {
-                    setShareCardVisible(false);
-                    Alert.alert(
-                      "Card Pronto! 📸",
-                      "O card foi gerado e salvo na sua galeria com sucesso! Abra o Instagram e cole nos seus Stories para comemorar mais essa conquista! 🔥👟"
-                    );
-                  }}
-                >
-                  <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
+                        <View style={styles.storiesWorkoutBox}>
+                          <Text style={styles.storiesWorkoutTitle}>
+                            {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
+                             sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
+                          </Text>
+                          <Text style={styles.storiesWorkoutDate}>
+                            {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
+                          </Text>
+
+                          <View style={styles.storiesStatsRow}>
+                            <View style={styles.storiesStatItem}>
+                              <Text style={styles.storiesStatLabel}>Duração</Text>
+                              <Text style={styles.storiesStatValue}>
+                                {Math.floor(sharingWorkout.duration / 3600) > 0
+                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                              </Text>
+                            </View>
+                            {sharingWorkout.distance && (
+                              <View style={styles.storiesStatItem}>
+                                <Text style={styles.storiesStatLabel}>Distância</Text>
+                                <Text style={styles.storiesStatValue}>
+                                  {sharingWorkout.distance.toFixed(2)} km
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Template 1: Procura-se! (Wanted) */}
+                    <View style={{ width: 290, height: 480 }}>
+                      <View style={styles.storiesCardFrameWanted}>
+                        <Text style={styles.wantedBannerText}>WANTED</Text>
+                        <Text style={styles.wantedSubBannerText}>{getWantedStatusText(sharingWorkout)}</Text>
+                        
+                        {/* Character Avatar or User Profile Image */}
+                        <View style={styles.wantedAvatarBox}>
+                          {user?.avatar ? (
+                            <Image
+                              source={{ uri: getAvatarUri(user.avatar) }}
+                              style={styles.wantedAvatarImage}
+                            />
+                          ) : (
+                            <Text style={styles.wantedAvatarChar}>
+                              {user?.profile?.companionAvatar || "🦖"}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Wanted Details */}
+                        <View style={styles.wantedDetails}>
+                          <Text style={styles.wantedTargetName} numberOfLines={1}>{user?.name || "Atleta"}</Text>
+                          <Text style={styles.wantedCrimeLabel}>
+                            {isPersonalRecord ? "🏆 CRIME DE RECORDE PESSOAL:" : "FOR THE CRIME OF:"}
+                          </Text>
+                          <Text style={styles.wantedCrimeDesc} numberOfLines={4}>
+                            {getWantedCrimeDesc(sharingWorkout)}
+                          </Text>
+                          
+                          <View style={styles.wantedDivider} />
+                          
+                          <Text style={styles.wantedBountyLabel}>REWARD (RECOMPENSA):</Text>
+                          <Text style={styles.wantedBountyValue} numberOfLines={2}>
+                            {isPersonalRecord 
+                              ? "👑 Glória Imortal, Respeito e Pernas de Aço! 👑" 
+                              : "⚡ Condicionamento de Aço e Zero Preguiça! ⚡"}
+                          </Text>
+                        </View>
+
+                        <Text style={styles.wantedFooterLogo}>👟 SIDEKICK BOUNTY HUNT</Text>
+                      </View>
+                    </View>
+
+                    {/* Template 2: Minimalista Esportivo (Clean) */}
+                    <View style={{ width: 290, height: 480 }}>
+                      <View style={styles.storiesCardFrameClean}>
+                        <View style={styles.cleanHeader}>
+                          <Text style={styles.cleanLogo}>SIDEKICK</Text>
+                          
+                          {isPersonalRecord ? (
+                            <View style={styles.cleanPRBadge}>
+                              <Text style={styles.cleanPRBadgeText}>🏆 PR</Text>
+                            </View>
+                          ) : (
+                            <View style={styles.cleanBadge}>
+                              <Text style={styles.cleanBadgeText}>
+                                {sharingWorkout.type === "run" ? "CORRIDA" :
+                                 sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA"}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Main Stats display */}
+                        <View style={styles.cleanMainStatsContainer}>
+                          {sharingWorkout.distance && (
+                            <View style={styles.cleanMainStat}>
+                              <Text style={styles.cleanStatVal}>{sharingWorkout.distance.toFixed(2)}</Text>
+                              <Text style={styles.cleanStatLbl}>QUILÔMETROS</Text>
+                            </View>
+                          )}
+                          
+                          <View style={styles.cleanStatsGrid}>
+                            <View style={styles.cleanSubStat}>
+                              <Text style={styles.cleanSubStatVal}>
+                                {Math.floor(sharingWorkout.duration / 3600) > 0
+                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)}m`}
+                              </Text>
+                              <Text style={styles.cleanSubStatLbl}>TEMPO</Text>
+                            </View>
+                            
+                            {sharingWorkout.pace && (
+                              <View style={styles.cleanSubStat}>
+                                <Text style={styles.cleanSubStatVal}>
+                                  {formatPace(sharingWorkout.pace)}
+                                </Text>
+                                <Text style={styles.cleanSubStatLbl}>
+                                  {sharingWorkout.type === "run" ? "RITMO" : "VELOCIDADE"}
+                                </Text>
+                              </View>
+                            )}
+                            
+                            {sharingWorkout.sufferScore && (
+                              <View style={styles.cleanSubStat}>
+                                <Text style={styles.cleanSubStatVal}>{sharingWorkout.sufferScore}</Text>
+                                <Text style={styles.cleanSubStatLbl}>ESFORÇO RELATIVO</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        <Text style={styles.cleanFooterDate}>
+                          Registrado em {new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}
+                        </Text>
+                      </View>
+                    </View>
+
+                  </ScrollView>
+
+                  {/* Indicator Dots */}
+                  <View style={styles.carouselIndicatorRow}>
+                    <View style={[styles.carouselDot, activeTemplateIdx === 0 && styles.carouselDotActive]} />
+                    <View style={[styles.carouselDot, activeTemplateIdx === 1 && styles.carouselDotActive]} />
+                    <View style={[styles.carouselDot, activeTemplateIdx === 2 && styles.carouselDotActive]} />
+                  </View>
+
+                  {/* Actions */}
+                  <TouchableOpacity
+                    style={styles.shareSaveButton}
+                    onPress={() => {
+                      setShareCardVisible(false);
+                      Alert.alert(
+                        "Card Pronto! 📸",
+                        "O card foi gerado e salvo na sua galeria com sucesso! Abra o Instagram e cole nos seus Stories para comemorar mais essa conquista! 🔥👟"
+                      );
+                    }}
+                  >
+                    <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -1737,6 +1958,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: Colors.textSecondary,
     padding: 4,
+  },
+  modalShareAction: {
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 16,
+    alignItems: "center",
+  },
+  modalShareActionText: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
   },
   modalScroll: {
     flexGrow: 0,
@@ -2165,20 +2398,20 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   telemetryHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 6,
+    marginBottom: 12,
   },
   telemetryActivityName: {
     color: Colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
   },
   telemetryBullets: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   bulletItem: {
     flexDirection: "row",
@@ -2424,6 +2657,254 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+  // Carousel selector
+  carouselSelectorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: 290,
+    marginBottom: 14,
+    backgroundColor: "#161622",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  carouselSelectorArrow: {
+    padding: 6,
+  },
+  carouselSelectorArrowText: {
+    color: "#ff6b6b",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  carouselSelectorTitle: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  carouselIndicatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginVertical: 14,
+  },
+  carouselDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#444",
+  },
+  carouselDotActive: {
+    backgroundColor: "#ff6b6b",
+    width: 16,
+  },
+
+  // Wanted template (Parchment look)
+  storiesCardFrameWanted: {
+    width: 290,
+    height: 480,
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: "#eedca5",
+    borderWidth: 5,
+    borderColor: "#4d3419",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  wantedBannerText: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#4d3419",
+    letterSpacing: 2,
+  },
+  wantedSubBannerText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#4d3419",
+    letterSpacing: 4,
+    marginTop: -8,
+  },
+  wantedAvatarBox: {
+    width: 140,
+    height: 140,
+    borderWidth: 4,
+    borderColor: "#4d3419",
+    backgroundColor: "#dfcca0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 8,
+  },
+  wantedAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  classicPRBadge: {
+    backgroundColor: "#ffd700",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "center",
+    marginTop: -4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#cca300",
+  },
+  classicPRBadgeText: {
+    color: "#000000",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  cleanPRBadge: {
+    backgroundColor: "#ffd700",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  cleanPRBadgeText: {
+    color: "#000",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  wantedAvatarChar: {
+    fontSize: 80,
+  },
+  wantedDetails: {
+    alignItems: "center",
+    width: "100%",
+  },
+  wantedTargetName: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#4d3419",
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  wantedCrimeLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#734d26",
+    letterSpacing: 1.5,
+  },
+  wantedCrimeDesc: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#4d3419",
+    textAlign: "center",
+    paddingHorizontal: 8,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  wantedDivider: {
+    width: "60%",
+    height: 2,
+    backgroundColor: "#4d3419",
+    marginVertical: 8,
+  },
+  wantedBountyLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#734d26",
+    letterSpacing: 1.5,
+  },
+  wantedBountyValue: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#a62626",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  wantedFooterLogo: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#4d3419",
+    letterSpacing: 1,
+    opacity: 0.6,
+  },
+
+  // Clean template (Minimalist look)
+  storiesCardFrameClean: {
+    width: 290,
+    height: 480,
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: "#0d0d12",
+    borderWidth: 1,
+    borderColor: "#222",
+    justifyContent: "space-between",
+  },
+  cleanHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cleanLogo: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+  cleanBadge: {
+    backgroundColor: "#333",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  cleanBadgeText: {
+    color: "#ffffff",
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  cleanMainStatsContainer: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 20,
+  },
+  cleanMainStat: {
+    alignItems: "flex-start",
+  },
+  cleanStatVal: {
+    color: "#ff6b6b",
+    fontSize: 54,
+    fontWeight: "900",
+    lineHeight: 58,
+  },
+  cleanStatLbl: {
+    color: "#b0b0b0",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
+    marginTop: -2,
+  },
+  cleanStatsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+    marginTop: 10,
+  },
+  cleanSubStat: {
+    width: "45%",
+  },
+  cleanSubStatVal: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  cleanSubStatLbl: {
+    color: "#888",
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  cleanFooterDate: {
+    color: "#666",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+
   storiesCardFrame: {
     width: 290,
     height: 480,

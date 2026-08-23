@@ -33,6 +33,7 @@ interface WorkoutCardProps {
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
   compact?: boolean;
+  descriptionOnly?: boolean;
 }
 
 const getTypeEmoji = (type: string) => {
@@ -90,7 +91,7 @@ const formatPace = (paceKmh: number, type: string) => {
   return `${mins}:${secsStr} /km`;
 };
 
-export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact }: WorkoutCardProps) {
+export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact, descriptionOnly }: WorkoutCardProps) {
   const intensityStyle = getIntensityColor(workout.intensity);
 
   // Expose active metrics list dynamically
@@ -166,9 +167,13 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
   }
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
+    <TouchableOpacity 
+      style={[styles.card, descriptionOnly && { paddingBottom: 12, marginBottom: 8 }]} 
+      onPress={onPress} 
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, descriptionOnly && { marginBottom: 0 }]}>
         <View style={styles.titleContainer}>
           <Text style={styles.typeEmoji}>{getTypeEmoji(workout.type)}</Text>
           <View style={{ flex: 1, marginRight: 8 }}>
@@ -200,21 +205,23 @@ export function WorkoutCard({ workout, onPress, onAnalyze, isAnalyzing, compact 
       </View>
 
       {/* Metrics Grid */}
-      <View style={styles.metricsContainer}>
-        {metrics.map((m) => (
-          <MetricItem key={m.key} icon={m.icon} label={m.label} value={m.value} />
-        ))}
-      </View>
+      {!descriptionOnly && (
+        <View style={styles.metricsContainer}>
+          {metrics.map((m) => (
+            <MetricItem key={m.key} icon={m.icon} label={m.label} value={m.value} />
+          ))}
+        </View>
+      )}
 
       {/* AI Narrative or Analyze Button */}
-      {!compact && workout.aiNarrative ? (
+      {!descriptionOnly && !compact && workout.aiNarrative ? (
         <View style={styles.narrativeContainer}>
           <Text style={styles.narrativeLabel}>💭 Sidekick diz:</Text>
           <Text style={styles.narrative} numberOfLines={3}>
             {workout.aiNarrative}
           </Text>
         </View>
-      ) : !compact && onAnalyze ? (
+      ) : !descriptionOnly && !compact && onAnalyze ? (
         <TouchableOpacity
           style={styles.analyzeButton}
           onPress={onAnalyze}

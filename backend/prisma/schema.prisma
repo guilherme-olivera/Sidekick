@@ -63,6 +63,7 @@ model Workout {
   temperature   Float?    // Temperatura média
   sufferScore   Int?      // Score de sofrimento/esforço
   splits        Json?     // splits detalhados por km
+  prCount       Int?      // Número de recordes pessoais (PRs) da atividade
   
   // Tipo e intensidade
   type          String    // "run", "cycling", "strength", etc

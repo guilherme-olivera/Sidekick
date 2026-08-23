@@ -40,6 +40,7 @@ interface StravaActivity {
   moving_time?: number;
   average_temp?: number;
   suffer_score?: number;
+  pr_count?: number;
   splits_metric?: Array<{
     distance: number;
     elapsed_time: number;
@@ -218,6 +219,7 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     elapsedTime: stravaActivity.elapsed_time || undefined,
     temperature: stravaActivity.average_temp || undefined,
     sufferScore: stravaActivity.suffer_score || undefined,
+    prCount: stravaActivity.pr_count || undefined,
     splits: stravaActivity.splits_metric ? JSON.stringify(stravaActivity.splits_metric) : undefined,
   };
 }
