@@ -426,12 +426,14 @@ export default function OnboardingScreen() {
                 <View style={styles.gridRowWrap}>
                   {[
                     { id: "🤖", label: "🤖 Robô" },
+                    { id: "🦖", label: "🦖 Dino" },
+                    { id: "👨", label: "👨 Homem" },
+                    { id: "👩", label: "👩 Mulher" },
                     { id: "🐶", label: "🐶 Cão" },
                     { id: "🦁", label: "🦁 Leão" },
-                    { id: "🦉", label: "🦉 Coruja" },
                     { id: "🦊", label: "🦊 Raposa" },
-                    { id: "🦖", label: "🦖 Dino" },
-                    { id: "🐯", label: "🐯 Tigre" },
+                    { id: "🧔", label: "🧔 Barbudo" },
+                    { id: "👩‍🦰", label: "👩‍🦰 Ruiva" },
                   ].map(item => (
                     <TouchableOpacity
                       key={item.id}

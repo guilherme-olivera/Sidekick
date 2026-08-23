@@ -23,6 +23,8 @@ import { useDashboard } from "@/src/contexts/DashboardContext";
 import { apiUpload, API_BASE_URL, apiService } from "@/src/services/apiService";
 import { router } from "expo-router";
 
+import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
+
 const Colors = {
   dark: "#0a0a0a",
   darkCard: "#1a1a1a",
@@ -548,6 +550,12 @@ export default function ProfileScreen() {
   const totalYearDistance = monthsToAverage.reduce((sum, m) => sum + m.distance, 0);
   const averageMonthlyDistance = totalYearDistance / (currentMonthIdx + 1);
 
+  const points = monthlyData.map((d, index) => {
+    const x = 35 + index * 24.54;
+    const y = 110 - (d.distance / maxMonthlyDistance) * 90;
+    return { x, y, label: d.label, distance: d.distance };
+  });
+
   // ----- SPORT-SPECIFIC LOCAL WORKOUTS FILTERING -----
   const sportWorkouts = allWorkouts.filter(w => {
     if (activeSportTab === "run") return w.type === "run";
@@ -711,6 +719,7 @@ export default function ProfileScreen() {
             <View style={styles.headerInfoCol}>
               <Text style={styles.profileNameNew}>{user?.name || "Atleta"}</Text>
               <TouchableOpacity
+                style={styles.customizeCompanionBtnNew}
                 onPress={() => {
                   setCompanionName(user?.profile?.companionName || "");
                   setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
@@ -718,8 +727,8 @@ export default function ProfileScreen() {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.personalizeLinkNew}>
-                  🦖 personalize seu sidekick
+                <Text style={styles.customizeCompanionTextNew}>
+                  {user?.profile?.companionAvatar || "🦖"} Personalizar {user?.profile?.companionName || "Sidekick"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -897,48 +906,141 @@ export default function ProfileScreen() {
 
             {/* Card 3: Annual Volume Chart */}
             <View style={styles.annualChartCardNew}>
-              <Text style={styles.annualChartTitleNew}>📊 Volume de Corrida Anual ({currentYear})</Text>
-              <Text style={styles.annualChartSubtitleNew}>Corrida acumulada mês a mês (km)</Text>
+              <View style={styles.chartCardHeaderRow}>
+                <View>
+                  <Text style={styles.annualChartTitleNew}>📊 Volume de Corrida Anual ({currentYear})</Text>
+                  <Text style={styles.annualChartSubtitleNew}>Corrida acumulada mês a mês (km)</Text>
+                </View>
+                <View style={styles.chartHeaderValContainer}>
+                  <Text style={styles.chartHeaderValSub}>Mês Atual</Text>
+                  <Text style={styles.chartHeaderValMain}>
+                    {monthlyData[currentMonthIdx]?.distance.toFixed(1)} km
+                  </Text>
+                </View>
+              </View>
               
               <View style={styles.chartContainerNew}>
-                {/* Dashed Horizontal Average Line */}
-                {averageMonthlyDistance > 0 && (
-                  <View 
-                    style={[
-                      styles.averageLineNew, 
-                      { 
-                        bottom: `${Math.min(90, (averageMonthlyDistance / maxMonthlyDistance) * 85) + 12}%` 
-                      }
-                    ]}
-                  >
-                    <View style={styles.averageLineDashedNew} />
-                    <Text style={styles.averageLineLabelNew}>Média: {averageMonthlyDistance.toFixed(1)} km</Text>
-                  </View>
-                )}
+                <Svg width="100%" height={130} viewBox="0 0 320 130">
+                  <Defs>
+                    <LinearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <Stop offset="0%" stopColor="#fc4c02" stopOpacity="0.5" stopOpacityAlpha={0.5} />
+                      <Stop offset="100%" stopColor="#fc4c02" stopOpacity="0.0" stopOpacityAlpha={0.0} />
+                    </LinearGradient>
+                  </Defs>
 
-                {monthlyData.map((d, index) => {
-                  const heightPct = d.distance > 0 ? (d.distance / maxMonthlyDistance) * 85 : 0;
-                  const isCurrentMonth = index === currentMonthIdx;
-                  return (
-                    <View key={index} style={styles.chartColumnWrapperNew}>
-                      {d.distance > 0 && (
-                        <Text style={styles.chartBarValNew}>{d.distance.toFixed(0)}</Text>
-                      )}
-                      <View style={styles.chartBarTrackNew}>
-                        <View 
-                          style={[
-                            styles.chartBarFillNew, 
-                            isCurrentMonth && styles.chartBarFillActiveNew,
-                            { height: `${Math.max(heightPct, 3)}%` }
-                          ]} 
+                  {/* Vertical grid lines separator */}
+                  {points.map((p, index) => (
+                    <Line
+                      key={`v-grid-${index}`}
+                      x1={p.x}
+                      y1={20}
+                      x2={p.x}
+                      y2={110}
+                      stroke="#222222"
+                      strokeWidth="1"
+                    />
+                  ))}
+
+                  {/* Horizontal grid lines */}
+                  <Line x1={35} y1={20} x2={305} y2={20} stroke="#222222" strokeWidth="1" />
+                  <Line x1={35} y1={65} x2={305} y2={65} stroke="#222222" strokeWidth="1" />
+                  <Line x1={35} y1={110} x2={305} y2={110} stroke="#333333" strokeWidth="1.5" />
+
+                  {/* Y Axis Labels */}
+                  <SvgText x={28} y={23} fill="#666666" fontSize="8" fontWeight="700" textAnchor="end">
+                    {maxMonthlyDistance.toFixed(0)} km
+                  </SvgText>
+                  <SvgText x={28} y={68} fill="#666666" fontSize="8" fontWeight="700" textAnchor="end">
+                    {(maxMonthlyDistance / 2).toFixed(0)} km
+                  </SvgText>
+                  <SvgText x={28} y={113} fill="#666666" fontSize="8" fontWeight="700" textAnchor="end">
+                    0 km
+                  </SvgText>
+
+                  {/* Average Monthly Line */}
+                  {averageMonthlyDistance > 0 && (
+                    <>
+                      <Line
+                        x1={35}
+                        y1={110 - (averageMonthlyDistance / maxMonthlyDistance) * 90}
+                        x2={305}
+                        y2={110 - (averageMonthlyDistance / maxMonthlyDistance) * 90}
+                        stroke="#ff6b6b"
+                        strokeDasharray="3 3"
+                        strokeWidth="1"
+                        opacity={0.6}
+                      />
+                      <SvgText
+                        x={305}
+                        y={110 - (averageMonthlyDistance / maxMonthlyDistance) * 90 - 4}
+                        fill="#ff6b6b"
+                        fontSize="8"
+                        fontWeight="700"
+                        textAnchor="end"
+                      >
+                        Média: {averageMonthlyDistance.toFixed(1)} km
+                      </SvgText>
+                    </>
+                  )}
+
+                  {/* Shaded Area Under Line */}
+                  <Path
+                    d={`M ${points[0].x} 110 ` + points.map(p => `L ${p.x} ${p.y}`).join(" ") + ` L ${points[points.length - 1].x} 110 Z`}
+                    fill="url(#orangeGrad)"
+                  />
+
+                  {/* Connecting Line */}
+                  <Path
+                    d={points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ")}
+                    fill="none"
+                    stroke="#fc4c02"
+                    strokeWidth="2.5"
+                  />
+
+                  {/* Data Point Circles */}
+                  {points.map((p, index) => {
+                    const isCurrent = index === currentMonthIdx;
+                    return (
+                      <React.Fragment key={`point-${index}`}>
+                        {isCurrent && (
+                          <Circle
+                            cx={p.x}
+                            cy={p.y}
+                            r="8"
+                            fill="#fc4c02"
+                            opacity={0.3}
+                          />
+                        )}
+                        <Circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={isCurrent ? 4.5 : 3.5}
+                          fill="#0a0a0c"
+                          stroke={isCurrent ? "#fc4c02" : "#ff6b6b"}
+                          strokeWidth={isCurrent ? 2.5 : 1.5}
                         />
-                      </View>
-                      <Text style={[styles.chartBarLabelNew, isCurrentMonth && styles.chartBarLabelActiveNew]}>
-                        {d.label}
-                      </Text>
-                    </View>
-                  );
-                })}
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* X Axis Labels */}
+                  {points.map((p, index) => {
+                    const isCurrent = index === currentMonthIdx;
+                    return (
+                      <SvgText
+                        key={`x-lbl-${index}`}
+                        x={p.x}
+                        y={124}
+                        fill={isCurrent ? "#ffffff" : "#666666"}
+                        fontSize="8"
+                        fontWeight="800"
+                        textAnchor="middle"
+                      >
+                        {p.label.toUpperCase()}.
+                      </SvgText>
+                    );
+                  })}
+                </Svg>
               </View>
             </View>
           </View>
@@ -1571,7 +1673,7 @@ export default function ProfileScreen() {
 
                   <Text style={styles.inputLabel}>Escolha o Avatar:</Text>
                   <View style={styles.avatarSelectionGrid}>
-                    {["🤖", "🦁", "⏱️", "⚡", "🦊", "🦅"].map((av) => (
+                    {["🤖", "🦖", "👨", "👩", "🦁", "🦊", "🦅", "🧔", "👩‍🦰", "⏱️", "⚡"].map((av) => (
                       <TouchableOpacity
                         key={av}
                         style={[
@@ -2586,11 +2688,20 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  personalizeLinkNew: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    marginTop: 4,
-    textDecorationLine: "underline",
+  customizeCompanionBtnNew: {
+    marginTop: 6,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#333",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    alignSelf: "flex-start",
+  },
+  customizeCompanionTextNew: {
+    color: Colors.primary,
+    fontSize: 10,
+    fontWeight: "700",
   },
   settingsGearBtn: {
     width: 38,
@@ -2784,7 +2895,28 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 11.5,
     marginTop: 2,
-    marginBottom: 24,
+  },
+  chartCardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  chartHeaderValContainer: {
+    alignItems: "flex-end",
+  },
+  chartHeaderValSub: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  chartHeaderValMain: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 2,
   },
   chartContainerNew: {
     flexDirection: "row",
