@@ -2554,6 +2554,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     width: "100%",
+    marginBottom: 16,
   },
   goalHeaderRow: {
     flexDirection: "row",
