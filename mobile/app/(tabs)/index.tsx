@@ -52,6 +52,7 @@ const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0]; // Mapping DAYS to Date.getDay()
 
 export default function HomeScreen() {
   const router = useRouter();
+  const today = new Date();
   const { user } = useAuth();
   const { isConnected: isStravaConnected, syncActivities } = useStrava();
   const [newWorkoutsSyncedMessage, setNewWorkoutsSyncedMessage] = useState<string | null>(null);
@@ -318,109 +319,83 @@ export default function HomeScreen() {
 
   const latestWorkout = workouts[0];
 
-  const getTelemetryData = () => {
-    // Default pace curve values (in decimal minutes: e.g. 5.2 min = 5:12)
-    let thisWeekPaces = [6.13, 5.41, 5.00, 5.82, 5.65, 5.20]; // Coral line (This Week)
-    let lastWeekPaces = [5.20, 5.75, 5.30, 4.90, 5.25, 5.83]; // Grey line (Last Week)
-    let labels = ["0", "1km", "2km", "3km", "4km", "5km"];
-    let distanceStr = "5K Run";
-    let thisWeekAvgStr = "5:12 /km";
-    let lastWeekAvgStr = "5:30 /km";
-    let elevationGainStr = "+85m";
+  const getVolumeComparisonData = () => {
+    // Calculate current week Monday
+    const currentWeekMonday = new Date(today);
+    const todayDay = today.getDay();
+    const mondayOffset = todayDay === 0 ? -6 : 1 - todayDay;
+    currentWeekMonday.setDate(today.getDate() + mondayOffset);
+    currentWeekMonday.setHours(0, 0, 0, 0);
 
-    if (latestWorkout) {
-      const dist = latestWorkout.distance || 5;
-      const typeLabel = latestWorkout.type === "cycling" ? "Pedal" : "Corrida";
-      distanceStr = `${dist.toFixed(1)}k ${typeLabel}`;
-      thisWeekAvgStr = formatPace(latestWorkout.pace) || "5:12 /km";
+    // Calculate current week Sunday
+    const currentWeekSunday = new Date(currentWeekMonday);
+    currentWeekSunday.setDate(currentWeekMonday.getDate() + 6);
+    currentWeekSunday.setHours(23, 59, 59, 999);
 
-      let splits = [];
-      try {
-        if (latestWorkout.splits) {
-          splits = typeof latestWorkout.splits === 'string'
-            ? JSON.parse(latestWorkout.splits)
-            : latestWorkout.splits;
-        }
-      } catch (e) {
-        console.warn("Error parsing splits", e);
+    // Calculate last week Monday
+    const lastWeekMonday = new Date(currentWeekMonday);
+    lastWeekMonday.setDate(currentWeekMonday.getDate() - 7);
+    lastWeekMonday.setHours(0, 0, 0, 0);
+
+    // Calculate last week Sunday
+    const lastWeekSunday = new Date(lastWeekMonday);
+    lastWeekSunday.setDate(lastWeekMonday.getDate() + 6);
+    lastWeekSunday.setHours(23, 59, 59, 999);
+
+    // Daily volume arrays: index 0 = Seg, 6 = Dom
+    const thisWeekDaily = [0, 0, 0, 0, 0, 0, 0];
+    const lastWeekDaily = [0, 0, 0, 0, 0, 0, 0];
+
+    workouts.forEach((w) => {
+      const d = new Date(w.date);
+      const dist = w.distance || 0;
+      const rawDay = d.getDay(); // 0 = Sunday, 1 = Monday
+      const dayIdx = rawDay === 0 ? 6 : rawDay - 1;
+
+      if (d >= currentWeekMonday && d <= currentWeekSunday) {
+        thisWeekDaily[dayIdx] += dist;
+      } else if (d >= lastWeekMonday && d <= lastWeekSunday) {
+        lastWeekDaily[dayIdx] += dist;
       }
+    });
 
-      if (splits && splits.length > 1) {
-        thisWeekPaces = splits.slice(0, 6).map((s: any) => {
-          const speed = s.average_speed || 3.0;
-          return 60 / (speed * 3.6);
-        });
-        while (thisWeekPaces.length < 6) {
-          thisWeekPaces.push(thisWeekPaces[thisWeekPaces.length - 1] || 5.5);
-        }
-        labels = splits.slice(0, 6).map((s: any, idx: number) => idx === 0 ? "0" : `${idx}km`);
-      } else {
-        const basePace = latestWorkout.pace ? 60 / latestWorkout.pace : 5.2;
-        thisWeekPaces = [
-          basePace + 0.3,
-          basePace - 0.15,
-          basePace - 0.4,
-          basePace + 0.25,
-          basePace + 0.1,
-          basePace - 0.2,
-        ];
-      }
+    const thisWeekTotal = thisWeekDaily.reduce((a, b) => a + b, 0);
+    const lastWeekTotal = lastWeekDaily.reduce((a, b) => a + b, 0);
 
-      const baseLastWeekPace = latestWorkout.pace ? (60 / latestWorkout.pace) + 0.25 : 5.5;
-      lastWeekPaces = [
-        baseLastWeekPace - 0.1,
-        baseLastWeekPace + 0.35,
-        baseLastWeekPace - 0.15,
-        baseLastWeekPace - 0.5,
-        baseLastWeekPace + 0.05,
-        baseLastWeekPace + 0.2,
-      ];
-      lastWeekAvgStr = formatPace(60 / baseLastWeekPace) || "5:30 /km";
-      elevationGainStr = latestWorkout.elevationGain ? `+${Math.round(latestWorkout.elevationGain)}m` : "+85m";
-    }
+    // Determine max value for y scaling (minimum range of 5.0 km)
+    const maxVal = Math.max(...thisWeekDaily, ...lastWeekDaily, 5.0);
+    const range = maxVal || 1.0;
 
-    // Determine min/max values for pacing chart scaling
-    const allPaces = [...thisWeekPaces, ...lastWeekPaces];
-    const maxVal = Math.max(...allPaces, 6.5);
-    const minVal = Math.min(...allPaces, 4.0);
-
-    const formatDecimalPace = (decimalMin: number) => {
-      const mins = Math.floor(decimalMin);
-      const secs = Math.round((decimalMin - mins) * 60);
-      const secsStr = secs < 10 ? `0${secs}` : secs;
-      return `${mins}:${secsStr}`;
-    };
-
-    // Y-axis gridline labels (4 intervals)
-    const yLabels = [
-      formatDecimalPace(minVal),
-      formatDecimalPace(minVal + (maxVal - minVal) * 0.33),
-      formatDecimalPace(minVal + (maxVal - minVal) * 0.66),
-      formatDecimalPace(maxVal),
-    ];
-
-    const range = (maxVal - minVal) || 1.0;
-
-    // Compute coordinate points (Viewbox width 280, height 100)
-    // Left offset = 20, right offset = 260
-    // Y offset starts from 15 (fastest) to 90 (slowest)
-    const coralPoints = thisWeekPaces.map((p, i) => {
-      const x = 20 + i * (240 / 5);
-      const y = 90 - ((p - minVal) / range) * 75;
+    // Coordinate mapping (Width 280, height 110)
+    // Left offset = 30, right offset = 260
+    // spacing = 230 / 6 = 38.3
+    const coralPoints = thisWeekDaily.map((dist, i) => {
+      const x = 30 + i * (230 / 6);
+      const y = 90 - (dist / range) * 75;
       return { x, y };
     });
 
-    const lastWeekPoints = lastWeekPaces.map((p, i) => {
-      const x = 20 + i * (240 / 5);
-      const y = 90 - ((p - minVal) / range) * 75;
+    const lastWeekPoints = lastWeekDaily.map((dist, i) => {
+      const x = 30 + i * (230 / 6);
+      const y = 90 - (dist / range) * 75;
       return { x, y };
     });
 
     const coralPath = `M ${coralPoints.map(pt => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" L ")}`;
     const lastWeekPath = `M ${lastWeekPoints.map(pt => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" L ")}`;
 
-    const coralArea = `${coralPath} L ${coralPoints[5].x.toFixed(1)} 100 L ${coralPoints[0].x.toFixed(1)} 100 Z`;
-    const lastWeekArea = `${lastWeekPath} L ${lastWeekPoints[5].x.toFixed(1)} 100 L ${lastWeekPoints[0].x.toFixed(1)} 100 Z`;
+    const coralArea = `${coralPath} L ${coralPoints[6].x.toFixed(1)} 100 L ${coralPoints[0].x.toFixed(1)} 100 Z`;
+    const lastWeekArea = `${lastWeekPath} L ${lastWeekPoints[6].x.toFixed(1)} 100 L ${lastWeekPoints[0].x.toFixed(1)} 100 Z`;
+
+    const labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
+    
+    // Y-axis gridline labels (4 intervals)
+    const yLabels = [
+      "0.0k",
+      `${(maxVal * 0.33).toFixed(1)}k`,
+      `${(maxVal * 0.66).toFixed(1)}k`,
+      `${maxVal.toFixed(1)}k`,
+    ];
 
     return {
       coralPoints,
@@ -431,19 +406,15 @@ export default function HomeScreen() {
       lastWeekArea,
       labels,
       yLabels,
-      distanceStr,
-      thisWeekAvgStr,
-      lastWeekAvgStr,
-      elevationGainStr,
-      thisWeekPaces,
-      lastWeekPaces,
+      thisWeekDaily,
+      lastWeekDaily,
+      thisWeekTotalStr: `${thisWeekTotal.toFixed(1)} km`,
+      lastWeekTotalStr: `${lastWeekTotal.toFixed(1)} km`,
     };
   };
 
-  const telemetry = getTelemetryData();
+  const volumeData = getVolumeComparisonData();
 
-  const today = new Date();
-  
   // Calculate current week Monday
   const currentWeekMonday = new Date(today);
   const todayDay = today.getDay();
@@ -619,15 +590,15 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>🔋 ATHLETIC READINESS</Text>
-              <TouchableOpacity 
-                onPress={handleShowReadinessInfo}
-                style={styles.infoButton}
-                activeOpacity={0.6}
-              >
-                <Text style={styles.infoButtonText}>ℹ️ Info</Text>
-              </TouchableOpacity>
             </View>
             <View style={styles.readinessCardNew}>
+              <TouchableOpacity 
+                onPress={handleShowReadinessInfo}
+                style={styles.cardInfoButton}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.cardInfoButtonText}>ℹ️</Text>
+              </TouchableOpacity>
               <View style={styles.readinessSplitRow}>
                 {/* Circular Gauge Arc on Left */}
                 <View style={{ alignItems: "center", width: 110 }}>
@@ -688,23 +659,23 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Last Run Telemetry Chart Card */}
+        {/* Weekly Volume Comparison Chart Card */}
         {latestWorkout && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>📈 LAST RUN TELEMETRY</Text>
+              <Text style={styles.sectionTitle}>📈 COMPARATIVO DE VOLUME</Text>
             </View>
             <View style={styles.telemetryCard}>
               <View style={styles.telemetryHeader}>
-                <Text style={styles.telemetryActivityName}>{telemetry.distanceStr}</Text>
+                <Text style={styles.telemetryActivityName}>Distância (km) por dia</Text>
                 <View style={styles.telemetryBullets}>
                   <View style={styles.bulletItem}>
                     <View style={[styles.bulletCircle, { backgroundColor: "#ff6b6b" }]} />
-                    <Text style={styles.bulletText}>{telemetry.thisWeekAvgStr}</Text>
+                    <Text style={styles.bulletText}>Esta semana: {volumeData.thisWeekTotalStr}</Text>
                   </View>
                   <View style={styles.bulletItem}>
                     <View style={[styles.bulletCircle, { backgroundColor: "#a0a0b0" }]} />
-                    <Text style={styles.bulletText}>{telemetry.elevationGainStr}</Text>
+                    <Text style={styles.bulletText}>Anterior: {volumeData.lastWeekTotalStr}</Text>
                   </View>
                 </View>
               </View>
@@ -719,17 +690,10 @@ export default function HomeScreen() {
 
                 {/* Left Y axis labels */}
                 <View style={styles.yAxisLabels}>
-                  <Text style={styles.yLabel}>{telemetry.yLabels[0]}</Text>
-                  <Text style={styles.yLabel}>{telemetry.yLabels[1]}</Text>
-                  <Text style={styles.yLabel}>{telemetry.yLabels[2]}</Text>
-                  <Text style={styles.yLabel}>{telemetry.yLabels[3]}</Text>
-                </View>
-
-                {/* Right cumulative elevation ticks */}
-                <View style={styles.yAxisLabelsRight}>
-                  <Text style={styles.yLabelRight}>{telemetry.elevationGainStr}</Text>
-                  <Text style={styles.yLabelRight}>+10m</Text>
-                  <Text style={styles.yLabelRight}>0m</Text>
+                  <Text style={styles.yLabel}>{volumeData.yLabels[0]}</Text>
+                  <Text style={styles.yLabel}>{volumeData.yLabels[1]}</Text>
+                  <Text style={styles.yLabel}>{volumeData.yLabels[2]}</Text>
+                  <Text style={styles.yLabel}>{volumeData.yLabels[3]}</Text>
                 </View>
 
                 {/* Vector Paths SVG canvas */}
@@ -746,15 +710,15 @@ export default function HomeScreen() {
                   </Defs>
 
                   {/* Fills under path */}
-                  <Path d={telemetry.lastWeekArea} fill="url(#greyGradient)" />
-                  <Path d={telemetry.coralArea} fill="url(#coralGradient)" />
+                  <Path d={volumeData.lastWeekArea} fill="url(#greyGradient)" />
+                  <Path d={volumeData.coralArea} fill="url(#coralGradient)" />
 
                   {/* Comparative line paths */}
-                  <Path d={telemetry.lastWeekPath} fill="none" stroke="#a0a0b0" strokeWidth="2.5" strokeDasharray="3 3" />
-                  <Path d={telemetry.coralPath} fill="none" stroke="#ff6b6b" strokeWidth="3" />
+                  <Path d={volumeData.lastWeekPath} fill="none" stroke="#a0a0b0" strokeWidth="2.5" strokeDasharray="3 3" />
+                  <Path d={volumeData.coralPath} fill="none" stroke="#ff6b6b" strokeWidth="3" />
 
                   {/* Dot Markers (Last Week) */}
-                  {telemetry.lastWeekPoints.map((pt, i) => (
+                  {volumeData.lastWeekPoints.map((pt, i) => (
                     <Circle 
                       key={`lw-vis-${i}`} 
                       cx={pt.x.toFixed(1)} 
@@ -766,7 +730,7 @@ export default function HomeScreen() {
                     />
                   ))}
                   {/* Dot Markers (This Week) */}
-                  {telemetry.coralPoints.map((pt, i) => (
+                  {volumeData.coralPoints.map((pt, i) => (
                     <Circle 
                       key={`c-vis-${i}`} 
                       cx={pt.x.toFixed(1)} 
@@ -779,7 +743,7 @@ export default function HomeScreen() {
                   ))}
 
                   {/* Invisible touch targets */}
-                  {telemetry.coralPoints.map((pt, i) => (
+                  {volumeData.coralPoints.map((pt, i) => (
                     <Circle 
                       key={`touch-${i}`} 
                       cx={pt.x.toFixed(1)} 
@@ -794,7 +758,7 @@ export default function HomeScreen() {
  
               {/* Bottom X axis labels */}
               <View style={styles.xAxisLabels}>
-                {telemetry.labels.map((lbl, idx) => (
+                {volumeData.labels.map((lbl, idx) => (
                   <Text key={`x-${idx}`} style={styles.xLabel}>{lbl}</Text>
                 ))}
               </View>
@@ -803,14 +767,21 @@ export default function HomeScreen() {
               <View style={styles.chartInteractiveLegend}>
                 {selectedSplitIndex !== null ? (
                   <View style={styles.chartTooltip}>
-                    <Text style={styles.chartTooltipLabel}>KM {selectedSplitIndex + 1}</Text>
+                    <Text style={styles.chartTooltipLabel}>
+                      {["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][selectedSplitIndex]}
+                    </Text>
                     <Text style={styles.chartTooltipText}>
-                      Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "700" }}>{formatDecimalPace(telemetry.thisWeekPaces[selectedSplitIndex])}/km</Text>  |  Semana anterior: <Text style={{ color: "#a0a0b0", fontWeight: "700" }}>{formatDecimalPace(telemetry.lastWeekPaces[selectedSplitIndex])}/km</Text>
+                      Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "700" }}>{volumeData.thisWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>  |  Anterior: <Text style={{ color: "#a0a0b0", fontWeight: "700" }}>{volumeData.lastWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>
+                      {"\n"}
+                      Diferença: <Text style={{ color: (volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? Colors.success : Colors.warning, fontWeight: "700" }}>
+                        {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? "+" : ""}
+                        {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]).toFixed(1)} km
+                      </Text>
                     </Text>
                   </View>
                 ) : (
                   <Text style={styles.chartLegendHelp}>
-                    💡 Toque nos marcadores do gráfico para comparar as parciais por KM!
+                    💡 Toque nos marcadores do gráfico para comparar o volume diário!
                   </Text>
                 )}
               </View>
@@ -2066,12 +2037,24 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 18,
   },
+  cardInfoButton: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    zIndex: 10,
+    padding: 6,
+  },
+  cardInfoButtonText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
   readinessCardNew: {
     backgroundColor: Colors.darkCard,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 20,
     padding: 20,
+    position: "relative",
   },
   readinessSplitRow: {
     flexDirection: "row",
