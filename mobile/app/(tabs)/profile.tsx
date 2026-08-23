@@ -37,6 +37,48 @@ const Colors = {
   gold: "#ffd700",
 };
 
+const PRMedal = ({ active = false }) => (
+  <Svg width={36} height={36} viewBox="0 0 36 36">
+    {/* Ribbon */}
+    <Path 
+      d="M 12 4 L 18 16 L 24 4" 
+      fill="none" 
+      stroke={active ? "#fc4c02" : "#555555"} 
+      strokeWidth="3.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+    <Path 
+      d="M 15 4 L 18 16 L 21 4" 
+      fill="none" 
+      stroke={active ? "#ffa94d" : "#777777"} 
+      strokeWidth="2.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+    {/* Medallion */}
+    <Circle 
+      cx={18} 
+      cy={22} 
+      r={9} 
+      fill="#0a0a0c" 
+      stroke={active ? "#fc4c02" : "#555555"} 
+      strokeWidth="2" 
+    />
+    {/* PR Text */}
+    <SvgText 
+      x={18} 
+      y={25} 
+      fill={active ? "#fc4c02" : "#555555"} 
+      fontSize="8" 
+      fontWeight="900" 
+      textAnchor="middle"
+    >
+      {active ? "PR" : "RP"}
+    </SvgText>
+  </Svg>
+);
+
 type SportTab = "run" | "strength" | "cycling" | "walk";
 
 export default function ProfileScreen() {
@@ -1088,331 +1130,86 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Section: Minhas Estatísticas style Strava */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitleMain}>Minhas estatísticas</Text>
+            {/* Card: Melhores marcas style Strava */}
+            <View style={styles.stravaBestsCard}>
+              <View style={styles.stravaBestsHeader}>
+                <View style={styles.stravaBestsTitleRow}>
+                  <Text style={styles.stravaBestsLogo}>⬢</Text>
+                  <Text style={styles.stravaBestsTitle}>Melhores marcas</Text>
+                </View>
+                <Text style={styles.stravaBestsChevron}>›</Text>
+              </View>
 
-          {/* Sport Selector Tabs */}
-          <View style={styles.sportTabsContainer}>
-            <TouchableOpacity
-              style={[styles.sportTabButton, activeSportTab === "run" && styles.sportTabButtonActive]}
-              onPress={() => setActiveSportTab("run")}
-            >
-              <Text style={styles.sportTabIcon}>👟</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.sportTabButton, activeSportTab === "strength" && styles.sportTabButtonActive]}
-              onPress={() => setActiveSportTab("strength")}
-            >
-              <Text style={styles.sportTabIcon}>🏋️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.sportTabButton, activeSportTab === "cycling" && styles.sportTabButtonActive]}
-              onPress={() => setActiveSportTab("cycling")}
-            >
-              <Text style={styles.sportTabIcon}>🚲</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.sportTabButton, activeSportTab === "walk" && styles.sportTabButtonActive]}
-              onPress={() => setActiveSportTab("walk")}
-            >
-              <Text style={styles.sportTabIcon}>🚶</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.stravaBestsGrid}>
+                {/* Column: 10 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 10.0);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>10 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
 
-          {isLoadingStats ? (
-            <View style={styles.statsLoader}>
-              <ActivityIndicator color={Colors.primary} size="small" />
-              <Text style={styles.loaderText}>Carregando dados do Strava...</Text>
+                {/* Column: 5 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 5.0);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>5 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Column: 2 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 2.0);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>2 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Column: 1 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 1.0);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>1 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+              </View>
             </View>
-          ) : (
-            <>
-              {/* Block: Últimas 4 semanas */}
-              <View style={styles.statsBlock}>
-                <Text style={styles.statsBlockTitle}>Últimas 4 semanas</Text>
-                
-                <View style={styles.statRow}>
-                  <Text style={styles.statRowLabel}>Atividades/semana</Text>
-                  <Text style={styles.statRowValue}>{recentCount}</Text>
-                </View>
-
-                {showDistance && (
-                  <View style={styles.statRow}>
-                    <Text style={styles.statRowLabel}>Média de distância / semana</Text>
-                    <Text style={styles.statRowValue}>{recentDistance}</Text>
-                  </View>
-                )}
-
-                <View style={styles.statRow}>
-                  <Text style={styles.statRowLabel}>Média de tempo / semana</Text>
-                  <Text style={styles.statRowValue}>{recentTime}</Text>
-                </View>
-
-                {showElevation && (
-                  <View style={styles.statRow}>
-                    <Text style={styles.statRowLabel}>Ganho de elev./semana</Text>
-                    <Text style={styles.statRowValue}>{recentElevation}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Block: Melhores marcas */}
-              <View style={styles.statsBlock}>
-                <View style={styles.rpHeaderRow}>
-                  <Text style={styles.statsBlockTitle}>Melhores marcas</Text>
-                  <TouchableOpacity>
-                    <Text style={styles.addRpText}>Adicionar RP</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {activeSportTab === "run" && (
-                  <>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>400 m</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 0.4) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>1/2 milha</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 0.8) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>1 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 1.0) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>1 milha</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 1.6) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>5 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 5.0) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>10 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 10.0) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Meia maratona</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 21.1) || "--"}</Text>
-                    </View>
-                  </>
-                )}
-
-                {activeSportTab === "cycling" && (
-                  <>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Maior distância</Text>
-                      <Text style={styles.statRowLink}>{maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>10 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 10.0) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>20 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 20.0) || "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>50 km</Text>
-                      <Text style={styles.statRowLink}>{getBestTimeForDistance(sportWorkouts, 50.0) || "--"}</Text>
-                    </View>
-                  </>
-                )}
-
-                {activeSportTab === "strength" && (
-                  <>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Treino mais longo</Text>
-                      <Text style={styles.statRowLink}>{maxDuration > 0 ? formatSecondsToTime(maxDuration) : "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Frequência recorde</Text>
-                      <Text style={styles.statRowLink}>{sportWorkouts.length > 0 ? `${sportWorkouts.length} treinos` : "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Volume máximo estimado</Text>
-                      <Text style={styles.statRowLink}>--</Text>
-                    </View>
-                  </>
-                )}
-
-                {activeSportTab === "walk" && (
-                  <>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Maior caminhada</Text>
-                      <Text style={styles.statRowLink}>{maxDistance > 0 ? `${maxDistance.toFixed(1)} km` : "--"}</Text>
-                    </View>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statRowLabel}>Treino mais longo</Text>
-                      <Text style={styles.statRowLink}>{maxDuration > 0 ? formatSecondsToTime(maxDuration) : "--"}</Text>
-                    </View>
-                  </>
-                )}
-              </View>
-
-              {/* Block: Evolução & Gamificação (IA) */}
-              <View style={styles.statsBlock}>
-                <View style={styles.rpHeaderRow}>
-                  <Text style={styles.statsBlockTitle}>🏆 Evolução & Nível (IA)</Text>
-                  <TouchableOpacity 
-                    onPress={handleUpdateHistoryAnalysis}
-                    disabled={updatingHistoryAnalysis}
-                  >
-                    {updatingHistoryAnalysis ? (
-                      <ActivityIndicator size="small" color={Colors.primary} />
-                    ) : (
-                      <Text style={styles.addRpText}>🔄 Atualizar</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                {historyAnalysis ? (
-                  <View style={styles.historyAnalysisContainer}>
-                    <Text style={styles.historyAnalysisText}>
-                      {historyAnalysis}
-                    </Text>
-                    {historyAnalysisUpdatedAt && (
-                      <Text style={styles.historyAnalysisTime}>
-                        Atualizado em: {new Date(historyAnalysisUpdatedAt).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    )}
-                  </View>
-                ) : (
-                  <View style={styles.historyAnalysisEmptyContainer}>
-                    <Text style={styles.historyAnalysisEmptyText}>
-                      Você ainda não gerou seu relatório de evolução histórica com IA.
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.generateHistoryButton}
-                      onPress={handleUpdateHistoryAnalysis}
-                      disabled={updatingHistoryAnalysis}
-                    >
-                      {updatingHistoryAnalysis ? (
-                        <ActivityIndicator color="#0a0a0a" />
-                      ) : (
-                        <Text style={styles.generateHistoryButtonText}>Gerar Relatório de Evolução</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* SVG Weekly Workload Chart */}
-                <Text style={styles.badgesSectionTitle}>📊 Carga de Treino Semanal (Últimas 4 semanas)</Text>
-                <View style={styles.chartBlock}>
-                  <View style={styles.chartContainer}>
-                    {chartData.map((d, index) => {
-                      const heightPct = d.distance > 0 ? (d.distance / maxDistanceScale) * 100 : 0;
-                      return (
-                        <View key={index} style={styles.chartColumnWrapper}>
-                          <Text style={styles.chartValue}>{d.distance.toFixed(1)} km</Text>
-                          <View style={styles.chartTrack}>
-                            <View style={[styles.chartBar, { height: `${Math.max(heightPct, 6)}%` }]} />
-                          </View>
-                          <Text style={styles.chartLabel}>{d.label}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {/* Gamified Badges */}
-                <Text style={styles.badgesSectionTitle}>🎖️ Conquistas Desbloqueadas</Text>
-                <View style={styles.badgesContainer}>
-                  <TouchableOpacity
-                    style={[styles.badgeItem, allWorkouts.length > 0 ? styles.badgeUnlocked : styles.badgeLocked]}
-                    onPress={() => handleBadgePress("🏃", "Primeiro Passo", "1+ treinos realizados", allWorkouts.length > 0)}
-                  >
-                    <Text style={styles.badgeEmoji}>{allWorkouts.length > 0 ? "🏃" : "🔒"}</Text>
-                    <Text style={styles.badgeName}>Primeiro Passo</Text>
-                    <Text style={styles.badgeDesc}>1+ treinos realizados</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[styles.badgeItem, allWorkouts.length >= 5 ? styles.badgeUnlocked : styles.badgeLocked]}
-                    onPress={() => handleBadgePress("🔥", "Consistente", "5+ treinos realizados", allWorkouts.length >= 5)}
-                  >
-                    <Text style={styles.badgeEmoji}>{allWorkouts.length >= 5 ? "🔥" : "🔒"}</Text>
-                    <Text style={styles.badgeName}>Consistente</Text>
-                    <Text style={styles.badgeDesc}>5+ treinos realizados</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[styles.badgeItem, allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? styles.badgeUnlocked : styles.badgeLocked]}
-                    onPress={() => handleBadgePress("🧭", "Devorador de KM", "50+ km acumulados", allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50)}
-                  >
-                    <Text style={styles.badgeEmoji}>{allWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0) >= 50 ? "🧭" : "🔒"}</Text>
-                    <Text style={styles.badgeName}>Devorador de KM</Text>
-                    <Text style={styles.badgeDesc}>50+ km acumulados</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Block: Ano atual (2026) */}
-              <View style={styles.statsBlock}>
-                <Text style={styles.statsBlockTitle}>Ano atual (2026)</Text>
-                
-                <View style={styles.statRow}>
-                  <Text style={styles.statRowLabel}>Atividades</Text>
-                  <Text style={styles.statRowValue}>{ytdCount}</Text>
-                </View>
-
-                {showDistance && (
-                  <View style={styles.statRow}>
-                    <Text style={styles.statRowLabel}>Distância</Text>
-                    <Text style={styles.statRowValue}>{ytdDistance}</Text>
-                  </View>
-                )}
-
-                <View style={styles.statRow}>
-                  <Text style={styles.statRowLabel}>Tempo</Text>
-                  <Text style={styles.statRowValue}>{ytdTime}</Text>
-                </View>
-
-                {showElevation && (
-                  <View style={styles.statRow}>
-                    <Text style={styles.statRowLabel}>Ganho de elev.</Text>
-                    <Text style={styles.statRowValue}>{ytdElevation}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Block: Totais */}
-              <View style={styles.statsBlock}>
-                <Text style={styles.statsBlockTitle}>Totais acumulados</Text>
-                
-                <View style={styles.statRow}>
-                  <Text style={styles.statRowLabel}>Atividades</Text>
-                  <Text style={styles.statRowValue}>{allCount}</Text>
-                </View>
-
-                {showDistance && (
-                  <View style={styles.statRow}>
-                    <Text style={styles.statRowLabel}>Distância</Text>
-                    <Text style={styles.statRowValue}>{allDistance}</Text>
-                  </View>
-                )}
-
-                <View style={styles.statRow}>
-                  <Text style={styles.statRowLabel}>Tempo</Text>
-                  <Text style={styles.statRowValue}>{allTime}</Text>
-                </View>
-
-                {showElevation && (
-                  <View style={styles.statRow}>
-                    <Text style={styles.statRowLabel}>Ganho de elev.</Text>
-                    <Text style={styles.statRowValue}>{allElevation}</Text>
-                  </View>
-                )}
-              </View>
-            </>
-          )}
-        </View>
       </View>
     )}
 
@@ -3240,5 +3037,76 @@ const styles = StyleSheet.create({
     color: "#ff6b6b",
     fontSize: 13.5,
     fontWeight: "700",
+  },
+
+  // Strava Personal Best Marks Styles
+  stravaBestsCard: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+    marginBottom: 16,
+    width: "100%",
+  },
+  stravaBestsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  stravaBestsTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  stravaBestsLogo: {
+    color: "#fc4c02",
+    fontSize: 16,
+    marginRight: 8,
+  },
+  stravaBestsTitle: {
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  stravaBestsChevron: {
+    color: Colors.textSecondary,
+    fontSize: 18,
+    opacity: 0.6,
+  },
+  stravaBestsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  stravaBestsCol: {
+    flex: 1,
+    alignItems: "center",
+  },
+  stravaBestsLabel: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  stravaBestsTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stravaBestsTimeIcon: {
+    fontSize: 12,
+    marginRight: 3,
+  },
+  stravaBestsTimeVal: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  stravaBestsSub: {
+    color: "#666666",
+    fontSize: 8.5,
+    fontWeight: "500",
+    marginTop: 3,
   },
 });
