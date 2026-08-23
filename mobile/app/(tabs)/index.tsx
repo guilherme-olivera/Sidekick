@@ -398,18 +398,20 @@ export default function HomeScreen() {
       formatDecimalPace(maxVal),
     ];
 
+    const range = (maxVal - minVal) || 1.0;
+
     // Compute coordinate points (Viewbox width 280, height 100)
     // Left offset = 20, right offset = 260
     // Y offset starts from 15 (fastest) to 90 (slowest)
     const coralPoints = thisWeekPaces.map((p, i) => {
       const x = 20 + i * (240 / 5);
-      const y = 90 - ((p - minVal) / (maxVal - minVal)) * 75;
+      const y = 90 - ((p - minVal) / range) * 75;
       return { x, y };
     });
 
     const lastWeekPoints = lastWeekPaces.map((p, i) => {
       const x = 20 + i * (240 / 5);
-      const y = 90 - ((p - minVal) / (maxVal - minVal)) * 75;
+      const y = 90 - ((p - minVal) / range) * 75;
       return { x, y };
     });
 
