@@ -568,8 +568,6 @@ export default function ProfileScreen() {
               <Text style={styles.editBadgeIcon}>📷</Text>
             </View>
           </TouchableOpacity>
-          <Text style={styles.name}>{user?.name}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
 
           {user?.profile?.isConfigured && (
             <View style={{ width: "100%", marginTop: 16, marginBottom: 10 }}>
@@ -634,6 +632,9 @@ export default function ProfileScreen() {
               </View>
             </View>
           )}
+
+          <Text style={styles.name}>{user?.name}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
 
           <TouchableOpacity
             style={styles.customizeCompanionBtn}
