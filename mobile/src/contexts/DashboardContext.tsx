@@ -130,31 +130,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loadWeeklyWorkouts = async (startDate: Date) => {
-    if (!user) return;
-
-    try {
-      setIsLoading(true);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 6);
-
-      const startStr = startDate.toISOString().split('T')[0];
-      const endStr = endDate.toISOString().split('T')[0];
-
-      const response = await apiService.get(
-        `/workouts?startDate=${startStr}&endDate=${endStr}`
-      );
-      const workoutsData = (response.workouts || []).map((workout: any) => ({
-        ...workout,
-        date: new Date(workout.date),
-      }));
-      setWorkouts(workoutsData);
-      groupWorkoutsByDay(workoutsData);
-      await loadCalendarEvents(workoutsData);
-    } catch (error) {
-      console.error('Error loading weekly workouts:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    // Para evitar que a busca semanal limite e apague os treinos históricos (o que quebrava o calendário),
+    // nós carregamos todos os treinos completos e o filtro semanal é feito client-side no app.
+    await loadWorkouts();
   };
 
   const groupWorkoutsByDay = (workoutsList: Workout[]) => {

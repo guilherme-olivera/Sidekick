@@ -46,7 +46,7 @@ export const getWorkoutsHandler = async (req: Request, res: Response) => {
     const workouts = await prisma.workout.findMany({
       where: whereClause,
       orderBy: { date: "desc" },
-      take: 50, // últimos 50 treinos
+      take: 500, // últimos 500 treinos
     });
 
     res.json({ success: true, workouts });
