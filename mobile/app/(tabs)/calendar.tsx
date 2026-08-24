@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   SafeAreaView,
   Text,
@@ -16,6 +16,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import ViewShot, { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import Calendar from "@/components/Calendar";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -62,9 +65,38 @@ export default function CalendarScreen() {
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sharingWorkout, setSharingWorkout] = useState<any>(null);
 
+  const viewShotRef = useRef<any>(null);
+
   const handleGenerateShareCard = (workout: any) => {
     setSharingWorkout(workout);
     setShareCardVisible(true);
+  };
+
+  const handleShareCardImage = async () => {
+    try {
+      if (!viewShotRef.current) {
+        Alert.alert("Erro", "Não foi possível gerar a imagem. Tente novamente.");
+        return;
+      }
+
+      const uri = await captureRef(viewShotRef, {
+        format: "png",
+        quality: 0.9,
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Compartilhar seu Treino Sidekick",
+        });
+      } else {
+        Alert.alert("Erro", "O compartilhamento nativo não está disponível neste aparelho.");
+      }
+    } catch (err) {
+      console.error("Failed to share card image:", err);
+      Alert.alert("Erro", "Não foi possível gerar ou salvar o card.");
+    }
   };
 
   const selectedWorkoutDetail = workouts.find((w) => w.id === selectedWorkoutId);
@@ -448,9 +480,17 @@ export default function CalendarScreen() {
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={handleCloseDetailModal}>
-                    <Text style={styles.workoutModalCloseButton}>✕</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity 
+                      onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
+                      style={{ marginRight: 20, padding: 5 }}
+                    >
+                      <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleCloseDetailModal} style={{ padding: 5 }}>
+                      <Text style={styles.workoutModalCloseButton}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <View style={styles.workoutModalScroll}>
@@ -495,7 +535,6 @@ export default function CalendarScreen() {
                   {/* Metrics Grid */}
                   <View style={styles.workoutModalMetricsGrid}>
                     <View style={styles.workoutModalMetricCard}>
-                      <Text style={styles.workoutModalMetricIcon}>⏱️</Text>
                       <Text style={styles.workoutModalMetricValue}>
                         {Math.floor(selectedWorkoutDetail.duration / 3600) > 0
                           ? `${Math.floor(selectedWorkoutDetail.duration / 3600)}h ${Math.floor(
@@ -507,7 +546,6 @@ export default function CalendarScreen() {
                     </View>
                     {selectedWorkoutDetail.distance && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>👟</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.distance.toFixed(1)} km
                         </Text>
@@ -516,7 +554,6 @@ export default function CalendarScreen() {
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>🏃</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
                             ? formatPace(selectedWorkoutDetail.pace)
@@ -531,7 +568,6 @@ export default function CalendarScreen() {
                     )}
                     {selectedWorkoutDetail.avgHeartRate && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>❤️</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.avgHeartRate} bpm
                         </Text>
@@ -540,7 +576,6 @@ export default function CalendarScreen() {
                     )}
                     {selectedWorkoutDetail.averageWatts ? (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>⚡</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.averageWatts} W
                         </Text>
@@ -550,7 +585,6 @@ export default function CalendarScreen() {
                     {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
                       <>
                         <View style={styles.workoutModalMetricCard}>
-                          <Text style={styles.workoutModalMetricIcon}>🔄</Text>
                           <Text style={styles.workoutModalMetricValue}>
                             {selectedWorkoutDetail.averageCadence ? `${selectedWorkoutDetail.averageCadence}` : "--"}
                           </Text>
@@ -559,7 +593,6 @@ export default function CalendarScreen() {
                           </Text>
                         </View>
                         <View style={styles.workoutModalMetricCard}>
-                          <Text style={styles.workoutModalMetricIcon}>⛰️</Text>
                           <Text style={styles.workoutModalMetricValue}>
                             {selectedWorkoutDetail.elevationGain ? `${Math.round(selectedWorkoutDetail.elevationGain)} m` : "0 m"}
                           </Text>
@@ -569,7 +602,6 @@ export default function CalendarScreen() {
                     )}
                     {selectedWorkoutDetail.effortRating && (
                       <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricIcon}>🥵</Text>
                         <Text style={styles.workoutModalMetricValue}>
                           {selectedWorkoutDetail.effortRating} / 5
                         </Text>
@@ -617,37 +649,21 @@ export default function CalendarScreen() {
                       </View>
                     )}
 
-                    <TouchableOpacity
-                      style={[styles.workoutModalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.workoutModalAnalyzeButtonDisabled]}
-                      onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
-                      disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
-                    >
-                      {analyzingWorkoutId === selectedWorkoutDetail.id ? (
-                        <ActivityIndicator color="#ffffff" size="small" />
-                      ) : (
-                        <Text style={styles.workoutModalAnalyzeButtonText}>
-                          {selectedWorkoutDetail.aiNarrative ? "🔄 Reanalisar com IA" : "🧠 Analisar com IA"}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-
-                    {selectedWorkoutDetail.aiNarrative && (
+                    {!selectedWorkoutDetail.aiNarrative && (
                       <TouchableOpacity
-                        style={styles.workoutModalShareStoriesButton}
-                        onPress={() => handleGenerateShareCard(selectedWorkoutDetail)}
+                        style={[styles.workoutModalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.workoutModalAnalyzeButtonDisabled]}
+                        onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
+                        disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
                       >
-                        <Text style={styles.workoutModalShareStoriesButtonText}>📸 Compartilhar no Instagram</Text>
+                        {analyzingWorkoutId === selectedWorkoutDetail.id ? (
+                          <ActivityIndicator color="#ffffff" size="small" />
+                        ) : (
+                          <Text style={styles.workoutModalAnalyzeButtonText}>🧠 Analisar com IA</Text>
+                        )}
                       </TouchableOpacity>
                     )}
                   </View>
                 </View>
-                {/* Close action */}
-                <TouchableOpacity
-                  style={styles.workoutModalCloseAction}
-                  onPress={handleCloseDetailModal}
-                >
-                  <Text style={styles.workoutModalCloseActionText}>Fechar</Text>
-                </TouchableOpacity>
 
                 {/* Sub-modal View overlay inside main detail modal to avoid stacking bugs */}
                 {effortModalVisible && (
@@ -753,76 +769,72 @@ export default function CalendarScreen() {
             {sharingWorkout && (
               <ScrollView contentContainerStyle={{ alignItems: "center" }} showsVerticalScrollIndicator={false}>
                 {/* 9:16 Instagram Story Preview */}
-                <View style={styles.storiesCardFrame}>
-                  {/* Decorative Header (Sidekick Premium Logo) */}
-                  <View style={styles.storiesCardHeader}>
-                    <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
-                    <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
-                  </View>
-
-                  {/* Character Avatar bubble */}
-                  <View style={styles.storiesCompanionWrapper}>
-                    <View style={styles.storiesCompanionAvatarBg}>
-                      <Text style={styles.storiesCompanionAvatar}>
-                        {user?.profile?.companionAvatar || "🦖"}
-                      </Text>
+                <ViewShot ref={viewShotRef} options={{ format: "png", quality: 0.9 }}>
+                  <View style={styles.storiesCardFrame}>
+                    {/* Decorative Header (Sidekick Premium Logo) */}
+                    <View style={styles.storiesCardHeader}>
+                      <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
+                      <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
                     </View>
-                    <View>
-                      <Text style={styles.storiesCompanionName}>
-                        {user?.profile?.companionName || "Rocky"}
-                      </Text>
-                      <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
-                    </View>
-                  </View>
 
-                  {/* Bubble Dialogue */}
-                  <View style={styles.storiesSpeechBubble}>
-                    <Text style={styles.storiesSpeechText}>
-                      "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
-                    </Text>
-                  </View>
-
-                  {/* Workout Info Box */}
-                  <View style={styles.storiesWorkoutBox}>
-                    <Text style={styles.storiesWorkoutTitle}>
-                      {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
-                       sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
-                    </Text>
-                    <Text style={styles.storiesWorkoutDate}>
-                      {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
-                    </Text>
-
-                    <View style={styles.storiesStatsRow}>
-                      <View style={styles.storiesStatItem}>
-                        <Text style={styles.storiesStatLabel}>Duração</Text>
-                        <Text style={styles.storiesStatValue}>
-                          {Math.floor(sharingWorkout.duration / 3600) > 0
-                            ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                            : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                    {/* Character Avatar bubble */}
+                    <View style={styles.storiesCompanionWrapper}>
+                      <View style={styles.storiesCompanionAvatarBg}>
+                        <Text style={styles.storiesCompanionAvatar}>
+                          {user?.profile?.companionAvatar || "🦖"}
                         </Text>
                       </View>
-                      {sharingWorkout.distance && (
+                      <View>
+                        <Text style={styles.storiesCompanionName}>
+                          {user?.profile?.companionName || "Rocky"}
+                        </Text>
+                        <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
+                      </View>
+                    </View>
+
+                    {/* Bubble Dialogue */}
+                    <View style={styles.storiesSpeechBubble}>
+                      <Text style={styles.storiesSpeechText}>
+                        "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
+                      </Text>
+                    </View>
+
+                    {/* Workout Info Box */}
+                    <View style={styles.storiesWorkoutBox}>
+                      <Text style={styles.storiesWorkoutTitle}>
+                        {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
+                         sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
+                      </Text>
+                      <Text style={styles.storiesWorkoutDate}>
+                        {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
+                      </Text>
+
+                      <View style={styles.storiesStatsRow}>
                         <View style={styles.storiesStatItem}>
-                          <Text style={styles.storiesStatLabel}>Distância</Text>
+                          <Text style={styles.storiesStatLabel}>Duração</Text>
                           <Text style={styles.storiesStatValue}>
-                            {sharingWorkout.distance.toFixed(1)} km
+                            {Math.floor(sharingWorkout.duration / 3600) > 0
+                              ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                              : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
                           </Text>
                         </View>
-                      )}
+                        {sharingWorkout.distance && (
+                          <View style={styles.storiesStatItem}>
+                            <Text style={styles.storiesStatLabel}>Distância</Text>
+                            <Text style={styles.storiesStatValue}>
+                              {sharingWorkout.distance.toFixed(1)} km
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   </View>
-                </View>
+                </ViewShot>
 
                 {/* Actions */}
                 <TouchableOpacity
                   style={styles.shareSaveButton}
-                  onPress={() => {
-                    setShareCardVisible(false);
-                    Alert.alert(
-                      "Card Pronto! 📸",
-                      "O card foi gerado e salvo na sua galeria com sucesso! Abra o Instagram e cole nos seus Stories para comemorar mais essa conquista! 🔥👟"
-                    );
-                  }}
+                  onPress={handleShareCardImage}
                 >
                   <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
                 </TouchableOpacity>
@@ -1083,17 +1095,17 @@ const styles = StyleSheet.create({
   workoutModalMetricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    justifyContent: "space-between",
     marginBottom: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1d1d1f",
+    borderTopWidth: 1,
+    borderTopColor: "#1d1d1f",
   },
   workoutModalMetricCard: {
-    width: "31%",
-    backgroundColor: "#0a0a0a",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#333",
+    width: "30%",
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1103,13 +1115,13 @@ const styles = StyleSheet.create({
   },
   workoutModalMetricValue: {
     color: "#ffffff",
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "800",
     textAlign: "center",
   },
   workoutModalMetricSubLabel: {
     color: "#b0b0b0",
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "700",
     textTransform: "uppercase",
     marginTop: 4,

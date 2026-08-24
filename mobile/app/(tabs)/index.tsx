@@ -19,6 +19,9 @@ import {
   RefreshControl,
 } from "react-native";
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import ViewShot, { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
@@ -90,6 +93,9 @@ export default function HomeScreen() {
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sharingWorkout, setSharingWorkout] = useState<any>(null);
   const [activeTemplateIdx, setActiveTemplateIdx] = useState(0);
+  const viewShotRef0 = useRef<any>(null);
+  const viewShotRef1 = useRef<any>(null);
+  const viewShotRef2 = useRef<any>(null);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -297,6 +303,34 @@ export default function HomeScreen() {
     setSharingWorkout(workout);
     setActiveTemplateIdx(0);
     setShareCardVisible(true);
+  };
+
+  const handleShareCardImage = async () => {
+    try {
+      const activeRef = activeTemplateIdx === 0 ? viewShotRef0 : activeTemplateIdx === 1 ? viewShotRef1 : viewShotRef2;
+      if (!activeRef?.current) {
+        Alert.alert("Erro", "Não foi possível gerar a imagem. Tente novamente.");
+        return;
+      }
+
+      const uri = await captureRef(activeRef, {
+        format: "png",
+        quality: 0.9,
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Compartilhar seu Treino Sidekick",
+        });
+      } else {
+        Alert.alert("Erro", "O compartilhamento nativo não está disponível neste aparelho.");
+      }
+    } catch (err) {
+      console.error("Failed to share card image:", err);
+      Alert.alert("Erro", "Não foi possível gerar ou salvar o card.");
+    }
   };
 
   const clearAllNotifications = () => {
@@ -966,9 +1000,17 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => setSelectedWorkoutIdForDetail(null)}>
-                    <Text style={styles.modalCloseButton}>✕</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity 
+                      onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
+                      style={{ marginRight: 20, padding: 5 }}
+                    >
+                      <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setSelectedWorkoutIdForDetail(null)} style={{ padding: 5 }}>
+                      <Text style={styles.modalCloseButton}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
@@ -1013,7 +1055,6 @@ export default function HomeScreen() {
                   {/* Metrics Grid */}
                   <View style={styles.modalMetricsGrid}>
                     <View style={styles.modalMetricCard}>
-                      <Text style={styles.modalMetricIcon}>⏱️</Text>
                       <Text style={styles.modalMetricValue}>
                         {Math.floor(selectedWorkoutDetail.duration / 3600) > 0
                           ? `${Math.floor(selectedWorkoutDetail.duration / 3600)}h ${Math.floor(
@@ -1025,7 +1066,6 @@ export default function HomeScreen() {
                     </View>
                     {selectedWorkoutDetail.distance && (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>👟</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.distance.toFixed(1)} km
                         </Text>
@@ -1034,7 +1074,6 @@ export default function HomeScreen() {
                     )}
                     {selectedWorkoutDetail.pace && (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>🏃</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
                             ? formatPace(selectedWorkoutDetail.pace)
@@ -1049,7 +1088,6 @@ export default function HomeScreen() {
                     )}
                     {selectedWorkoutDetail.avgHeartRate && (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>❤️</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.avgHeartRate} bpm
                         </Text>
@@ -1058,7 +1096,6 @@ export default function HomeScreen() {
                     )}
                     {selectedWorkoutDetail.averageWatts ? (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>⚡</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.averageWatts} W
                         </Text>
@@ -1068,7 +1105,6 @@ export default function HomeScreen() {
                     {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
                       <>
                         <View style={styles.modalMetricCard}>
-                          <Text style={styles.modalMetricIcon}>🔄</Text>
                           <Text style={styles.modalMetricValue}>
                             {selectedWorkoutDetail.averageCadence ? `${selectedWorkoutDetail.averageCadence}` : "--"}
                           </Text>
@@ -1077,7 +1113,6 @@ export default function HomeScreen() {
                           </Text>
                         </View>
                         <View style={styles.modalMetricCard}>
-                          <Text style={styles.modalMetricIcon}>⛰️</Text>
                           <Text style={styles.modalMetricValue}>
                             {selectedWorkoutDetail.elevationGain ? `${Math.round(selectedWorkoutDetail.elevationGain)} m` : "0 m"}
                           </Text>
@@ -1087,7 +1122,6 @@ export default function HomeScreen() {
                     )}
                     {selectedWorkoutDetail.sufferScore ? (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>❤️‍🔥</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.sufferScore}
                         </Text>
@@ -1096,7 +1130,6 @@ export default function HomeScreen() {
                     ) : null}
                     {selectedWorkoutDetail.effortRating && (
                       <View style={styles.modalMetricCard}>
-                        <Text style={styles.modalMetricIcon}>🥵</Text>
                         <Text style={styles.modalMetricValue}>
                           {selectedWorkoutDetail.effortRating} / 5
                         </Text>
@@ -2032,17 +2065,17 @@ const styles = StyleSheet.create({
   modalMetricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    justifyContent: "space-between",
     marginBottom: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1d1d1f",
+    borderTopWidth: 1,
+    borderTopColor: "#1d1d1f",
   },
   modalMetricCard: {
-    width: "31%",
-    backgroundColor: Colors.dark,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.darkBorder,
+    width: "30%",
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2052,13 +2085,13 @@ const styles = StyleSheet.create({
   },
   modalMetricValue: {
     color: Colors.text,
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "800",
     textAlign: "center",
   },
   modalMetricSubLabel: {
     color: Colors.textSecondary,
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: "700",
     textTransform: "uppercase",
     marginTop: 4,
