@@ -1142,31 +1142,14 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.stravaBestsGrid}>
-                {/* Column: 10 km */}
+                {/* Column: 1 km */}
                 {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 10.0);
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 1.0);
                   const hasPR = !!bestTime;
                   return (
                     <View style={styles.stravaBestsCol}>
                       <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>10 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
-
-                {/* Column: 5 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 5.0);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>5 km</Text>
+                      <Text style={styles.stravaBestsLabel}>1 km</Text>
                       <View style={styles.stravaBestsTimeRow}>
                         <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                         <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
@@ -1193,14 +1176,14 @@ export default function ProfileScreen() {
                   );
                 })()}
 
-                {/* Column: 1 km */}
+                {/* Column: 5 km */}
                 {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 1.0);
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 5.0);
                   const hasPR = !!bestTime;
                   return (
                     <View style={styles.stravaBestsCol}>
                       <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>1 km</Text>
+                      <Text style={styles.stravaBestsLabel}>5 km</Text>
                       <View style={styles.stravaBestsTimeRow}>
                         <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                         <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
@@ -1209,7 +1192,137 @@ export default function ProfileScreen() {
                     </View>
                   );
                 })()}
+
+                {/* Column: 10 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 10.0);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>10 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Column: 15 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 15.0);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>15 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Column: 21 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 21.097);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>21 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Column: 42 km */}
+                {(() => {
+                  const bestTime = getBestTimeForDistance(sportWorkouts, 42.195);
+                  const hasPR = !!bestTime;
+                  return (
+                    <View style={styles.stravaBestsCol}>
+                      <PRMedal active={hasPR} />
+                      <Text style={styles.stravaBestsLabel}>42 km</Text>
+                      <View style={styles.stravaBestsTimeRow}>
+                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                      </View>
+                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
+                    </View>
+                  );
+                })()}
+
+                {/* Placeholders to keep spacing balanced */}
+                <View style={styles.stravaBestsCol} />
+                <View style={styles.stravaBestsCol} />
               </View>
+            </View>
+
+            {/* Block: Ano atual (2026) */}
+            <View style={styles.statsBlock}>
+              <Text style={styles.statsBlockTitle}>Ano atual (2026)</Text>
+              
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Atividades</Text>
+                <Text style={styles.statRowValue}>{ytdCount}</Text>
+              </View>
+
+              {showDistance && (
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Distância</Text>
+                  <Text style={styles.statRowValue}>{ytdDistance}</Text>
+                </View>
+              )}
+
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Tempo</Text>
+                <Text style={styles.statRowValue}>{ytdTime}</Text>
+              </View>
+
+              {showElevation && (
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Ganho de elev.</Text>
+                  <Text style={styles.statRowValue}>{ytdElevation}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Block: Totais */}
+            <View style={styles.statsBlock}>
+              <Text style={styles.statsBlockTitle}>Totais acumulados</Text>
+              
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Atividades</Text>
+                <Text style={styles.statRowValue}>{allCount}</Text>
+              </View>
+
+              {showDistance && (
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Distância</Text>
+                  <Text style={styles.statRowValue}>{allDistance}</Text>
+                </View>
+              )}
+
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Tempo</Text>
+                <Text style={styles.statRowValue}>{allTime}</Text>
+              </View>
+
+              {showElevation && (
+                <View style={styles.statRow}>
+                  <Text style={styles.statRowLabel}>Ganho de elev.</Text>
+                  <Text style={styles.statRowValue}>{allElevation}</Text>
+                </View>
+              )}
             </View>
       </View>
     )}
@@ -3077,11 +3190,13 @@ const styles = StyleSheet.create({
   },
   stravaBestsGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
   },
   stravaBestsCol: {
-    flex: 1,
+    width: "31%",
     alignItems: "center",
+    marginBottom: 16,
   },
   stravaBestsLabel: {
     color: Colors.textSecondary,
