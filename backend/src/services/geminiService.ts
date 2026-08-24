@@ -70,7 +70,7 @@ export async function analyzeWorkoutWithGemini(
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     // Build context about the workout
     const workoutContext = `
@@ -205,7 +205,7 @@ export async function analyzeHistoryWithGemini(
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
     // Agregações de apoio
     const totalWorkouts = workouts.length;
@@ -348,7 +348,7 @@ Instruções cruciais:
 `;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
+      model: 'gemini-3.6-flash',
       systemInstruction: systemInstruction,
     });
 
@@ -388,7 +388,7 @@ export async function testGeminiConnection(): Promise<string> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured in environment variables");
   }
-  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
   const text = await callGeminiWithRetry(async () => {
     const result = await model.generateContent("Responder apenas: 'Gemini Ok!'");
     return result.response.text();
