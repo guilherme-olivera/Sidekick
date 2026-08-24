@@ -134,7 +134,7 @@ export async function fetchStravaActivities(
 ): Promise<StravaActivity[]> {
   try {
     const params: any = {
-      per_page: 30, // máximo 200
+      per_page: 200, // máximo 200
     };
 
     if (after) {

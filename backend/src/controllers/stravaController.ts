@@ -177,9 +177,9 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
       accessToken = newTokenData.access_token;
     }
 
-    // Busca atividades mais recentes (últimos 30 dias)
-    const thirtyDaysAgo = Math.floor(Date.now() / 1000) - (30 * 24 * 60 * 60);
-    const activities = await fetchStravaActivities(accessToken, thirtyDaysAgo);
+    // Busca atividades de até 2 anos atrás (730 dias) para popular os recordes históricos (RPs)
+    const twoYearsAgo = Math.floor(Date.now() / 1000) - (730 * 24 * 60 * 60);
+    const activities = await fetchStravaActivities(accessToken, twoYearsAgo);
 
     // Busca todos os treinos que já existem para este usuário e possuem stravaId na lista
     const stravaIds = activities.map((a: any) => a.id.toString());
