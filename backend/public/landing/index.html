@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sidekick — Seu Companheiro Digital de Corrida e Ciclismo</title>
+  <title>Sidekick — Seu Companheiro Fisiológico de Corrida e Ciclismo</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="icon" type="image/png" href="/sidekick-logo.png">
 </head>
 <body>
-  <div class="glow-bg"></div>
+  <!-- Ambient Glow Effects -->
+  <div class="glow-bg bg-1"></div>
+  <div class="glow-bg bg-2"></div>
 
   <!-- Header -->
   <header>
@@ -17,12 +19,12 @@
         <img src="/sidekick-logo.png" alt="Sidekick Logo"> <span>Sidekick</span>
       </a>
       <ul class="nav-links">
-        <li><a href="/" class="active">Início</a></li>
+        <li><a href="#recursos">Recursos</a></li>
+        <li><a href="#showcase">Módulos</a></li>
+        <li><a href="#download">Baixar App</a></li>
         <li><a href="/support.html">Suporte</a></li>
-        <li><a href="/terms.html">Termos de Uso</a></li>
-        <li><a href="/privacy.html">Privacidade</a></li>
       </ul>
-      <a href="/support.html" class="btn-primary">Contato</a>
+      <a href="#download" class="btn-primary">Começar Agora</a>
     </div>
   </header>
 
@@ -30,77 +32,202 @@
   <section class="hero">
     <div class="container hero-inner-split">
       <div class="hero-content">
-        <span class="badge-version">Nova Versão 2.0 Aprovada</span>
-        <h1>Treine melhor com seu <br><span>Companheiro IA</span></h1>
+        <span class="badge-version">⚡ Versão 2.0 Prontidão & Conquistas</span>
+        <h1>Seu treino sob a ótica da <br><span>ciência fisiológica</span></h1>
         <p class="hero-subtitle">
-          O Sidekick conecta-se diretamente com seu <strong>Strava</strong> para analisar seus treinos sob a ótica da ciência fisiológica. Receba feedbacks contextualizados de prontidão, dicas de cross-training adaptativo e comemore sua consistência com conquistas.
+          O Sidekick conecta-se diretamente com o seu <strong>Strava</strong> para analisar seus treinos sob conceitos avançados de performance (fisiologia INSCYD, readiness Garmin/Whoop e fadiga). Treine inteligente, previna lesões com cross-training e comemore medalhas exclusivas.
         </p>
         <div class="hero-actions">
-          <a href="/support.html" class="btn-primary">Começar Agora</a>
-          <a href="#recursos" class="btn-secondary">Conhecer Recursos</a>
+          <a href="#download" class="btn-primary btn-large">Começar Agora</a>
+          <a href="#recursos" class="btn-secondary btn-large">Conhecer Recursos</a>
         </div>
       </div>
       <div class="hero-visual">
-        <div class="visual-wrapper">
-          <div class="sports-bg-card">
-            <img src="/landing_hero_sports.png" class="img-sports-bg" alt="Atletas correndo e pedalando">
+        <div class="hero-visual-inner">
+          <div class="phone-mockup phone-1">
+            <div class="phone-screen">
+              <img src="/app_dashboard.png" alt="Tela do Dashboard de Prontidão do Sidekick">
+            </div>
+            <div class="phone-label">Dashboard</div>
           </div>
-          <div class="app-mockup-card">
-            <img src="/landing_app_showcase.png" class="img-app-mockup" alt="Mockup do aplicativo Sidekick">
+          <div class="phone-mockup phone-2">
+            <div class="phone-screen">
+              <img src="/app_profile.png" alt="Tela de Evolução e Metas do Sidekick">
+            </div>
+            <div class="phone-label">Evolução</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Features Section -->
+  <!-- Features Icons Grid -->
   <section class="features" id="recursos">
     <div class="container">
-      <h2>Módulos do Aplicativo</h2>
+      <div class="section-header">
+        <h2>Por que o Sidekick é diferente?</h2>
+        <p class="section-subtitle">Combinamos inteligência artificial e ciência esportiva real para otimizar a sua rotina de treinos.</p>
+      </div>
+      
       <div class="grid-features">
-        
         <!-- Feature 1 -->
         <div class="card-feature">
-          <div class="feature-icon">🧠</div>
-          <h3>Parceiro de IA Contextual</h3>
-          <p>Diferente de relatórios genéricos, nossa IA analisa seu treino cruzando os dados físicos com suas lesões registradas, seu nível e metas, adaptando o conselho para proteger você.</p>
+          <div class="feature-icon">🔋</div>
+          <h3>Prontidão Atlética (Readiness)</h3>
+          <p>Seu score de prontidão Garmin/Whoop de 0 a 100%. Calculado a partir do seu volume de treino semanal, estresse diário, sono e histórico de fadiga.</p>
         </div>
 
         <!-- Feature 2 -->
         <div class="card-feature">
-          <div class="feature-icon">⌚</div>
-          <h3>Integração Direta Garmin & Strava</h3>
-          <p>Importe suas atividades e métricas cardíacas de forma transparente. Homologado sob padrões oficiais de segurança para garantir a integridade dos seus dados de saúde.</p>
+          <div class="feature-icon">🧠</div>
+          <h3>Fisiologia Científica (INSCYD)</h3>
+          <p>Análises detalhadas do seu limiar de VO2max, VLaMax e zonas de queima de gordura (FatMax) vs depleção de glicogênio para guiar sua intensidade.</p>
         </div>
 
         <!-- Feature 3 -->
         <div class="card-feature">
-          <div class="feature-icon">🎭</div>
-          <h3>Voz & Personalidade Reguláveis</h3>
-          <p>Escolha a vibe do seu companheiro de treino. Ele pode ser um companheiro calmo e compreensivo, um treinador rígido e focado em metas, ou até sarcástico e brincalhão.</p>
+          <div class="feature-icon">🦖</div>
+          <h3>Personalidade da IA</h3>
+          <p>Escolha o estilo de feedback do seu parceiro (Rocky Balboa, Dino etc.). De cobranças firmes e diretas a orientações descontraídas ou focadas em consistência.</p>
         </div>
 
         <!-- Feature 4 -->
         <div class="card-feature">
-          <div class="feature-icon">📅</div>
-          <h3>Diário de bordo Unificado</h3>
-          <p>Aba de calendário que reúne sua agenda de treinos, metas de frequência semanal e histórico real de treinos em um só fluxo visual para monitorar a consistência.</p>
+          <div class="feature-icon">🩹</div>
+          <h3>Sugestão de Cross-Training</h3>
+          <p>Reportou dores ou cansaço acumulado? O app sugere alternativas inteligentes de baixo impacto (remada, natação, ciclismo indoor) para acelerar a recuperação.</p>
         </div>
 
         <!-- Feature 5 -->
         <div class="card-feature">
-          <div class="feature-icon">🌦️</div>
-          <h3>Prevenção e Análise Climática</h3>
-          <p>Conselhos inteligentes adaptados ao tempo e clima da sua região, sugerindo treinos na esteira ou hidratação extra dependendo do calor ou chuva.</p>
+          <div class="feature-icon">📅</div>
+          <h3>Agenda & Calendário Unificado</h3>
+          <p>Veja seus treinos sincronizados do Strava, crie lembretes e acompanhe a consistência de frequência semanal em um visual limpo e interativo.</p>
         </div>
 
         <!-- Feature 6 -->
         <div class="card-feature">
-          <div class="feature-icon">🏆</div>
-          <h3>Gamificação & Conquistas</h3>
-          <p>Desbloqueie conquistas à medida que devora quilômetros. Acompanhe sua evolução e suba de categoria no mural de conquistas compartilhável.</p>
+          <div class="feature-icon">🏅</div>
+          <h3>Mural de Troféus do Strava</h3>
+          <p>Colecione medalhas e recordes pessoais com visual limpo e profissional esportivo. Compartilhe seus feitos diretamente no Instagram com templates exclusivos.</p>
         </div>
+      </div>
+    </div>
+  </section>
 
+  <!-- Deep Feature Showcase Section -->
+  <section class="showcase" id="showcase">
+    <div class="container">
+      
+      <!-- Showcase Row 1 -->
+      <div class="showcase-row">
+        <div class="showcase-text">
+          <span class="showcase-badge">🔋 MÓDULO DE RECUPERAÇÃO</span>
+          <h3>Painel de Prontidão Fisiológica</h3>
+          <p>
+            Não treine às cegas. O Sidekick calcula sua capacidade diária de absorver esforço cruzando a sua variabilidade de frequência cardíaca (HRV), qualidade de sono, nível de estresse corporal reportado e fadiga muscular residual.
+          </p>
+          <ul class="showcase-list">
+            <li>Visualização de recuperação em horas</li>
+            <li>Status de estresse e fadiga física</li>
+            <li>Histórico de volume e progresso diário</li>
+          </ul>
+        </div>
+        <div class="showcase-media">
+          <div class="phone-mockup showcase-phone">
+            <div class="phone-screen">
+              <img src="/app_dashboard.png" alt="Detalhamento da Prontidão do Treino">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Showcase Row 2 -->
+      <div class="showcase-row reverse">
+        <div class="showcase-text">
+          <span class="showcase-badge orange">🏅 SISTEMA DE GAMIFICAÇÃO</span>
+          <h3>Mural de Troféus e Conquistas Premium</h3>
+          <p>
+            Alcançou um marco importante? Suas conquistas são comemoradas com medalhas sofisticadas inspiradas no design de performance do Strava.
+          </p>
+          <ul class="showcase-list">
+            <li>Progresso de medalhas em níveis Bronze, Prata e Ouro</li>
+            <li>Melhores marcas automáticas (1km, 5km, 10km, 21km, 42km)</li>
+            <li>Fácil compartilhamento com cartões temáticos esportivos</li>
+          </ul>
+        </div>
+        <div class="showcase-media">
+          <div class="phone-mockup showcase-phone">
+            <div class="phone-screen">
+              <img src="/app_conquests.png" alt="Detalhamento do Mural de Medalhas">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Showcase Row 3 -->
+      <div class="showcase-row">
+        <div class="showcase-text">
+          <span class="showcase-badge green">📈 EVOLUÇÃO & METAS</span>
+          <h3>Planejamento e Foco no Alvo</h3>
+          <p>
+            Mantenha-se disciplinado. Configure sua meta de frequência semanal de treinos, distância acumulada e veja o seu nível de experiência de atleta subir conforme acumula treinos no banco de dados.
+          </p>
+          <ul class="showcase-list">
+            <li>Definição direta de metas de provas (Ex: Maratonas)</li>
+            <li>Calculadora de XP por treino sincronizado</li>
+            <li>Feedback contextualizado sobre o andamento da meta</li>
+          </ul>
+        </div>
+        <div class="showcase-media">
+          <div class="phone-mockup showcase-phone">
+            <div class="phone-screen">
+              <img src="/app_profile.png" alt="Perfil e Nível de Atleta do Aplicativo">
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section class="download-section" id="download">
+    <div class="container">
+      <div class="download-card">
+        <div class="download-content">
+          <h2>Pronto para elevar o seu nível físico?</h2>
+          <p>
+            Baixe o Sidekick gratuitamente para celular e sincronize sua conta do Strava em segundos. Disponível para iOS e Android.
+          </p>
+          <div class="download-badges">
+            <a href="https://apps.apple.com" target="_blank" class="badge-button app-store">
+              <span class="badge-sub">Disponível na</span>
+              <span class="badge-main">App Store</span>
+            </a>
+            <a href="https://play.google.com" target="_blank" class="badge-button play-store">
+              <span class="badge-sub">Disponível no</span>
+              <span class="badge-main">Google Play</span>
+            </a>
+          </div>
+          <div class="web-portal-action">
+            <p>Prefere usar pelo navegador? <a href="/login" class="web-link">Acessar versão Web &rarr;</a></p>
+          </div>
+        </div>
+        <div class="download-qr">
+          <div class="qr-box">
+            <!-- Simulated premium QR code container -->
+            <div class="qr-dots">
+              <div class="qr-square sq-1"></div>
+              <div class="qr-square sq-2"></div>
+              <div class="qr-square sq-3"></div>
+              <div class="qr-logo-container">
+                <img src="/sidekick-logo.png" alt="Sidekick Logo QR">
+              </div>
+            </div>
+            <p class="qr-label">Aponte a câmera para baixar 📱</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -108,7 +235,9 @@
   <!-- Footer -->
   <footer>
     <div class="container footer-inner">
-      <a href="/" class="footer-logo"><img src="/sidekick-logo.png" alt="Sidekick Logo"> <span>Sidekick</span></a>
+      <a href="/" class="footer-logo">
+        <img src="/sidekick-logo.png" alt="Sidekick Logo"> <span>Sidekick</span>
+      </a>
       <div class="footer-links">
         <a href="/terms.html">Termos de Uso</a>
         <a href="/privacy.html">Política de Privacidade</a>
@@ -119,5 +248,20 @@
       </p>
     </div>
   </footer>
+
+  <script>
+    // Smooth scrolling for anchors
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>
