@@ -15,6 +15,7 @@ import {
   TextInput,
   FlatList,
   Image,
+  RefreshControl,
 } from "react-native";
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -88,6 +89,30 @@ export default function HomeScreen() {
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sharingWorkout, setSharingWorkout] = useState<any>(null);
   const [activeTemplateIdx, setActiveTemplateIdx] = useState(0);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      if (isStravaConnected) {
+        try {
+          await syncActivities();
+        } catch (syncErr) {
+          console.error("Failed to sync Strava activities on pull-to-refresh:", syncErr);
+        }
+      }
+      const monday = new Date();
+      const offset = monday.getDay() === 0 ? -6 : 1 - monday.getDay();
+      monday.setDate(monday.getDate() + offset);
+      monday.setHours(0, 0, 0, 0);
+      await loadWeeklyWorkouts(monday);
+    } catch (err) {
+      console.error("Error during pull-to-refresh on dashboard:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Companion Chat Overlay States
   const [chatModalVisible, setChatModalVisible] = useState(false);
@@ -583,6 +608,14 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
       >
         {/* Header Welcome */}
         <View style={styles.headerContainer}>

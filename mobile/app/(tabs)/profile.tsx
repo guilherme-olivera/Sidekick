@@ -15,6 +15,7 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   Keyboard,
+  RefreshControl,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -86,6 +87,7 @@ export default function ProfileScreen() {
   const { isConnected, athlete, connect, disconnect, syncActivities } = useStrava();
   const [allWorkouts, setAllWorkouts] = useState<any[]>([]);
   const [isLoadingAllWorkouts, setIsLoadingAllWorkouts] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [activeSportTab, setActiveSportTab] = useState<SportTab>("run");
@@ -260,6 +262,28 @@ export default function ProfileScreen() {
       console.error("Failed to load all workouts for profile:", err);
     } finally {
       setIsLoadingAllWorkouts(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      if (isConnected) {
+        try {
+          await syncActivities();
+        } catch (syncErr) {
+          console.error("Failed to sync Strava activities on pull-to-refresh:", syncErr);
+        }
+      }
+      await Promise.all([
+        loadAllWorkouts(),
+        loadHistoryAnalysis(),
+        isConnected ? loadStravaStats() : Promise.resolve(),
+      ]);
+    } catch (err) {
+      console.error("Error during pull-to-refresh:", err);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -734,6 +758,14 @@ export default function ProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
       >
         {/* Profile Header */}
         <View style={styles.profileHeaderNew}>
