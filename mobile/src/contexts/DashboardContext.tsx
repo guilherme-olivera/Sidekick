@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { apiService } from "../services/apiService";
 import { calendarMockService, CalendarEvent } from "../services/calendarMockService";
 import notificationService from "../services/notificationService";
@@ -109,10 +109,13 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const USE_LOCAL_WORKOUTS = false;
   const USE_LOCAL_EVENTS = false;
 
+  const isFetchingWorkouts = useRef(false);
+
   const loadWorkouts = async () => {
-    if (!user) return;
+    if (!user || isFetchingWorkouts.current) return;
 
     try {
+      isFetchingWorkouts.current = true;
       setIsLoading(true);
       const response = await apiService.get('/workouts');
       const workoutsData = (response.workouts || []).map((workout: any) => ({
@@ -126,6 +129,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       console.error('Error loading workouts:', error);
     } finally {
       setIsLoading(false);
+      isFetchingWorkouts.current = false;
     }
   };
 
