@@ -1177,7 +1177,7 @@ export default function HomeScreen() {
                   <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 20 }]}>
                       <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        behavior={Platform.OS === "ios" ? "padding" : undefined}
                         style={{ width: '100%', alignItems: 'center' }}
                       >
                         <TouchableWithoutFeedback onPress={() => {}}>
