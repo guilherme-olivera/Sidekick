@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
+  Keyboard,
   TextInput,
   FlatList,
   Image,
@@ -1157,67 +1158,78 @@ export default function HomeScreen() {
 
                 {/* Sub-modal View overlay inside main detail modal to avoid stacking bugs */}
                 {effortModalVisible && (
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 20 }]}>
-                    <KeyboardAvoidingView
-                      behavior={Platform.OS === "ios" ? "padding" : "height"}
-                      style={{ width: '100%', alignItems: 'center' }}
-                    >
-                      <View style={[styles.effortModalContent, { width: '90%', padding: 20, borderRadius: 16, marginTop: 0 }]}>
-                        <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
-                        <Text style={styles.effortModalSubtitle}>
-                          Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
-                        </Text>
+                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 20 }]}>
+                      <KeyboardAvoidingView
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        style={{ width: '100%', alignItems: 'center' }}
+                      >
+                        <TouchableWithoutFeedback onPress={() => {}}>
+                          <View style={[styles.effortModalContent, { width: '90%', padding: 20, borderRadius: 16, marginTop: 0 }]}>
+                            <ScrollView
+                              style={{ width: '100%', maxHeight: 380 }}
+                              contentContainerStyle={{ paddingBottom: 10 }}
+                              showsVerticalScrollIndicator={false}
+                              keyboardShouldPersistTaps="handled"
+                            >
+                              <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
+                              <Text style={styles.effortModalSubtitle}>
+                                Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
+                              </Text>
 
-                        <Text style={styles.effortLabel}>Esforço Percebido:</Text>
-                        <View style={styles.effortRatingContainer}>
-                          {[1, 2, 3, 4, 5].map((num) => {
-                            const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
-                            return (
+                              <Text style={styles.effortLabel}>Esforço Percebido:</Text>
+                              <View style={styles.effortRatingContainer}>
+                                {[1, 2, 3, 4, 5].map((num) => {
+                                  const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
+                                  return (
+                                    <TouchableOpacity
+                                      key={num}
+                                      style={[
+                                        styles.effortRatingButton,
+                                        effortRating === num && styles.effortRatingButtonActive,
+                                      ]}
+                                      onPress={() => setEffortRating(num)}
+                                    >
+                                      <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
+                                      <Text style={styles.effortRatingLabel}>{num}</Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                              <Text style={styles.effortRatingDesc}>
+                                {["Muito Leve (Sem esforço)", "Leve (Respiração normal)", "Moderado (Cansaço médio)", "Intenso (Respiração pesada)", "Exaustivo (Limite físico)"][effortRating - 1]}
+                              </Text>
+
+                              <Text style={styles.effortLabel}>Suas observações / Como se sentiu:</Text>
+                              <TextInput
+                                style={styles.effortInput}
+                                placeholder="Ex: cansaço nas subidas, pernas leves, etc..."
+                                placeholderTextColor="#888"
+                                value={userNotes}
+                                onChangeText={setUserNotes}
+                                multiline
+                              />
+                            </ScrollView>
+
+                            <View style={styles.effortModalActions}>
                               <TouchableOpacity
-                                key={num}
-                                style={[
-                                  styles.effortRatingButton,
-                                  effortRating === num && styles.effortRatingButtonActive,
-                                ]}
-                                onPress={() => setEffortRating(num)}
+                                style={[styles.effortModalButton, styles.effortModalButtonCancel]}
+                                onPress={() => setEffortModalVisible(false)}
                               >
-                                <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
-                                <Text style={styles.effortRatingLabel}>{num}</Text>
+                                <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
                               </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                        <Text style={styles.effortRatingDesc}>
-                          {["Muito Leve (Sem esforço)", "Leve (Respiração normal)", "Moderado (Cansaço médio)", "Intenso (Respiração pesada)", "Exaustivo (Limite físico)"][effortRating - 1]}
-                        </Text>
-
-                        <Text style={styles.effortLabel}>Suas observações / Como se sentiu:</Text>
-                        <TextInput
-                          style={styles.effortInput}
-                          placeholder="Ex: cansaço nas subidas, pernas leves, etc..."
-                          placeholderTextColor="#888"
-                          value={userNotes}
-                          onChangeText={setUserNotes}
-                          multiline
-                        />
-
-                        <View style={styles.effortModalActions}>
-                          <TouchableOpacity
-                            style={[styles.effortModalButton, styles.effortModalButtonCancel]}
-                            onPress={() => setEffortModalVisible(false)}
-                          >
-                            <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
-                            onPress={submitAnalysis}
-                          >
-                            <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </KeyboardAvoidingView>
-                  </View>
+                              <TouchableOpacity
+                                style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
+                                onPress={submitAnalysis}
+                              >
+                                <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </TouchableWithoutFeedback>
+                      </KeyboardAvoidingView>
+                    </View>
+                  </TouchableWithoutFeedback>
                 )}
               </>
             )}
