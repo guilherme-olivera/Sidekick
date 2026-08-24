@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import Svg, { Defs, LinearGradient, Stop, Circle } from "react-native-svg";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
@@ -64,22 +65,27 @@ export default function CalendarScreen() {
   const [targetWorkoutId, setTargetWorkoutId] = useState<string | null>(null);
   const [shareCardVisible, setShareCardVisible] = useState(false);
   const [sharingWorkout, setSharingWorkout] = useState<any>(null);
-
-  const viewShotRef = useRef<any>(null);
+  const [activeTemplateIdx, setActiveTemplateIdx] = useState(0);
+  const viewShotRef0 = useRef<any>(null);
+  const viewShotRef1 = useRef<any>(null);
+  const viewShotRef2 = useRef<any>(null);
+  const templateScrollRef = useRef<any>(null);
 
   const handleGenerateShareCard = (workout: any) => {
     setSharingWorkout(workout);
+    setActiveTemplateIdx(0);
     setShareCardVisible(true);
   };
 
   const handleShareCardImage = async () => {
     try {
-      if (!viewShotRef.current) {
+      const activeRef = activeTemplateIdx === 0 ? viewShotRef0 : activeTemplateIdx === 1 ? viewShotRef1 : viewShotRef2;
+      if (!activeRef?.current) {
         Alert.alert("Erro", "Não foi possível gerar a imagem. Tente novamente.");
         return;
       }
 
-      const uri = await captureRef(viewShotRef, {
+      const uri = await captureRef(activeRef, {
         format: "png",
         quality: 0.9,
       });
@@ -766,80 +772,455 @@ export default function CalendarScreen() {
               </TouchableOpacity>
             </View>
 
-            {sharingWorkout && (
-              <ScrollView contentContainerStyle={{ alignItems: "center" }} showsVerticalScrollIndicator={false}>
-                {/* 9:16 Instagram Story Preview */}
-                <ViewShot ref={viewShotRef} options={{ format: "png", quality: 0.9 }}>
-                  <View style={styles.storiesCardFrame}>
-                    {/* Decorative Header (Sidekick Premium Logo) */}
-                    <View style={styles.storiesCardHeader}>
-                      <Text style={styles.storiesCardLogo}>👟 SIDEKICK</Text>
-                      <Text style={styles.storiesCardWatermark}>@sidekick.fit</Text>
-                    </View>
+            {sharingWorkout && (() => {
+              const isPersonalRecord = (sharingWorkout.prCount && sharingWorkout.prCount > 0) || 
+                                       sharingWorkout.title?.toLowerCase().includes("pr") || 
+                                       sharingWorkout.title?.toLowerCase().includes("rp") ||
+                                       sharingWorkout.title?.toLowerCase().includes("recorde");
+              return (
+                <ScrollView contentContainerStyle={{ alignItems: "center", paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+                  
+                  {/* Template Selector Carousel Header */}
+                  <View style={styles.carouselSelectorRow}>
+                    <TouchableOpacity 
+                      onPress={() => setActiveTemplateIdx(prev => prev === 0 ? 2 : prev - 1)}
+                      style={styles.carouselSelectorArrow}
+                    >
+                      <Text style={styles.carouselSelectorArrowText}>◀</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.carouselSelectorTitle}>
+                      {activeTemplateIdx === 0 ? "Card Esportivo Dark 🖤" :
+                       activeTemplateIdx === 1 ? "Sunset Glow Gradient 🧡" :
+                       "Minimalist Light 🤍"}
+                    </Text>
+                    <TouchableOpacity 
+                      onPress={() => setActiveTemplateIdx(prev => prev === 2 ? 0 : prev + 1)}
+                      style={styles.carouselSelectorArrow}
+                    >
+                      <Text style={styles.carouselSelectorArrowText}>▶</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                    {/* Character Avatar bubble */}
-                    <View style={styles.storiesCompanionWrapper}>
-                      <View style={styles.storiesCompanionAvatarBg}>
-                        <Text style={styles.storiesCompanionAvatar}>
-                          {user?.profile?.companionAvatar || "🦖"}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text style={styles.storiesCompanionName}>
-                          {user?.profile?.companionName || "Rocky"}
-                        </Text>
-                        <Text style={styles.storiesCompanionSub}>Parceiro de Treinos</Text>
-                      </View>
-                    </View>
+                  {/* Horizontal ScrollView supporting Swipe */}
+                  <ScrollView
+                    ref={templateScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    style={{ width: 290, height: 480 }}
+                    onMomentumScrollEnd={(e) => {
+                      const offsetX = e.nativeEvent.contentOffset.x;
+                      const index = Math.round(offsetX / 290);
+                      setActiveTemplateIdx(index);
+                    }}
+                  >
+                    
+                    {/* Template 0: Dark Premium */}
+                    <View style={{ width: 290, height: 480 }}>
+                      <ViewShot ref={viewShotRef0} options={{ format: "png", quality: 0.9 }}>
+                        <View style={{
+                          width: 290,
+                          height: 480,
+                          backgroundColor: "#0d0d12",
+                          borderRadius: 20,
+                          padding: 20,
+                          justifyContent: "space-between",
+                          borderWidth: 1,
+                          borderColor: "#1f1f2e",
+                          position: "relative",
+                        }}>
+                          {/* Header */}
+                          <View style={styles.cleanHeader}>
+                            <Text style={[styles.cleanLogo, { color: "#ffffff" }]}>👟 SIDEKICK</Text>
+                            <View style={{
+                              backgroundColor: isPersonalRecord ? "#ffd700" : "#ff6b6b",
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 4,
+                            }}>
+                              <Text style={{
+                                color: "#000000",
+                                fontSize: 8,
+                                fontWeight: "800",
+                                letterSpacing: 0.5,
+                              }}>
+                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
+                              </Text>
+                            </View>
+                          </View>
 
-                    {/* Bubble Dialogue */}
-                    <View style={styles.storiesSpeechBubble}>
-                      <Text style={styles.storiesSpeechText}>
-                        "{sharingWorkout.aiNarrative ? (sharingWorkout.aiNarrative.length > 180 ? sharingWorkout.aiNarrative.substring(0, 185) + "..." : sharingWorkout.aiNarrative) : "Bora treinar! 🔥"}"
-                      </Text>
-                    </View>
+                          {/* Main Stat & Workout Info */}
+                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
+                            <Text style={{ color: "#88888b", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
+                              {sharingWorkout.title || "Treino"}
+                            </Text>
+                            <Text style={{ color: "#ffffff", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
+                              {sharingWorkout.distance 
+                                ? `${sharingWorkout.distance.toFixed(2)} km`
+                                : Math.floor(sharingWorkout.duration / 3600) > 0
+                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
+                              }
+                            </Text>
+                            
+                            {/* Horizontal Stats Row */}
+                            <View style={{
+                              flexDirection: "row",
+                              borderTopWidth: 1,
+                              borderTopColor: "#1f1f2e",
+                              borderBottomWidth: 1,
+                              borderBottomColor: "#1f1f2e",
+                              paddingVertical: 12,
+                              marginTop: 15,
+                              justifyContent: "space-between"
+                            }}>
+                              {sharingWorkout.distance ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {Math.floor(sharingWorkout.duration / 3600) > 0
+                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                                  </Text>
+                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
+                                </View>
+                              ) : null}
+                              {sharingWorkout.pace ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {formatPace(sharingWorkout.pace)}
+                                  </Text>
+                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
+                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {sharingWorkout.avgHeartRate ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {sharingWorkout.avgHeartRate} bpm
+                                  </Text>
+                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
+                                </View>
+                              ) : sharingWorkout.sufferScore ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {sharingWorkout.sufferScore}
+                                  </Text>
+                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
 
-                    {/* Workout Info Box */}
-                    <View style={styles.storiesWorkoutBox}>
-                      <Text style={styles.storiesWorkoutTitle}>
-                        {sharingWorkout.type === "run" ? "🏃‍♂️ Corrida" :
-                         sharingWorkout.type === "cycling" ? "🚴 Ciclismo" : "🏋️ Musculação"}
-                      </Text>
-                      <Text style={styles.storiesWorkoutDate}>
-                        {new Date(sharingWorkout.date).toLocaleDateString("pt-BR")}
-                      </Text>
-
-                      <View style={styles.storiesStatsRow}>
-                        <View style={styles.storiesStatItem}>
-                          <Text style={styles.storiesStatLabel}>Duração</Text>
-                          <Text style={styles.storiesStatValue}>
-                            {Math.floor(sharingWorkout.duration / 3600) > 0
-                              ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                              : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                          </Text>
-                        </View>
-                        {sharingWorkout.distance && (
-                          <View style={styles.storiesStatItem}>
-                            <Text style={styles.storiesStatLabel}>Distância</Text>
-                            <Text style={styles.storiesStatValue}>
-                              {sharingWorkout.distance.toFixed(1)} km
+                          {/* Coach Insight quotes block */}
+                          <View style={{
+                            backgroundColor: "#161622",
+                            borderRadius: 12,
+                            padding: 12,
+                            borderWidth: 1,
+                            borderColor: "#222235",
+                            marginBottom: 10,
+                          }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                              <Text style={{ color: "#ff6b6b", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                Insight do {user?.profile?.companionName || "Rocky"}
+                              </Text>
+                            </View>
+                            <Text style={{ color: "#d1d1d6", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
+                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
                             </Text>
                           </View>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                </ViewShot>
 
-                {/* Actions */}
-                <TouchableOpacity
-                  style={styles.shareSaveButton}
-                  onPress={handleShareCardImage}
-                >
-                  <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
+                          {/* Footer */}
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ color: "#88888b", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
+                            <Text style={{ color: "#ff6b6b", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
+                          </View>
+                        </View>
+                      </ViewShot>
+                    </View>
+
+                    {/* Template 1: Glow Gradient */}
+                    <View style={{ width: 290, height: 480 }}>
+                      <ViewShot ref={viewShotRef1} options={{ format: "png", quality: 0.9 }}>
+                        <View style={{
+                          width: 290,
+                          height: 480,
+                          backgroundColor: "#ff5e3a",
+                          borderRadius: 20,
+                          padding: 20,
+                          justifyContent: "space-between",
+                          overflow: "hidden",
+                        }}>
+                          {/* Rich Coral/Orange Sunset Gradient background */}
+                          <Svg style={StyleSheet.absoluteFillObject} width="100%" height="100%">
+                            <Defs>
+                              <LinearGradient id="sunset" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <Stop offset="0%" stopColor="#fc4c02" />
+                                <Stop offset="100%" stopColor="#fe8c00" />
+                              </LinearGradient>
+                            </Defs>
+                            <Circle cx="145" cy="240" r="300" fill="url(#sunset)" />
+                          </Svg>
+
+                          {/* Header */}
+                          <View style={styles.cleanHeader}>
+                            <Text style={[styles.cleanLogo, { color: "#ffffff" }]}>👟 SIDEKICK</Text>
+                            <View style={{
+                              backgroundColor: "rgba(255, 255, 255, 0.25)",
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 4,
+                            }}>
+                              <Text style={{
+                                color: "#ffffff",
+                                fontSize: 8,
+                                fontWeight: "800",
+                                letterSpacing: 0.5,
+                              }}>
+                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Main Stat & Workout Info */}
+                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
+                            <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
+                              {sharingWorkout.title || "Treino"}
+                            </Text>
+                            <Text style={{ color: "#ffffff", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
+                              {sharingWorkout.distance 
+                                ? `${sharingWorkout.distance.toFixed(2)} km`
+                                : Math.floor(sharingWorkout.duration / 3600) > 0
+                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
+                              }
+                            </Text>
+                            
+                            {/* Horizontal Stats Row */}
+                            <View style={{
+                              flexDirection: "row",
+                              borderTopWidth: 1,
+                              borderTopColor: "rgba(255, 255, 255, 0.25)",
+                              borderBottomWidth: 1,
+                              borderBottomColor: "rgba(255, 255, 255, 0.25)",
+                              paddingVertical: 12,
+                              marginTop: 15,
+                              justifyContent: "space-between"
+                            }}>
+                              {sharingWorkout.distance ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {Math.floor(sharingWorkout.duration / 3600) > 0
+                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                                  </Text>
+                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
+                                </View>
+                              ) : null}
+                              {sharingWorkout.pace ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {formatPace(sharingWorkout.pace)}
+                                  </Text>
+                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
+                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {sharingWorkout.avgHeartRate ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {sharingWorkout.avgHeartRate} bpm
+                                  </Text>
+                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
+                                </View>
+                              ) : sharingWorkout.sufferScore ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
+                                    {sharingWorkout.sufferScore}
+                                  </Text>
+                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+
+                          {/* Coach Insight quotes block */}
+                          <View style={{
+                            backgroundColor: "rgba(255, 255, 255, 0.15)",
+                            borderRadius: 12,
+                            padding: 12,
+                            borderWidth: 1,
+                            borderColor: "rgba(255, 255, 255, 0.25)",
+                            marginBottom: 10,
+                          }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                              <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                Insight do {user?.profile?.companionName || "Rocky"}
+                              </Text>
+                            </View>
+                            <Text style={{ color: "#ffffff", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
+                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
+                            </Text>
+                          </View>
+
+                          {/* Footer */}
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
+                            <Text style={{ color: "#ffffff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
+                          </View>
+                        </View>
+                      </ViewShot>
+                    </View>
+
+                    {/* Template 2: Minimalist Light */}
+                    <View style={{ width: 290, height: 480 }}>
+                      <ViewShot ref={viewShotRef2} options={{ format: "png", quality: 0.9 }}>
+                        <View style={{
+                          width: 290,
+                          height: 480,
+                          backgroundColor: "#ffffff",
+                          borderRadius: 20,
+                          padding: 20,
+                          justifyContent: "space-between",
+                          borderWidth: 1,
+                          borderColor: "#e5e5ea",
+                          position: "relative",
+                        }}>
+                          {/* Header */}
+                          <View style={styles.cleanHeader}>
+                            <Text style={[styles.cleanLogo, { color: "#1c1c1e" }]}>👟 SIDEKICK</Text>
+                            <View style={{
+                              backgroundColor: isPersonalRecord ? "#ffd700" : "#e5e5ea",
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 4,
+                            }}>
+                              <Text style={{
+                                color: "#1c1c1e",
+                                fontSize: 8,
+                                fontWeight: "800",
+                                letterSpacing: 0.5,
+                              }}>
+                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Main Stat & Workout Info */}
+                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
+                            <Text style={{ color: "#636366", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
+                              {sharingWorkout.title || "Treino"}
+                            </Text>
+                            <Text style={{ color: "#1c1c1e", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
+                              {sharingWorkout.distance 
+                                ? `${sharingWorkout.distance.toFixed(2)} km`
+                                : Math.floor(sharingWorkout.duration / 3600) > 0
+                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
+                              }
+                            </Text>
+                            
+                            {/* Horizontal Stats Row */}
+                            <View style={{
+                              flexDirection: "row",
+                              borderTopWidth: 1,
+                              borderTopColor: "#e5e5ea",
+                              borderBottomWidth: 1,
+                              borderBottomColor: "#e5e5ea",
+                              paddingVertical: 12,
+                              marginTop: 15,
+                              justifyContent: "space-between"
+                            }}>
+                              {sharingWorkout.distance ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
+                                    {Math.floor(sharingWorkout.duration / 3600) > 0
+                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
+                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
+                                  </Text>
+                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
+                                </View>
+                              ) : null}
+                              {sharingWorkout.pace ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
+                                    {formatPace(sharingWorkout.pace)}
+                                  </Text>
+                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
+                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {sharingWorkout.avgHeartRate ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
+                                    {sharingWorkout.avgHeartRate} bpm
+                                  </Text>
+                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
+                                </View>
+                              ) : sharingWorkout.sufferScore ? (
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
+                                    {sharingWorkout.sufferScore}
+                                  </Text>
+                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+
+                          {/* Coach Insight quotes block */}
+                          <View style={{
+                            backgroundColor: "#f2f2f7",
+                            borderRadius: 12,
+                            padding: 12,
+                            borderWidth: 1,
+                            borderColor: "#e5e5ea",
+                            marginBottom: 10,
+                          }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                              <Text style={{ color: "#ff6b6b", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                Insight do {user?.profile?.companionName || "Rocky"}
+                              </Text>
+                            </View>
+                            <Text style={{ color: "#1c1c1e", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
+                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
+                            </Text>
+                          </View>
+
+                          {/* Footer */}
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <Text style={{ color: "#8e8e93", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
+                            <Text style={{ color: "#ff6b6b", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
+                          </View>
+                        </View>
+                      </ViewShot>
+                    </View>
+
+                  </ScrollView>
+
+                  {/* Indicator Dots */}
+                  <View style={styles.carouselIndicatorRow}>
+                    <View style={[styles.carouselDot, activeTemplateIdx === 0 && styles.carouselDotActive]} />
+                    <View style={[styles.carouselDot, activeTemplateIdx === 1 && styles.carouselDotActive]} />
+                    <View style={[styles.carouselDot, activeTemplateIdx === 2 && styles.carouselDotActive]} />
+                  </View>
+
+                  {/* Actions */}
+                  <TouchableOpacity
+                    style={styles.shareSaveButton}
+                    onPress={handleShareCardImage}
+                  >
+                    <Text style={styles.shareSaveButtonText}>💾 Salvar e Compartilhar</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              );
+            })()}
           </View>
         </View>
       </Modal>
