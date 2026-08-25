@@ -373,8 +373,20 @@ export default function HomeScreen() {
       time: "Agora",
     });
 
-    // 2. Treinos pendentes
-    const pendingAnalysisCount = workouts.filter(w => !w.aiNarrative).length;
+    // 2. Treinos pendentes (apenas treinos a partir da data de criação da conta)
+    const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : null;
+    const userCreatedDay = userCreatedAt 
+      ? new Date(userCreatedAt.getFullYear(), userCreatedAt.getMonth(), userCreatedAt.getDate())
+      : null;
+
+    const pendingAnalysisCount = workouts.filter(w => {
+      if (w.aiNarrative) return false;
+      if (!userCreatedDay) return true;
+      const wDate = new Date(w.date);
+      const wDay = new Date(wDate.getFullYear(), wDate.getMonth(), wDate.getDate());
+      return wDay >= userCreatedDay;
+    }).length;
+
     if (pendingAnalysisCount > 0) {
       list.push({
         id: "workouts",
