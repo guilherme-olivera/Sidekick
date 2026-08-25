@@ -9,6 +9,7 @@ import {
   fetchStravaStats,
 } from "../services/stravaService";
 import { prisma } from "../utils/prisma";
+import { calculatePersonalRecords, detectNewAchievements } from "../services/achievementService";
 
 const STRAVA_APP_REDIRECT_URI = process.env.STRAVA_APP_REDIRECT_URI || "sidekick://strava/callback";
 
@@ -180,6 +181,9 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
     // Busca as 200 atividades mais recentes (ordenadas por padrão do mais recente para o mais antigo)
     const activities = await fetchStravaActivities(accessToken);
 
+    // Calculate personal records before sync
+    const oldRecords = await calculatePersonalRecords(userId);
+
     // Busca todos os treinos que já existem para este usuário e possuem stravaId na lista
     const stravaIds = activities.map((a: any) => a.id.toString());
     const force = req.query.force === "true";
@@ -239,6 +243,9 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
       });
       workouts.push(workout);
     }
+
+    // Recalculate personal records after sync and check for new achievements
+    await detectNewAchievements(userId, oldRecords);
 
     res.json({
       success: true,

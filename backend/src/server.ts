@@ -47,6 +47,11 @@ import {
   handleUploadAvatar,
   handleDeleteAvatar,
 } from "./controllers/avatarController";
+import {
+  getUserAchievementsHandler,
+  getNewAchievementsHandler,
+  clearNewAchievementsHandler,
+} from "./controllers/achievementController";
 import { authMiddleware } from "./services/authService";
 import { chatHandler } from "./controllers/chatController";
 import { uploadAvatar } from "./middleware/uploadMiddleware";
@@ -115,6 +120,11 @@ app.get("/api/user/mood/today", authMiddleware, handleGetTodayMood);
 app.get("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisCachedHandler);
 app.post("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisHandler);
 app.get("/api/diagnostics/test", authMiddleware, handleDiagnosticsTest);
+
+// ===== ACHIEVEMENTS ROUTES =====
+app.get("/api/user/achievements", authMiddleware, getUserAchievementsHandler);
+app.get("/api/user/achievements/new", authMiddleware, getNewAchievementsHandler);
+app.post("/api/user/achievements/clear-new", authMiddleware, clearNewAchievementsHandler);
 
 // ===== WORKOUT ROUTES =====
 app.get("/api/workouts", authMiddleware, getWorkoutsHandler);

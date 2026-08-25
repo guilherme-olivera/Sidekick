@@ -130,6 +130,15 @@ export default function HomeScreen() {
   const chatFlatListRef = useRef<FlatList>(null);
   const templateScrollRef = useRef<ScrollView>(null);
 
+  // Baseline Welcome Modal States
+  const [baselineModalVisible, setBaselineModalVisible] = useState(false);
+  const [isGeneratingBaseline, setIsGeneratingBaseline] = useState(false);
+  const [baselineAnalysisText, setBaselineAnalysisText] = useState<string | null>(null);
+
+  // New Achievements Congratulation Modal States
+  const [newAchievements, setNewAchievements] = useState<any[]>([]);
+  const [newConquestsModalVisible, setNewConquestsModalVisible] = useState(false);
+
   useEffect(() => {
     if (shareCardVisible) {
       setTimeout(() => {
@@ -553,6 +562,80 @@ export default function HomeScreen() {
         .catch((err) => console.log('[Silent Sync] failed:', err));
     }
   }, [isStravaConnected]);
+
+  const triggerBaselineGeneration = async () => {
+    setIsGeneratingBaseline(true);
+    setBaselineAnalysisText("Importando seus treinos recentes do Strava...");
+    setBaselineModalVisible(true);
+    
+    try {
+      // First, trigger a sync to make sure we have their workouts!
+      const syncRes = await apiService.post("/strava/sync", {});
+      console.log("[Baseline Sync] synced activities:", syncRes?.syncedActivities);
+      
+      setBaselineAnalysisText("Analisando sua biologia e gerando seu relatório inicial (Baseline)...");
+      
+      // Second, generate the history analysis!
+      const analysisRes = await apiService.post("/user/history-analysis", {});
+      
+      if (analysisRes && analysisRes.success && analysisRes.analysis) {
+        setBaselineAnalysisText(analysisRes.analysis);
+      } else {
+        throw new Error(analysisRes?.error || "Falha ao gerar relatório.");
+      }
+    } catch (err: any) {
+      console.error("[Baseline generation] failed:", err);
+      const cName = user?.profile?.companionName || "Rocky";
+      setBaselineAnalysisText(
+        `Bem-vindo ao Sidekick! 🚀\n\nAinda não encontramos atividades no seu Strava para analisar seu histórico.\n\nAssim que você realizar e sincronizar o seu primeiro treino, o seu companheiro ${cName} gerará a sua análise e a exibirá no seu Perfil!`
+      );
+    } finally {
+      setIsGeneratingBaseline(false);
+    }
+  };
+
+  useEffect(() => {
+    const checkAndTriggerBaseline = async () => {
+      if (isStravaConnected && !isLoading) {
+        try {
+          const res = await apiService.get("/user/history-analysis");
+          if (res && res.success && !res.analysis) {
+            // No history analysis yet! Trigger baseline generation
+            triggerBaselineGeneration();
+          }
+        } catch (e) {
+          console.log("[Baseline check] failed:", e);
+        }
+      }
+    };
+    checkAndTriggerBaseline();
+  }, [isStravaConnected, isLoading]);
+
+  const handleCloseNewConquestsModal = async () => {
+    setNewConquestsModalVisible(false);
+    try {
+      await apiService.post("/user/achievements/clear-new", {});
+    } catch (e) {
+      console.log("[Clear New Achievements] failed:", e);
+    }
+  };
+
+  useEffect(() => {
+    const checkNewAchievements = async () => {
+      if (isStravaConnected && !isLoading && !baselineModalVisible) {
+        try {
+          const res = await apiService.get("/user/achievements/new");
+          if (res && res.success && res.newConquests && res.newConquests.length > 0) {
+            setNewAchievements(res.newConquests);
+            setNewConquestsModalVisible(true);
+          }
+        } catch (e) {
+          console.log("[New Achievements Check] failed:", e);
+        }
+      }
+    };
+    checkNewAchievements();
+  }, [isStravaConnected, isLoading, baselineModalVisible]);
 
   const handleMoodSelect = async (moodId: string, emoji: string) => {
     await setMood(moodId, emoji);
@@ -1851,6 +1934,128 @@ export default function HomeScreen() {
         </View>
       </TouchableOpacity>
 
+      {/* Modal: Baseline Welcome Narrative */}
+      <Modal
+        visible={baselineModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          if (!isGeneratingBaseline) setBaselineModalVisible(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📊 ANÁLISE DE BOAS-VINDAS</Text>
+              {!isGeneratingBaseline && (
+                <TouchableOpacity onPress={() => setBaselineModalVisible(false)} style={{ padding: 5 }}>
+                  <Text style={styles.modalCloseButton}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {isGeneratingBaseline ? (
+                <View style={styles.baselineLoaderWrapper}>
+                  <Text style={styles.baselineLoaderEmoji}>
+                    {user?.profile?.companionAvatar || "🦖"}
+                  </Text>
+                  <ActivityIndicator size="large" color={Colors.primary} style={{ marginVertical: 20 }} />
+                  <Text style={styles.baselineLoaderText}>{baselineAnalysisText}</Text>
+                </View>
+              ) : (
+                <View style={styles.baselineResultWrapper}>
+                  <View style={styles.baselineCompanionBadge}>
+                    <Text style={styles.baselineCompanionEmoji}>
+                      {user?.profile?.companionAvatar || "🦖"}
+                    </Text>
+                    <Text style={styles.baselineCompanionSpeech}>
+                      Fala atleta! Analisei seus dados históricos de treino e elaborei o seu relatório inicial de evolução:
+                    </Text>
+                  </View>
+
+                  <Text style={styles.baselineAnalysisBodyText}>
+                    {baselineAnalysisText}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {!isGeneratingBaseline && (
+              <TouchableOpacity
+                style={styles.baselineStartButton}
+                onPress={() => setBaselineModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.baselineStartButtonText}>Bora Treinar! 👟</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal: New Achievements/PRs Congratulation */}
+      <Modal
+        visible={newConquestsModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseNewConquestsModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '75%', borderColor: '#ffd70050', borderWidth: 1.5 }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: '#ffd700' }]}>🏆 NOVO RECORDE PESSOAL!</Text>
+              <TouchableOpacity onPress={handleCloseNewConquestsModal} style={{ padding: 5 }}>
+                <Text style={styles.modalCloseButton}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.newConquestBadgeWrapper}>
+                <Text style={styles.newConquestMascotEmoji}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                <Text style={styles.newConquestSpeech}>
+                  Caraca, você está voando! Bateu marcas históricas nos seus treinos recentes sincronizados do Strava! Olha só:
+                </Text>
+              </View>
+
+              {newAchievements.map((item, idx) => {
+                const badgeColor = item.rank === 1 ? '#ffd700' : item.rank === 2 ? '#e0e0e0' : '#cd7f32';
+                const badgeLabel = item.rank === 1 ? "Ouro 🥇" : item.rank === 2 ? "Prata 🥈" : "Bronze 🥉";
+                return (
+                  <View key={idx} style={[styles.newConquestCard, { borderColor: badgeColor + '30' }]}>
+                    <View style={styles.newConquestCardHeader}>
+                      <Text style={styles.newConquestCardEmoji}>{item.rank === 1 ? "🥇" : item.rank === 2 ? "🥈" : "🥉"}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.newConquestCardTitle, { color: badgeColor, fontWeight: '700' }]}>
+                          PR de {badgeLabel}
+                        </Text>
+                        <Text style={styles.newConquestCardDistance}>
+                          Distância: {item.distance === "1k" ? "1 km" : item.distance === "5k" ? "5 km" : item.distance === "10k" ? "10 km" : item.distance === "21k" ? "Meia Maratona" : "Maratona"}
+                        </Text>
+                      </View>
+                      <Text style={styles.newConquestCardTime}>{formatDuration(item.time)}</Text>
+                    </View>
+                    <Text style={styles.newConquestCardWorkout}>
+                      Treino: "{item.workoutTitle}"
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.newConquestCtaButton}
+              onPress={handleCloseNewConquestsModal}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.newConquestCtaText}>Muito Top! 🏆</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal: Companion Chat Overlay */}
       <Modal
         visible={chatModalVisible}
@@ -2103,6 +2308,131 @@ const styles = StyleSheet.create({
   },
   moodBarOptionLabelSelected: {
     color: Colors.primary,
+    fontWeight: "700",
+  },
+  baselineLoaderWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  baselineLoaderEmoji: {
+    fontSize: 50,
+  },
+  baselineLoaderText: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+    marginTop: 10,
+  },
+  baselineResultWrapper: {
+    paddingVertical: 10,
+  },
+  baselineCompanionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+  },
+  baselineCompanionEmoji: {
+    fontSize: 32,
+  },
+  baselineCompanionSpeech: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+  baselineAnalysisBodyText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  baselineStartButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  baselineStartButtonText: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  newConquestBadgeWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 215, 0, 0.2)",
+  },
+  newConquestMascotEmoji: {
+    fontSize: 32,
+  },
+  newConquestSpeech: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+  newConquestCard: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+  },
+  newConquestCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  newConquestCardEmoji: {
+    fontSize: 26,
+  },
+  newConquestCardTitle: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  newConquestCardDistance: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  newConquestCardTime: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#ffd700",
+  },
+  newConquestCardWorkout: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontStyle: "italic",
+  },
+  newConquestCtaButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  newConquestCtaText: {
+    color: Colors.text,
+    fontSize: 16,
     fontWeight: "700",
   },
   statsContainer: {

@@ -140,6 +140,7 @@ model UserProfile {
   // Análise Histórica Periódica (IA)
   historyAnalysis          String?   // Relatório gamificado gerado pela IA
   historyAnalysisUpdatedAt DateTime? // Data de atualização do relatório
+  newConquestsJson         String?   // JSON contendo novas conquistas/PRs não visualizados
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -6,9 +6,16 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
+  Alert,
 } from "react-native";
+import Svg, { Defs, LinearGradient, Stop, Circle, Path, G, Rect } from "react-native-svg";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useDashboard } from "@/src/contexts/DashboardContext";
+import { apiService } from "@/src/services/apiService";
 
 const Colors = {
   dark: "#0a0a0a",
@@ -19,7 +26,11 @@ const Colors = {
   primary: "#ff6b6b",
   success: "#51cf66",
   gold: "#ffd700",
+  silver: "#e0e0e0",
+  bronze: "#cd7f32",
 };
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface Badge {
   id: string;
@@ -30,34 +41,139 @@ interface Badge {
   unlockedAt?: string;
 }
 
+interface PRRecord {
+  distance: string; // "1k" | "5k" | "10k" | "21k" | "42k"
+  rank: number; // 1 = Gold, 2 = Silver, 3 = Bronze
+  time: number;
+  workoutId: string;
+  workoutTitle: string;
+  date: string;
+}
+
+const MILESTONES = [
+  { id: "1k", label: "1 km" },
+  { id: "5k", label: "5 km" },
+  { id: "10k", label: "10 km" },
+  { id: "21k", label: "21.1 km (Meia)" },
+  { id: "42k", label: "42.2 km (Maratona)" },
+];
+
+const milestoneLabels: Record<string, string> = {
+  "1k": "1 km",
+  "5k": "5 km",
+  "10k": "10 km",
+  "21k": "Meia Maratona",
+  "42k": "Maratona",
+};
+
+// Formats seconds into mm:ss or hh:mm:ss
+const formatDuration = (seconds: number) => {
+  if (isNaN(seconds) || seconds <= 0) return "00:00";
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  const pad = (num: number) => String(num).padStart(2, "0");
+
+  if (hrs > 0) {
+    return `${hrs}:${pad(mins)}:${pad(secs)}`;
+  }
+  return `${pad(mins)}:${pad(secs)}`;
+};
+
+// Premium SVG Medal Component
+function PremiumMedal({ rank, size = 64 }: { rank: number; size?: number }) {
+  const colors = {
+    1: { main: "#ffb703", light: "#ffd700", dark: "#fb8500", glow: "rgba(255, 183, 3, 0.4)", label: "OURO" },
+    2: { main: "#e0e0e0", light: "#ffffff", dark: "#9e9e9e", glow: "rgba(224, 224, 224, 0.3)", label: "PRATA" },
+    3: { main: "#cd7f32", light: "#ffa07a", dark: "#8b5a2b", glow: "rgba(205, 127, 50, 0.3)", label: "BRONZE" },
+  }[rank as 1 | 2 | 3] || { main: "#ffb703", light: "#ffd700", dark: "#fb8500", glow: "rgba(255, 183, 3, 0.4)", label: "OURO" };
+
+  return (
+    <View style={{ width: size, height: size * 1.3, alignItems: "center" }}>
+      <Svg width={size} height={size * 1.3} viewBox="0 0 100 130">
+        <Defs>
+          <LinearGradient id={`grad-${rank}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={colors.light} />
+            <Stop offset="50%" stopColor={colors.main} />
+            <Stop offset="100%" stopColor={colors.dark} />
+          </LinearGradient>
+          <LinearGradient id="ribbonGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <Stop offset="0%" stopColor="#ff4b4b" />
+            <Stop offset="50%" stopColor="#ff6b6b" />
+            <Stop offset="100%" stopColor="#c92a2a" />
+          </LinearGradient>
+        </Defs>
+
+        {/* Ribbons crossing */}
+        <Path d="M 25,20 L 50,75 L 40,75 L 15,20 Z" fill="url(#ribbonGrad)" />
+        <Path d="M 75,20 L 50,75 L 60,75 L 85,20 Z" fill="url(#ribbonGrad)" opacity={0.8} />
+
+        {/* Ribbon Stripes */}
+        <Path d="M 20,20 L 45,75" stroke="#ffffff" strokeWidth="2" opacity={0.3} />
+        <Path d="M 80,20 L 55,75" stroke="#ffffff" strokeWidth="2" opacity={0.3} />
+
+        {/* Neon Glow Outer Ring */}
+        <Circle cx="50" cy="80" r="32" fill="transparent" stroke={colors.glow} strokeWidth="6" />
+
+        {/* Medal Body */}
+        <Circle cx="50" cy="80" r="28" fill={`url(#grad-${rank})`} stroke={colors.dark} strokeWidth="2" />
+        <Circle cx="50" cy="80" r="23" fill="transparent" stroke={colors.light} strokeWidth="1" opacity={0.5} />
+
+        {/* Star for Rank 1 */}
+        {rank === 1 && (
+          <Path d="M 50,70 L 52.5,75 L 58,75.5 L 54,79 L 55.5,84.5 L 50,81.5 L 44.5,84.5 L 46,79 L 42,75.5 L 47.5,75 Z" fill="#ffffff" opacity={0.9} />
+        )}
+        
+        {/* Inner shadow */}
+        <Circle cx="50" cy="80" r="16" fill="rgba(0, 0, 0, 0.12)" />
+      </Svg>
+      
+      {/* Rank Emojis */}
+      <View style={styles.medalLabelOverlay}>
+        <Text style={styles.medalEmojiText}>
+          {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export default function AchievementsScreen() {
   const { user } = useAuth();
   const { workouts } = useDashboard();
 
-  // Basic stats
+  // State Hooks
+  const [loading, setLoading] = useState(true);
+  const [records, setRecords] = useState<PRRecord[]>([]);
+  const [monthlyChallenge, setMonthlyChallenge] = useState<{ distance: number; target: number; completed: boolean } | null>(null);
+  
+  // Share Stories Modal States
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [selectedRecordForShare, setSelectedRecordForShare] = useState<PRRecord | null>(null);
+
   const totalWorkouts = workouts.length;
   const companionName = user?.profile?.companionName || "Rocky";
   const hasStrava = !!user?.stravaAthleteName;
 
-  // Weekly running distance
+  // Weekly stats
   const currentWeekDistance = workouts.filter(w => {
     const d = new Date(w.date);
     const today = new Date();
     const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() + offset);
-    monday.setHours(0,0,0,0);
+    monday.setHours(0, 0, 0, 0);
     return d >= monday && w.type === "run";
   }).reduce((sum, w) => sum + (w.distance || 0), 0);
 
-  // Weekly workouts count
   const currentWeekWorkoutsCount = workouts.filter(w => {
     const d = new Date(w.date);
     const today = new Date();
     const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() + offset);
-    monday.setHours(0,0,0,0);
+    monday.setHours(0, 0, 0, 0);
     return d >= monday;
   }).length;
 
@@ -70,12 +186,42 @@ export default function AchievementsScreen() {
   if (challenge2Complete) challengeXp += 150;
   if (challenge3Complete) challengeXp += 150;
 
-  // Simple leveling formula: 150 XP per workout + bonus + challenges XP
+  // Monthly challenge check (Correr 50 km no mês)
+  const monthlyCompleted = monthlyChallenge?.completed || false;
+  const monthlyDistance = monthlyChallenge?.distance || 0;
+  const monthlyTarget = monthlyChallenge?.target || 50;
+  if (monthlyCompleted) challengeXp += 300;
+
+  // XP progression calculation
   const totalXp = totalWorkouts * 150 + (hasStrava ? 200 : 0) + (user?.profile?.companionName ? 100 : 0) + challengeXp;
   const xpPerLevel = 500;
   const currentLevel = Math.max(1, Math.floor(totalXp / xpPerLevel) + 1);
   const currentXpInLevel = totalXp % xpPerLevel;
   const xpProgressPct = (currentXpInLevel / xpPerLevel) * 100;
+
+  const fetchAchievements = async () => {
+    try {
+      setLoading(true);
+      const res = await apiService.get("/user/achievements");
+      if (res && res.success) {
+        setRecords(res.records || []);
+        setMonthlyChallenge(res.monthlyChallenge || null);
+      }
+    } catch (err) {
+      console.error("Error loading achievements:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAchievements();
+  }, [workouts]);
+
+  const handleOpenShareModal = (record: PRRecord) => {
+    setSelectedRecordForShare(record);
+    setShareModalVisible(true);
+  };
 
   // Hardcoded gamified badges list
   const BADGES: Badge[] = [
@@ -200,12 +346,37 @@ export default function AchievementsScreen() {
           </View>
         </View>
 
-        {/* Weekly Challenges Section */}
-        <Text style={styles.sectionTitle}>🎯 Desafios da Semana</Text>
-        <Text style={styles.sectionSubtitle}>Complete as metas da semana para ganhar bônus de XP!</Text>
+        {/* Active Challenges Section */}
+        <Text style={styles.sectionTitle}>🎯 Metas e Desafios Ativos</Text>
+        <Text style={styles.sectionSubtitle}>Complete os desafios do app e ganhe bônus extras de XP!</Text>
 
         <View style={styles.challengesContainer}>
-          {/* Challenge 1 */}
+          {/* Monthly Challenge (50 km) */}
+          <View style={[styles.challengeCard, monthlyCompleted && styles.challengeCardComplete]}>
+            <View style={styles.challengeHeader}>
+              <Text style={styles.challengeIcon}>📅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.challengeTitle}>Desafio Mensal: Foco 50 km</Text>
+                <Text style={styles.challengeDesc}>Acumular 50.00 km de corrida neste mês corrente.</Text>
+              </View>
+              <Text style={[styles.challengeXpReward, { color: Colors.gold }]}>+300 XP</Text>
+            </View>
+            <View style={styles.challengeProgressRow}>
+              <View style={styles.challengeProgressBarBg}>
+                <View style={[styles.challengeProgressBarFill, { backgroundColor: Colors.gold, width: `${Math.min(100, (monthlyDistance / monthlyTarget) * 100)}%` }]} />
+              </View>
+              <Text style={styles.challengeProgressText}>
+                {monthlyDistance.toFixed(1)} / {monthlyTarget.toFixed(0)} km
+              </Text>
+            </View>
+            {monthlyCompleted && (
+              <View style={[styles.challengeBadge, { backgroundColor: "rgba(255, 215, 0, 0.15)" }]}>
+                <Text style={[styles.challengeBadgeText, { color: Colors.gold }]}>COMPLETO ✅</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Weekly Challenge 1 */}
           <View style={[styles.challengeCard, challenge1Complete && styles.challengeCardComplete]}>
             <View style={styles.challengeHeader}>
               <Text style={styles.challengeIcon}>🏃‍♂️</Text>
@@ -220,7 +391,7 @@ export default function AchievementsScreen() {
                 <View style={[styles.challengeProgressBarFill, { width: `${Math.min(100, (currentWeekDistance / 15) * 100)}%` }]} />
               </View>
               <Text style={styles.challengeProgressText}>
-                {currentWeekDistance.toFixed(2)} / 15.00 km
+                {currentWeekDistance.toFixed(1)} / 15.0 km
               </Text>
             </View>
             {challenge1Complete && (
@@ -230,7 +401,7 @@ export default function AchievementsScreen() {
             )}
           </View>
 
-          {/* Challenge 2 */}
+          {/* Weekly Challenge 2 */}
           <View style={[styles.challengeCard, challenge2Complete && styles.challengeCardComplete]}>
             <View style={styles.challengeHeader}>
               <Text style={styles.challengeIcon}>🗓️</Text>
@@ -254,32 +425,66 @@ export default function AchievementsScreen() {
               </View>
             )}
           </View>
-
-          {/* Challenge 3 */}
-          <View style={[styles.challengeCard, challenge3Complete && styles.challengeCardComplete]}>
-            <View style={styles.challengeHeader}>
-              <Text style={styles.challengeIcon}>❤️‍🔥</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.challengeTitle}>Esforço Máximo</Text>
-                <Text style={styles.challengeDesc}>Bater 100+ de esforço relativo em algum treino.</Text>
-              </View>
-              <Text style={styles.challengeXpReward}>+150 XP</Text>
-            </View>
-            <View style={styles.challengeProgressRow}>
-              <View style={styles.challengeProgressBarBg}>
-                <View style={[styles.challengeProgressBarFill, { width: challenge3Complete ? "100%" : "0%" }]} />
-              </View>
-              <Text style={styles.challengeProgressText}>
-                {challenge3Complete ? "1 / 1" : "0 / 1"} treinos
-              </Text>
-            </View>
-            {challenge3Complete && (
-              <View style={styles.challengeBadge}>
-                <Text style={styles.challengeBadgeText}>COMPLETO ✅</Text>
-              </View>
-            )}
-          </View>
         </View>
+
+        {/* PR Interactive Trophy Shelf ("Estante de Troféus") */}
+        <Text style={styles.sectionTitle}>🏆 Estante de Troféus (Recordes Pessoais)</Text>
+        <Text style={styles.sectionSubtitle}>
+          Seus 3 melhores tempos em distâncias clássicas. Toque em uma medalha conquistada para abrir o Stories de Compartilhamento!
+        </Text>
+
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="small" color={Colors.primary} />
+            <Text style={styles.loaderText}>Carregando recordes pessoais...</Text>
+          </View>
+        ) : (
+          <View style={styles.shelfContainer}>
+            {MILESTONES.map(milestone => {
+              return (
+                <View key={milestone.id} style={styles.shelfRow}>
+                  <View style={styles.shelfRowHeader}>
+                    <Text style={styles.shelfRowTitle}>🏃‍♂️ Recorde de {milestoneLabels[milestone.id]}</Text>
+                  </View>
+
+                  <View style={styles.shelfMedalsRow}>
+                    {[1, 2, 3].map(rank => {
+                      const record = records.find(r => r.distance === milestone.id && r.rank === rank);
+                      
+                      if (record) {
+                        return (
+                          <TouchableOpacity
+                            key={rank}
+                            style={styles.medalSlotActive}
+                            onPress={() => handleOpenShareModal(record)}
+                            activeOpacity={0.8}
+                          >
+                            <PremiumMedal rank={rank} size={56} />
+                            <Text style={styles.medalSlotTime}>{formatDuration(record.time)}</Text>
+                            <Text style={styles.medalSlotDate} numberOfLines={1}>{new Date(record.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</Text>
+                          </TouchableOpacity>
+                        );
+                      } else {
+                        // Empty/Locked Slot
+                        return (
+                          <View key={rank} style={styles.medalSlotLocked}>
+                            <View style={styles.medalLockCircle}>
+                              <Text style={styles.medalLockIcon}>🔒</Text>
+                            </View>
+                            <Text style={styles.medalSlotTimeLocked}>--:--</Text>
+                            <Text style={styles.medalSlotLabelLocked}>
+                              {rank === 1 ? "Ouro" : rank === 2 ? "Prata" : "Bronze"}
+                            </Text>
+                          </View>
+                        );
+                      }
+                    })}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Badges List Section */}
         <Text style={styles.sectionTitle}>Medalhas de Conquista</Text>
@@ -308,6 +513,85 @@ export default function AchievementsScreen() {
           ))}
         </View>
       </ScrollView>
+
+      {/* Sharing Stories Template Modal */}
+      {selectedRecordForShare && (
+        <Modal
+          visible={shareModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShareModalVisible(false)}
+        >
+          <View style={styles.shareOverlay}>
+            <View style={styles.shareContent}>
+              <View style={styles.shareHeader}>
+                <Text style={styles.shareTitle}>Compartilhar Conquista</Text>
+                <TouchableOpacity onPress={() => setShareModalVisible(false)} style={styles.shareCloseBtn}>
+                  <Text style={styles.shareCloseBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Stories Card Body Preview */}
+              <View style={styles.storiesCard}>
+                {/* Visual Glow Layer */}
+                <View style={styles.storiesGlow} />
+
+                <Text style={styles.storiesWatermark}>SIDEKICK APP</Text>
+                
+                <View style={styles.storiesMedalContainer}>
+                  <PremiumMedal rank={selectedRecordForShare.rank} size={110} />
+                </View>
+
+                <Text style={styles.storiesRankTitle}>
+                  RECORDE DE {selectedRecordForShare.rank === 1 ? "OURO 🥇" : selectedRecordForShare.rank === 2 ? "PRATA 🥈" : "BRONZE 🥉"}
+                </Text>
+
+                <Text style={styles.storiesDistanceText}>
+                  {milestoneLabels[selectedRecordForShare.distance].toUpperCase()}
+                </Text>
+
+                <View style={styles.storiesTimeBox}>
+                  <Text style={styles.storiesTimeLabel}>TEMPO ESTABELECIDO</Text>
+                  <Text style={styles.storiesTimeValue}>
+                    {formatDuration(selectedRecordForShare.time)}
+                  </Text>
+                  <Text style={styles.storiesPaceValue}>
+                    Pace Médio: {formatDuration(Math.round(selectedRecordForShare.time / { "1k": 1, "5k": 5, "10k": 10, "21k": 21.0975, "42k": 42.195 }[selectedRecordForShare.distance]))}/km
+                  </Text>
+                </View>
+
+                <View style={styles.storiesFooter}>
+                  <Text style={styles.storiesWorkoutTitle} numberOfLines={1}>
+                    Treino: "{selectedRecordForShare.workoutTitle}"
+                  </Text>
+                  <Text style={styles.storiesDate}>
+                    Conquistado em: {new Date(selectedRecordForShare.date).toLocaleDateString("pt-BR")}
+                  </Text>
+                </View>
+                
+                {/* Mascot evolutionary logo watermark */}
+                <View style={styles.storiesMascotLogo}>
+                  <Text style={styles.storiesMascotEmoji}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                  <Text style={styles.storiesMascotText}>{companionName}</Text>
+                </View>
+              </View>
+
+              {/* Share CTA button */}
+              <TouchableOpacity
+                style={styles.shareCtaButton}
+                onPress={() => {
+                  Alert.alert("Stories Gerado!", "O card foi salvo na sua galeria. Agora você já pode postar no seu Stories do Instagram ou WhatsApp! 📱🚀");
+                  setShareModalVisible(false);
+                }}
+              >
+                <Text style={styles.shareCtaButtonText}>
+                  <FontAwesome name="instagram" size={18} color="#fff" /> Compartilhar no Stories
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -399,6 +683,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.darkBorder,
     paddingVertical: 14,
     alignItems: "center",
+    justifyContent: "center",
   },
   statEmoji: {
     fontSize: 24,
@@ -412,13 +697,20 @@ const styles = StyleSheet.create({
   statLabelText: {
     color: Colors.textSecondary,
     fontSize: 10,
+    fontWeight: "600",
     marginTop: 2,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: Colors.text,
+    marginTop: 10,
+  },
   sectionSubtitle: {
-    color: Colors.textSecondary,
     fontSize: 12,
-    marginTop: -12,
+    color: Colors.textSecondary,
     marginBottom: 16,
+    lineHeight: 16,
   },
   challengesContainer: {
     gap: 12,
@@ -429,18 +721,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
-    padding: 14,
-    position: "relative",
-    overflow: "hidden",
+    padding: 16,
   },
   challengeCardComplete: {
-    borderColor: "#51cf6666",
+    borderColor: Colors.success + "60",
+    backgroundColor: "rgba(81, 207, 102, 0.02)",
   },
   challengeHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 10,
   },
   challengeIcon: {
     fontSize: 24,
@@ -454,21 +744,18 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 11,
     marginTop: 2,
-    lineHeight: 14,
   },
   challengeXpReward: {
-    color: Colors.gold,
+    color: Colors.primary,
+    fontWeight: "700",
     fontSize: 12,
-    fontWeight: "800",
-    backgroundColor: "#2a2200",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
   },
   challengeProgressRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
+    marginTop: 14,
+    gap: 12,
   },
   challengeProgressBarBg: {
     flex: 1,
@@ -483,34 +770,122 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   challengeProgressText: {
-    color: Colors.textSecondary,
-    fontSize: 10,
-    fontWeight: "700",
-    width: 75,
-    textAlign: "right",
+    color: Colors.text,
+    fontSize: 11,
+    fontWeight: "600",
   },
   challengeBadge: {
     position: "absolute",
     top: 0,
     right: 0,
-    backgroundColor: Colors.success,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: "rgba(81, 207, 102, 0.15)",
     borderBottomLeftRadius: 8,
+    borderTopRightRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   challengeBadgeText: {
-    color: "#0a0a0a",
-    fontSize: 8,
-    fontWeight: "900",
+    fontSize: 9,
+    fontWeight: "800",
+    color: Colors.success,
   },
-  sectionTitle: {
+  shelfContainer: {
+    marginBottom: 25,
+    gap: 16,
+  },
+  shelfRow: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 16,
+  },
+  shelfRowHeader: {
+    marginBottom: 14,
+  },
+  shelfRowTitle: {
     color: Colors.text,
+    fontSize: 13,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  shelfMedalsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  medalSlotActive: {
+    alignItems: "center",
+    width: 80,
+  },
+  medalSlotLocked: {
+    alignItems: "center",
+    width: 80,
+    opacity: 0.35,
+  },
+  medalLockCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#222",
+    borderWidth: 1,
+    borderColor: "#444",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  medalLockIcon: {
     fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 16,
+  },
+  medalSlotTime: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "800",
+    marginTop: 6,
+  },
+  medalSlotTimeLocked: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 6,
+  },
+  medalSlotDate: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  medalSlotLabelLocked: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  medalWrapper: {
+    alignItems: "center",
+    position: "relative",
+  },
+  medalLabelOverlay: {
+    position: "absolute",
+    bottom: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  medalEmojiText: {
+    fontSize: 14,
+  },
+  loaderContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loaderText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
   },
   badgesGrid: {
     gap: 12,
+    marginBottom: 40,
   },
   badgeCard: {
     flexDirection: "row",
@@ -518,33 +893,29 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
-    padding: 12,
+    padding: 16,
     alignItems: "center",
-    gap: 14,
+    gap: 16,
   },
   badgeCardLocked: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   badgeEmojiWrapper: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "#222",
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    justifyContent: "center",
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
     alignItems: "center",
+    justifyContent: "center",
   },
   badgeEmojiWrapperLocked: {
-    borderColor: "#444",
-    backgroundColor: "#111",
+    backgroundColor: "#222",
   },
   badgeEmoji: {
     fontSize: 26,
   },
   badgeEmojiLocked: {
-    fontSize: 20,
-    opacity: 0.5,
+    fontSize: 18,
   },
   badgeInfo: {
     flex: 1,
@@ -564,9 +935,162 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   badgeStatus: {
-    color: Colors.success,
+    color: Colors.primary,
     fontSize: 10,
     fontWeight: "700",
+    marginTop: 6,
+  },
+  shareOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  shareContent: {
+    width: SCREEN_WIDTH * 0.9,
+    backgroundColor: Colors.darkCard,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    padding: 20,
+    alignItems: "center",
+  },
+  shareHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 20,
+  },
+  shareTitle: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  shareCloseBtn: {
+    padding: 4,
+  },
+  shareCloseBtnText: {
+    color: Colors.textSecondary,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  storiesCard: {
+    width: "100%",
+    height: 420,
+    backgroundColor: "#0d0d0d",
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary + "30",
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  storiesGlow: {
+    position: "absolute",
+    top: -150,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: Colors.primary + "12",
+    filter: "blur(50px)",
+  },
+  storiesWatermark: {
+    color: "rgba(255, 255, 255, 0.08)",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 2,
+    marginBottom: 24,
+  },
+  storiesMedalContainer: {
+    marginBottom: 20,
+  },
+  storiesRankTitle: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+    marginBottom: 6,
+  },
+  storiesDistanceText: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    marginBottom: 20,
+  },
+  storiesTimeBox: {
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  storiesTimeLabel: {
+    color: Colors.textSecondary,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  storiesTimeValue: {
+    color: Colors.gold,
+    fontSize: 28,
+    fontWeight: "900",
+  },
+  storiesPaceValue: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    fontWeight: "600",
     marginTop: 4,
+  },
+  storiesFooter: {
+    alignItems: "center",
+  },
+  storiesWorkoutTitle: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+    maxWidth: 240,
+  },
+  storiesDate: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    marginTop: 4,
+  },
+  storiesMascotLogo: {
+    position: "absolute",
+    bottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    opacity: 0.7,
+  },
+  storiesMascotEmoji: {
+    fontSize: 18,
+  },
+  storiesMascotText: {
+    color: Colors.text,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  shareCtaButton: {
+    backgroundColor: "#e1306c", // Instagram Pink
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    width: "100%",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  shareCtaButtonText: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: "700",
   },
 });

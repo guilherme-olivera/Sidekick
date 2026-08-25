@@ -228,6 +228,50 @@ export const getUserHistoryAnalysisHandler = async (req: Request, res: Response)
       return res.status(400).json({ error: "Nenhum treino encontrado para analisar a evolução histórica." });
     }
 
+    // Validar agendamento dos relatórios históricos periódicos:
+    // Contas Free: apenas 1 por mês (dia 1º ou se for um mês diferente do último gerado).
+    // Contas Premium: apenas 1 por semana (domingo ou se for uma semana diferente da última gerada).
+    // Primeira análise (Baseline): se historyAnalysis for nulo, gera imediatamente.
+    const lastUpdate = userProfile.historyAnalysisUpdatedAt;
+    const hasExistingAnalysis = !!userProfile.historyAnalysis;
+
+    if (lastUpdate && hasExistingAnalysis) {
+      const now = new Date();
+      const plan = (userProfile.user?.planType || "free").toLowerCase();
+
+      if (plan === "premium") {
+        // Premium: semanal (semanas diferentes)
+        const getWeekNumber = (d: Date) => {
+          const date = new Date(d.getTime());
+          date.setHours(0, 0, 0, 0);
+          date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+          const week1 = new Date(date.getFullYear(), 0, 4);
+          return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        };
+
+        const isSameWeek = now.getFullYear() === lastUpdate.getFullYear() && getWeekNumber(now) === getWeekNumber(lastUpdate);
+
+        if (isSameWeek) {
+          return res.status(403).json({
+            error: "Os relatórios semanais para usuários Premium são atualizados automaticamente todo domingo à noite.",
+            analysis: userProfile.historyAnalysis,
+            updatedAt: lastUpdate,
+          });
+        }
+      } else {
+        // Free: mensal (meses diferentes)
+        const isSameMonth = now.getFullYear() === lastUpdate.getFullYear() && now.getMonth() === lastUpdate.getMonth();
+
+        if (isSameMonth) {
+          return res.status(403).json({
+            error: "Os relatórios mensais para contas Free são gerados automaticamente no dia 1º de cada mês.",
+            analysis: userProfile.historyAnalysis,
+            updatedAt: lastUpdate,
+          });
+        }
+      }
+    }
+
     await consumeAiAnalysisQuota(userId, userProfile.user?.planType);
 
     // Gera análise com Gemini
@@ -267,14 +311,81 @@ export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Res
 
     const userProfile = await prisma.userProfile.findUnique({
       where: { userId },
-      select: {
-        historyAnalysis: true,
-        historyAnalysisUpdatedAt: true,
+      include: {
+        user: {
+          select: {
+            planType: true,
+          },
+        },
       },
     });
 
     if (!userProfile) {
       return res.status(404).json({ error: "User profile not found" });
+    }
+
+    // Check if an automatic update is needed according to the schedule
+    let needsUpdate = false;
+    const lastUpdate = userProfile.historyAnalysisUpdatedAt;
+    const hasExistingAnalysis = !!userProfile.historyAnalysis;
+
+    if (lastUpdate && hasExistingAnalysis) {
+      const now = new Date();
+      const plan = (userProfile.user?.planType || "free").toLowerCase();
+
+      if (plan === "premium") {
+        // Premium: semanal (semanas diferentes)
+        const getWeekNumber = (d: Date) => {
+          const date = new Date(d.getTime());
+          date.setHours(0, 0, 0, 0);
+          date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+          const week1 = new Date(date.getFullYear(), 0, 4);
+          return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        };
+        const isSameWeek = now.getFullYear() === lastUpdate.getFullYear() && getWeekNumber(now) === getWeekNumber(lastUpdate);
+        
+        if (!isSameWeek) {
+          needsUpdate = true;
+        }
+      } else {
+        // Free: mensal (meses diferentes)
+        const isSameMonth = now.getFullYear() === lastUpdate.getFullYear() && now.getMonth() === lastUpdate.getMonth();
+        
+        if (!isSameMonth) {
+          needsUpdate = true;
+        }
+      }
+    }
+
+    if (needsUpdate) {
+      console.log(`[Auto-Update History Analysis] Triggering update for user ${userId}`);
+      const allWorkouts = await prisma.workout.findMany({
+        where: { userId },
+        orderBy: { date: "desc" },
+      });
+
+      if (allWorkouts.length > 0) {
+        try {
+          await consumeAiAnalysisQuota(userId, userProfile.user?.planType);
+          const analysis = await analyzeHistoryWithGemini(userProfile, allWorkouts);
+          
+          const updatedProfile = await prisma.userProfile.update({
+            where: { userId },
+            data: {
+              historyAnalysis: analysis,
+              historyAnalysisUpdatedAt: new Date(),
+            },
+          });
+
+          return res.json({
+            success: true,
+            analysis: updatedProfile.historyAnalysis,
+            updatedAt: updatedProfile.historyAnalysisUpdatedAt,
+          });
+        } catch (autoErr) {
+          console.error("[Auto-Update History Analysis] failed:", autoErr);
+        }
+      }
     }
 
     res.json({

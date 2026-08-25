@@ -347,7 +347,7 @@ export default function OnboardingScreen() {
       if (hasSkippedStrava) {
         return `Só consigo te acompanhar de verdade se eu conseguir ver seus treinos! Não esqueça de fazer essa integração com o Strava mais tarde lá no seu perfil, combinado? 😉`;
       }
-      return `Pronto, contrato assinado! Agora é só calçar o tênis e ir para o asfalto. Estou pronto para te motivar!`;
+      return `Pronto, contrato assinado! Ao iniciar, faremos a importação rápida dos seus treinos recentes para gerar a sua primeira análise de boas-vindas (Baseline) na Home!`;
     }
     return "";
   };
@@ -877,6 +877,14 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
 
+              {isConnected && (
+                <View style={styles.baselineNoticeContainer}>
+                  <Text style={styles.baselineNoticeText}>
+                    ⚡ <Text style={{ fontWeight: "700", color: Colors.primary }}>Análise de Boas-Vindas</Text>: Como você conectou o Strava, ao iniciar a jornada faremos a importação rápida e a geração automática do seu relatório inicial (Baseline) na Home!
+                  </Text>
+                </View>
+              )}
+
               <TouchableOpacity
                 style={styles.checkboxContainer}
                 onPress={() => setTermsAccepted(!termsAccepted)}
@@ -1174,6 +1182,19 @@ const styles = StyleSheet.create({
   summaryHighlight: {
     color: Colors.primary,
     fontWeight: "700",
+  },
+  baselineNoticeContainer: {
+    backgroundColor: "rgba(255, 107, 107, 0.08)",
+    borderColor: "rgba(255, 107, 107, 0.2)",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+  },
+  baselineNoticeText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
   },
   savingLoaderContainer: {
     alignItems: "center",

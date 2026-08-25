@@ -300,6 +300,7 @@ export default function ProfileScreen() {
 
   const loadHistoryAnalysis = async () => {
     try {
+      setUpdatingHistoryAnalysis(true);
       const response = await apiService.get("/user/history-analysis");
       if (response && response.success) {
         setHistoryAnalysis(response.analysis);
@@ -307,6 +308,8 @@ export default function ProfileScreen() {
       }
     } catch (err) {
       console.error("Error loading history analysis:", err);
+    } finally {
+      setUpdatingHistoryAnalysis(false);
     }
   };
 
@@ -928,26 +931,21 @@ export default function ProfileScreen() {
               <View style={styles.iaNarrativeSectionNew}>
                 <View style={styles.iaNarrativeHeaderNew}>
                   <Text style={styles.iaNarrativeTitleNew}>🦖 Feedback do seu Sidekick</Text>
-                  <TouchableOpacity
-                    style={styles.iaNarrativeUpdateBtnNew}
-                    onPress={handleUpdateHistoryAnalysis}
-                    disabled={updatingHistoryAnalysis}
-                    activeOpacity={0.7}
-                  >
-                    {updatingHistoryAnalysis ? (
-                      <ActivityIndicator size="small" color={Colors.primary} />
-                    ) : (
-                      <Text style={styles.iaNarrativeUpdateBtnTextNew}>🔄 Atualizar</Text>
-                    )}
-                  </TouchableOpacity>
                 </View>
 
-                {historyAnalysis ? (
+                {updatingHistoryAnalysis ? (
+                  <View style={styles.iaNarrativeBoxNew}>
+                    <ActivityIndicator size="large" color={Colors.primary} style={{ marginVertical: 20 }} />
+                    <Text style={[styles.iaNarrativeTextNew, { textAlign: 'center' }]}>
+                      Seu companheiro está analisando sua evolução e preparando seu relatório...
+                    </Text>
+                  </View>
+                ) : historyAnalysis ? (
                   <View style={styles.iaNarrativeBoxNew}>
                     <Text style={styles.iaNarrativeTextNew}>{historyAnalysis}</Text>
                     {historyAnalysisUpdatedAt && (
                       <Text style={styles.iaNarrativeTimeNew}>
-                        Atualizado em: {new Date(historyAnalysisUpdatedAt).toLocaleDateString("pt-BR", {
+                        Relatório atualizado em: {new Date(historyAnalysisUpdatedAt).toLocaleDateString("pt-BR", {
                           day: "2-digit",
                           month: "2-digit",
                           year: "numeric",
@@ -958,22 +956,10 @@ export default function ProfileScreen() {
                     )}
                   </View>
                 ) : (
-                  <View style={styles.iaNarrativeEmptyNew}>
-                    <Text style={styles.iaNarrativeEmptyTextNew}>
-                      Seu companheiro ainda não analisou seu histórico desta semana.
+                  <View style={styles.iaNarrativeBoxNew}>
+                    <Text style={[styles.iaNarrativeTextNew, { textAlign: 'center', color: Colors.textSecondary }]}>
+                      Nenhum relatório gerado ainda. Conecte seu Strava e sincronize um treino para receber a análise de boas-vindas do seu parceiro digital!
                     </Text>
-                    <TouchableOpacity
-                      style={styles.iaNarrativeGenBtnNew}
-                      onPress={handleUpdateHistoryAnalysis}
-                      disabled={updatingHistoryAnalysis}
-                      activeOpacity={0.7}
-                    >
-                      {updatingHistoryAnalysis ? (
-                        <ActivityIndicator color="#0a0a0a" size="small" />
-                      ) : (
-                        <Text style={styles.iaNarrativeGenBtnTextNew}>Analisar Evolução com IA</Text>
-                      )}
-                    </TouchableOpacity>
                   </View>
                 )}
               </View>
