@@ -128,9 +128,9 @@ export default function CalendarScreen() {
       setAnalyzingWorkoutId(targetWorkoutId);
       await analyzeWorkout(targetWorkoutId, effortRating, userNotes);
       Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error analyzing workout:", error);
-      Alert.alert("Erro", "Não foi possível gerar a análise. Tente novamente.");
+      Alert.alert("Aviso", error.message || "Não foi possível gerar a análise. Tente novamente.");
     } finally {
       setAnalyzingWorkoutId(null);
       setTargetWorkoutId(null);

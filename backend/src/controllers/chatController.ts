@@ -24,7 +24,19 @@ export const chatHandler = async (req: any, res: Response) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const response = await generateChatResponse(message, history || [], user.profile);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const moodCheck = await prisma.moodCheck.findUnique({
+      where: {
+        userId_date: {
+          userId,
+          date: today,
+        },
+      },
+    });
+
+    const response = await generateChatResponse(message, history || [], user.profile, moodCheck?.mood);
     
     return res.json({ success: true, response });
   } catch (error) {

@@ -573,9 +573,9 @@ export default function HomeScreen() {
       setAnalyzingWorkoutId(targetWorkoutId);
       await analyzeWorkout(targetWorkoutId, effortRating, userNotes);
       Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error analyzing workout:", error);
-      Alert.alert("Erro", "Não foi possível gerar a análise. Tente novamente.");
+      Alert.alert("Aviso", error.message || "Não foi possível gerar a análise. Tente novamente.");
     } finally {
       setAnalyzingWorkoutId(null);
       setTargetWorkoutId(null);
@@ -668,6 +668,40 @@ export default function HomeScreen() {
               <View style={styles.notificationBadge} />
             )}
           </TouchableOpacity>
+        </View>
+
+        {/* Fixed Mood Selector Bar */}
+        <View style={styles.moodBarContainer}>
+          <Text style={styles.moodBarTitle}>Como você está se sentindo hoje? 🤔</Text>
+          <View style={styles.moodBarOptions}>
+            {[
+              { id: "happy", label: "Excelente", emoji: "😌" },
+              { id: "normal", label: "Normal", emoji: "🙂" },
+              { id: "sad", label: "Neutro", emoji: "😐" },
+              { id: "tired", label: "Cansado", emoji: "🥵" },
+              { id: "sick", label: "Doente", emoji: "💀" },
+            ].map((option) => {
+              const isSelected = currentMood === option.id;
+              return (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.moodBarOptionButton,
+                    isSelected && styles.moodBarOptionButtonSelected
+                  ]}
+                  onPress={() => handleMoodSelect(option.id, option.emoji)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.moodBarOptionEmoji, isSelected && styles.moodBarOptionEmojiSelected]}>
+                    {option.emoji}
+                  </Text>
+                  <Text style={[styles.moodBarOptionLabel, isSelected && styles.moodBarOptionLabelSelected]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
 
@@ -1802,14 +1836,7 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* Mood Widget - Positioned absolute */}
-      <MoodWidget
-        onMoodSelect={handleMoodSelect}
-        currentMood={currentMood}
-        currentMoodEmoji={currentMoodEmoji}
-        autoShowIfUndefined={!isLoading && currentMood === undefined}
-        hideFloatingButton={true}
-      />
+
 
       {/* Companion Chat Floating Button */}
       <TouchableOpacity
@@ -2022,6 +2049,61 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  moodBarContainer: {
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+  },
+  moodBarTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Colors.textSecondary,
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  moodBarOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  moodBarOptionButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.02)",
+    borderWidth: 1,
+    borderColor: "transparent",
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  moodBarOptionButtonSelected: {
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
+    borderColor: "rgba(255, 107, 107, 0.3)",
+  },
+  moodBarOptionEmoji: {
+    fontSize: 22,
+    marginBottom: 4,
+    opacity: 0.6,
+  },
+  moodBarOptionEmojiSelected: {
+    opacity: 1.0,
+    transform: [{ scale: 1.1 }],
+  },
+  moodBarOptionLabel: {
+    fontSize: 10,
+    color: Colors.textSecondary,
+    fontWeight: "500",
+  },
+  moodBarOptionLabelSelected: {
+    color: Colors.primary,
+    fontWeight: "700",
   },
   statsContainer: {
     flexDirection: "row",

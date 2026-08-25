@@ -91,12 +91,11 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       if (response.success && response.mood) {
         setCurrentMood(response.mood);
         const emojiMap: Record<string, string> = {
-          tired: "🫩",
-          sick: "🤢",
-          normal: "😐",
-          angry: "😡",
-          sad: "🥺",
-          happy: "🤣",
+          tired: "🥵",
+          sick: "💀",
+          normal: "🙂",
+          sad: "😐",
+          happy: "😌",
         };
         setCurrentMoodEmoji(emojiMap[response.mood] || "😐");
       }

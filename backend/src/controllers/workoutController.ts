@@ -110,6 +110,7 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
         user: {
           select: {
             planType: true,
+            createdAt: true,
           },
         },
       },
@@ -117,6 +118,19 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
 
     if (!workout) {
       return res.status(404).json({ error: "Workout not found" });
+    }
+
+    // Validar filtro de data: apenas treinos no mesmo dia ou posteriores à data de criação
+    const userCreatedAt = new Date(workout.user.createdAt);
+    const workoutDate = new Date(workout.date);
+
+    const userCreatedDay = new Date(userCreatedAt.getFullYear(), userCreatedAt.getMonth(), userCreatedAt.getDate());
+    const workoutDay = new Date(workoutDate.getFullYear(), workoutDate.getMonth(), workoutDate.getDate());
+
+    if (workoutDay < userCreatedDay) {
+      return res.status(403).json({
+        error: "Para manter o foco na sua evolução atual, o Sidekick só analisa treinos realizados a partir da data de criação da sua conta no aplicativo."
+      });
     }
 
     // Atualiza esforço e notas se fornecidos
@@ -133,6 +147,7 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
           user: {
             select: {
               planType: true,
+              createdAt: true,
             },
           },
         },

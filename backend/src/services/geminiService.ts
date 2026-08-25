@@ -318,7 +318,8 @@ export async function analyzeHistoryWithGemini(
 export async function generateChatResponse(
   message: string,
   chatHistory: { role: "user" | "model"; parts: string }[],
-  userProfile?: any
+  userProfile?: any,
+  mood?: string
 ): Promise<string> {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -338,6 +339,8 @@ Gênero da IA: ${aiGender} (use termos de gênero apropriados para o seu tom).
 Personalidade: ${aiPersonality} (ex: motivador, técnico, amigável, sarcástico).
 Tom de Voz: ${aiTone} (ex: focado, amigável, direto, etc).
 Seu objetivo é dar suporte ao usuário, responder a dúvidas de treinos de forma compreensível e motivadora, e ajudá-lo a atingir sua meta de "${trainingGoal}" (nível: ${experienceLevel}).
+
+${mood ? `O usuário registrou o humor dele hoje como: "${mood}". Leve isso em consideração ao responder na sua personalidade (ex: se ele estiver exausto/cansado ou doente/estressado, seja mais compreensivo, sugira repouso ou um treino leve; se estiver excelente/feliz, anime-o).` : ""}
 
 Instruções cruciais:
 - Dê respostas completas, úteis, focadas em fisiologia do esporte, corrida ou ciclismo.
