@@ -47,7 +47,9 @@ export async function calculatePersonalRecords(userId: string): Promise<Personal
         if (w.splits && Array.isArray(w.splits) && milestone.id === "1k") {
           // Find fastest 1k split
           let fastestSplit = Infinity;
-          for (const split of w.splits) {
+          const splitsList = w.splits as any[];
+          for (const split of splitsList) {
+            if (!split) continue;
             const splitDist = split.distance || 0;
             const splitTime = split.movingTime || split.elapsedTime || 0;
             if (splitDist >= 950 && splitDist <= 1050) {

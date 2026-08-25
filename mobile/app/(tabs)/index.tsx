@@ -138,6 +138,7 @@ export default function HomeScreen() {
   // New Achievements Congratulation Modal States
   const [newAchievements, setNewAchievements] = useState<any[]>([]);
   const [newConquestsModalVisible, setNewConquestsModalVisible] = useState(false);
+  const [dismissedMoodModal, setDismissedMoodModal] = useState(false);
 
   useEffect(() => {
     if (shareCardVisible) {
@@ -751,40 +752,6 @@ export default function HomeScreen() {
               <View style={styles.notificationBadge} />
             )}
           </TouchableOpacity>
-        </View>
-
-        {/* Fixed Mood Selector Bar */}
-        <View style={styles.moodBarContainer}>
-          <Text style={styles.moodBarTitle}>Como você está se sentindo hoje? 🤔</Text>
-          <View style={styles.moodBarOptions}>
-            {[
-              { id: "happy", label: "Excelente", emoji: "😌" },
-              { id: "normal", label: "Normal", emoji: "🙂" },
-              { id: "sad", label: "Neutro", emoji: "😐" },
-              { id: "tired", label: "Cansado", emoji: "🥵" },
-              { id: "sick", label: "Doente", emoji: "💀" },
-            ].map((option) => {
-              const isSelected = currentMood === option.id;
-              return (
-                <TouchableOpacity
-                  key={option.id}
-                  style={[
-                    styles.moodBarOptionButton,
-                    isSelected && styles.moodBarOptionButtonSelected
-                  ]}
-                  onPress={() => handleMoodSelect(option.id, option.emoji)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.moodBarOptionEmoji, isSelected && styles.moodBarOptionEmojiSelected]}>
-                    {option.emoji}
-                  </Text>
-                  <Text style={[styles.moodBarOptionLabel, isSelected && styles.moodBarOptionLabelSelected]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
 
@@ -2056,6 +2023,62 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* Modal: Daily Mood Check popover */}
+      <Modal
+        visible={currentMood === undefined && !dismissedMoodModal && !isLoading && !baselineModalVisible && !newConquestsModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setDismissedMoodModal(true)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '65%', borderColor: Colors.primary + '30', borderWidth: 1.5 }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Como você está hoje? 🤔</Text>
+              <TouchableOpacity onPress={() => setDismissedMoodModal(true)} style={{ padding: 5 }}>
+                <Text style={styles.modalCloseButton}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.newConquestBadgeWrapper}>
+              <Text style={styles.newConquestMascotEmoji}>{user?.profile?.companionAvatar || "🦖"}</Text>
+              <Text style={styles.newConquestSpeech}>
+                Fala atleta! Como está se sentindo fisicamente e mentalmente hoje? Isso me ajuda a calibrar seus ritmos e conselhos esportivos!
+              </Text>
+            </View>
+
+            <View style={styles.dailyMoodModalOptions}>
+              {[
+                { id: "happy", label: "Excelente", emoji: "😌", color: Colors.success },
+                { id: "normal", label: "Normal", emoji: "🙂", color: "#a5d8ff" },
+                { id: "sad", label: "Neutro", emoji: "😐", color: "#ffd8a8" },
+                { id: "tired", label: "Cansado", emoji: "🥵", color: Colors.primary },
+                { id: "sick", label: "Esgotado", emoji: "💀", color: "#e599f7" },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={styles.dailyMoodModalOptionRow}
+                  onPress={() => handleMoodSelect(option.id, option.emoji)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.dailyMoodModalOptionEmoji}>{option.emoji}</Text>
+                  <Text style={[styles.dailyMoodModalOptionLabel, { color: option.color }]}>{option.label}</Text>
+                  <Text style={styles.dailyMoodModalOptionSelectArrow}>➔</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.dailyMoodSkipButton}
+              onPress={() => setDismissedMoodModal(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.dailyMoodSkipButtonText}>Pular por hoje</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal: Companion Chat Overlay */}
       <Modal
         visible={chatModalVisible}
@@ -2434,6 +2457,44 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     fontWeight: "700",
+  },
+  dailyMoodModalOptions: {
+    gap: 10,
+    marginTop: 10,
+  },
+  dailyMoodModalOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  dailyMoodModalOptionEmoji: {
+    fontSize: 24,
+  },
+  dailyMoodModalOptionLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  dailyMoodModalOptionSelectArrow: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  dailyMoodSkipButton: {
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 14,
+  },
+  dailyMoodSkipButtonText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   statsContainer: {
     flexDirection: "row",
