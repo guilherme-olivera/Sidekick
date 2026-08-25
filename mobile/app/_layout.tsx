@@ -3,8 +3,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { View, Text, ActivityIndicator, Animated, Image } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -62,6 +62,25 @@ function RootLayoutNav() {
   const { token, user, isLoading } = useAuth();
   const router = useRouter();
 
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
   useEffect(() => {
     if (isLoading) return;
 
@@ -72,7 +91,7 @@ function RootLayoutNav() {
       if (isConfigured) {
         router.replace("/(tabs)");
       } else {
-        router.replace("/welcome");
+        router.replace("/onboarding");
       }
     }
   }, [token, user, isLoading]);
@@ -80,9 +99,18 @@ function RootLayoutNav() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#ff6b6b" />
-        <Text style={{ color: '#ffffff', marginTop: 20, fontSize: 16, fontWeight: '600', letterSpacing: 0.5 }}>
-          Conectando ao Sidekick... 👟
+        <Animated.Image
+          source={require('../assets/images/sidekick-logo.png')}
+          style={{
+            width: 90,
+            height: 90,
+            transform: [{ scale: scaleAnim }],
+            marginBottom: 16,
+          }}
+          resizeMode="contain"
+        />
+        <Text style={{ color: '#ff6b6b', fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', opacity: 0.8 }}>
+          seu companheiro de jornada
         </Text>
       </View>
     );
