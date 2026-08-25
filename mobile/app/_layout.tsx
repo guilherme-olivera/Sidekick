@@ -62,24 +62,64 @@ function RootLayoutNav() {
   const { token, user, isLoading } = useAuth();
   const router = useRouter();
 
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const logoScale = useRef(new Animated.Value(0.3)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoPulse = useRef(new Animated.Value(1)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textTranslateY = useRef(new Animated.Value(15)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    Animated.parallel([
+      Animated.spring(logoScale, {
+        toValue: 1.2,
+        tension: 40,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      Animated.spring(logoScale, {
+        toValue: 1.0,
+        tension: 30,
+        friction: 7,
+        useNativeDriver: true,
+      }).start(() => {
+        Animated.parallel([
+          Animated.timing(textOpacity, {
+            toValue: 0.8,
+            duration: 650,
+            useNativeDriver: true,
+          }),
+          Animated.timing(textTranslateY, {
+            toValue: 0,
+            duration: 650,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          Animated.loop(
+            Animated.sequence([
+              Animated.timing(logoPulse, {
+                toValue: 1.05,
+                duration: 1000,
+                useNativeDriver: true,
+              }),
+              Animated.timing(logoPulse, {
+                toValue: 1.0,
+                duration: 1000,
+                useNativeDriver: true,
+              }),
+            ])
+          ).start();
+        });
+      });
+    });
   }, []);
+
+  const animatedScale = Animated.multiply(logoScale, logoPulse);
 
   useEffect(() => {
     if (isLoading) return;
@@ -102,16 +142,25 @@ function RootLayoutNav() {
         <Animated.Image
           source={require('../assets/images/sidekick-logo.png')}
           style={{
-            width: 90,
-            height: 90,
-            transform: [{ scale: scaleAnim }],
-            marginBottom: 16,
+            width: 160,
+            height: 160,
+            opacity: logoOpacity,
+            transform: [{ scale: animatedScale }],
+            marginBottom: 28,
           }}
           resizeMode="contain"
         />
-        <Text style={{ color: '#ff6b6b', fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', opacity: 0.8 }}>
+        <Animated.Text style={{ 
+          color: '#ff6b6b', 
+          fontSize: 12, 
+          fontWeight: '700', 
+          letterSpacing: 3, 
+          textTransform: 'uppercase', 
+          opacity: textOpacity,
+          transform: [{ translateY: textTranslateY }]
+        }}>
           seu companheiro de jornada
-        </Text>
+        </Animated.Text>
       </View>
     );
   }
