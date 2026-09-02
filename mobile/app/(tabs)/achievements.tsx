@@ -556,7 +556,7 @@ export default function AchievementsScreen() {
                     {formatDuration(selectedRecordForShare.time)}
                   </Text>
                   <Text style={styles.storiesPaceValue}>
-                    Pace Médio: {formatDuration(Math.round(selectedRecordForShare.time / { "1k": 1, "5k": 5, "10k": 10, "21k": 21.0975, "42k": 42.195 }[selectedRecordForShare.distance]))}/km
+                    Pace Médio: {formatDuration(Math.round(selectedRecordForShare.time / (({ "1k": 1, "5k": 5, "10k": 10, "21k": 21.0975, "42k": 42.195 } as Record<string, number>)[selectedRecordForShare.distance] || 1)))}/km
                   </Text>
                 </View>
 

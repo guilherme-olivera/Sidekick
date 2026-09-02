@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 import { getAiUsageStatus } from "../services/usageService";
 import { calculateReadiness } from "../utils/readiness";
+import { calculateRacePredictions, calculateACWR } from "../services/analyticsService";
+import { saveUserPushToken, broadcastNotification } from "../services/pushNotificationService";
 
 export const getUserProfileHandler = async (req: any, res: Response) => {
   try {
@@ -252,5 +254,59 @@ export const handleGetTodayMood = async (req: any, res: Response) => {
   } catch (error) {
     console.error("Error fetching today mood:", error);
     res.status(500).json({ error: "Falha ao buscar humor de hoje" });
+  }
+};
+
+export const getUserAnalyticsHandler = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    const predictions = await calculateRacePredictions(userId);
+    const acwr = await calculateACWR(userId);
+
+    res.json({ success: true, predictions, acwr });
+  } catch (error) {
+    console.error("Error fetching user analytics:", error);
+    res.status(500).json({ error: "Falha ao calcular análises do usuário" });
+  }
+};
+
+export const savePushTokenHandler = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { pushToken } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    if (!pushToken || typeof pushToken !== "string") {
+      return res.status(400).json({ error: "Token de push inválido" });
+    }
+
+    const saved = await saveUserPushToken(userId, pushToken);
+    res.json({ success: saved });
+  } catch (error) {
+    console.error("Error saving push token:", error);
+    res.status(500).json({ error: "Falha ao salvar token de notificação" });
+  }
+};
+
+export const broadcastNotificationHandler = async (req: any, res: Response) => {
+  try {
+    const { title, body, filter, extraData } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: "Título e mensagem são obrigatórios" });
+    }
+
+    const result = await broadcastNotification(title, body, filter, extraData);
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error("Error sending broadcast notification:", error);
+    res.status(500).json({ error: "Falha ao enviar notificação de transmissão" });
   }
 };

@@ -41,6 +41,16 @@ const formatPace = (speedKmH: number | null | undefined) => {
   return `${minutes}:${secondsStr} /km`;
 };
 
+const formatDuration = (totalSeconds: number | null | undefined) => {
+  if (!totalSeconds || totalSeconds <= 0) return "--:--";
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = Math.round(totalSeconds % 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (hrs > 0) return `${hrs}:${pad(mins)}:${pad(secs)}`;
+  return `${pad(mins)}:${pad(secs)}`;
+};
+
 const getAvatarUri = (avatarPath?: string | null): string | undefined => {
   if (!avatarPath) return undefined;
   if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://")) {
@@ -199,8 +209,8 @@ export default function HomeScreen() {
   const saveChatHistory = async (history: any[]) => {
     try {
       await AsyncStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history));
-    } catch (e) {
-      console.warn("Failed to save chat history", e);
+    } catch (e: any) {
+      console.warn("Failed to save mood in background", e);
     }
   };
 
@@ -374,7 +384,7 @@ export default function HomeScreen() {
     });
 
     // 2. Treinos pendentes (apenas treinos a partir da data de criação da conta)
-    const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : null;
+    const userCreatedAt = (user as any)?.createdAt ? new Date((user as any).createdAt) : null;
     const userCreatedDay = userCreatedAt 
       ? new Date(userCreatedAt.getFullYear(), userCreatedAt.getMonth(), userCreatedAt.getDate())
       : null;

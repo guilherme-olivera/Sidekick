@@ -2,19 +2,21 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { apiService } from './apiService';
 import { CalendarEvent } from './calendarMockService';
 
 const STORAGE_KEY = '@sidekick:event_notifications';
 
 type StoredMap = Record<string, string[]>;
 
-// Configure notification handler for foreground notifications
+/**
+ * Configure default notification behavior
+ */
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -42,8 +44,50 @@ export async function requestPermissions() {
   return true;
 }
 
+export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    console.log('[NotificationService] Web environment; push notifications skipped.');
+    return null;
+  }
+
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('[NotificationService] Push notification permissions denied.');
+      return null;
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync().catch(err => {
+      console.log('[NotificationService] Push token fetch info:', err.message);
+      return null;
+    });
+
+    if (!tokenData?.data) {
+      return null;
+    }
+
+    const token = tokenData.data;
+    console.log('[NotificationService] Obtained Push Token:', token);
+
+    await apiService.post('/api/user/push-token', { pushToken: token }).catch(err => {
+      console.log('[NotificationService] Error registering token on backend:', err.message);
+    });
+
+    return token;
+  } catch (error) {
+    console.error('[NotificationService] Unexpected error in registerForPushNotificationsAsync:', error);
+    return null;
+  }
+}
+
 function parseDateTime(dateStr: string, timeStr: string) {
-  // dateStr can be YYYY-MM-DD or full YYYY-MM-DDT... ISO format. Strip to first 10 chars.
   const cleanDateStr = dateStr.substring(0, 10);
   const [y, m, d] = cleanDateStr.split('-').map(Number);
   const [hh, mm] = timeStr.split(':').map(Number);
@@ -134,8 +178,11 @@ export async function cancelEventNotifications(eventId: string) {
   await saveStore(map);
 }
 
-export default {
+const notificationService = {
   scheduleEventNotifications,
   cancelEventNotifications,
   requestPermissions,
+  registerForPushNotificationsAsync,
 };
+
+export default notificationService;

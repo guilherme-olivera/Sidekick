@@ -42,6 +42,9 @@ import {
   getUserUsageHandler,
   handleSaveMood,
   handleGetTodayMood,
+  getUserAnalyticsHandler,
+  savePushTokenHandler,
+  broadcastNotificationHandler,
 } from "./controllers/userController";
 import {
   handleUploadAvatar,
@@ -118,6 +121,9 @@ app.get("/api/user/usage", authMiddleware, getUserUsageHandler);
 app.post("/api/user/mood", authMiddleware, handleSaveMood);
 app.get("/api/user/mood/today", authMiddleware, handleGetTodayMood);
 app.get("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisCachedHandler);
+app.get("/api/user/analytics", authMiddleware, getUserAnalyticsHandler);
+app.post("/api/user/push-token", authMiddleware, savePushTokenHandler);
+app.post("/api/admin/broadcast-notification", broadcastNotificationHandler);
 app.post("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisHandler);
 app.get("/api/diagnostics/test", authMiddleware, handleDiagnosticsTest);
 

@@ -984,8 +984,8 @@ export default function ProfileScreen() {
                 <Svg width="100%" height={130} viewBox="0 0 320 130">
                   <Defs>
                     <LinearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
-                      <Stop offset="0%" stopColor="#fc4c02" stopOpacity="0.5" stopOpacityAlpha={0.5} />
-                      <Stop offset="100%" stopColor="#fc4c02" stopOpacity="0.0" stopOpacityAlpha={0.0} />
+                      <Stop offset="0%" stopColor="#fc4c02" stopOpacity="0.5" />
+                      <Stop offset="100%" stopColor="#fc4c02" stopOpacity="0.0" />
                     </LinearGradient>
                   </Defs>
 

@@ -25,6 +25,7 @@ model User {
   stravaAthleteName    String?
   stravaAthleteUsername String?
   stravaAthleteProfile String?
+  pushToken            String?   // Token de notificação de push do dispositivo (Expo)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

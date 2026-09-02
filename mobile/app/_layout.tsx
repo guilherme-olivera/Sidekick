@@ -11,6 +11,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '@/src/contexts/AuthContext';
 import { DashboardProvider } from '@/src/contexts/DashboardContext';
 import { StravaProvider } from '@/src/contexts/StravaContext';
+import { registerForPushNotificationsAsync } from '@/src/services/notificationService';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -127,6 +128,7 @@ function RootLayoutNav() {
     if (!token) {
       router.replace("/login");
     } else {
+      registerForPushNotificationsAsync().catch(() => {});
       const isConfigured = user?.profile?.isConfigured === true;
       if (isConfigured) {
         router.replace("/(tabs)");

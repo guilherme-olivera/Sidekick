@@ -1865,4 +1865,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
   },
+  carouselSelectorArrowText: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
+  carouselSelectorRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: 290, marginBottom: 12 },
+  carouselSelectorArrow: { padding: 8, backgroundColor: "#22222b", borderRadius: 8 },
+  carouselSelectorTitle: { color: "#ffffff", fontSize: 13, fontWeight: "700" },
+  cleanHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" },
+  cleanLogo: { color: "#ff6b6b", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
+  carouselIndicatorRow: { flexDirection: "row", gap: 6, marginTop: 12 },
+  carouselDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#333333" },
+  carouselDotActive: { width: 16, backgroundColor: "#ff6b6b" },
 });
