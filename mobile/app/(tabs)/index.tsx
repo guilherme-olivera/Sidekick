@@ -1128,7 +1128,7 @@ export default function HomeScreen() {
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
                   automaticallyAdjustKeyboardInsets={true}
-                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 350 : 40 }}
+                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 120 : 40 }}
                 >
                   {effortModalVisible ? (
                     <View style={{ padding: 10 }}>
@@ -1174,8 +1174,8 @@ export default function HomeScreen() {
                         onChangeText={setUserNotes}
                         onFocus={() => {
                           setTimeout(() => {
-                            indexModalScrollRef.current?.scrollToEnd({ animated: true });
-                          }, 200);
+                            indexModalScrollRef.current?.scrollTo({ y: 140, animated: true });
+                          }, 150);
                         }}
                         multiline
                       />
@@ -2136,10 +2136,7 @@ export default function HomeScreen() {
                   <TouchableOpacity onPress={handleClearChatHistory}>
                     <Text style={styles.chatClearHistoryText}>Limpar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    handleClearChatHistory();
-                    setChatModalVisible(false);
-                  }}>
+                  <TouchableOpacity onPress={() => setChatModalVisible(false)}>
                     <Text style={styles.chatCloseButtonText}>✕</Text>
                   </TouchableOpacity>
                 </View>

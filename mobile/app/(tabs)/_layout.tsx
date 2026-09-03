@@ -1,7 +1,11 @@
 import React from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
-import { Platform, View, StyleSheet } from "react-native";
+import { Platform, View, StyleSheet, Dimensions } from "react-native";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const TAB_BAR_WIDTH = 180;
+const TAB_BAR_LEFT = (SCREEN_WIDTH - TAB_BAR_WIDTH) / 2;
 
 const DarkTheme = {
   dark: true,
@@ -24,11 +28,11 @@ export default function TabLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 22 : 14,
-          left: 65,
-          right: 65,
-          height: 54,
-          borderRadius: 27,
+          bottom: Platform.OS === "ios" ? 24 : 14,
+          left: 50,
+          right: 50,
+          height: 56,
+          borderRadius: 28,
           backgroundColor: "rgba(18, 18, 22, 0.95)",
           borderWidth: 1.5,
           borderColor: "rgba(255, 107, 107, 0.3)",
@@ -78,7 +82,7 @@ export default function TabLayout() {
           title: "Perfil",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-              <FontAwesome name="user" size={18} color={color} />
+              <FontAwesome name="user" size={20} color={color} />
             </View>
           ),
         }}
@@ -89,9 +93,9 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
     marginTop: Platform.OS === "ios" ? 10 : 0,

@@ -499,7 +499,7 @@ export default function CalendarScreen() {
                 <ScrollView
                   ref={calendarModalScrollRef}
                   style={styles.workoutModalScroll}
-                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 350 : 40 }}
+                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 120 : 40 }}
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
                   automaticallyAdjustKeyboardInsets={true}
@@ -549,8 +549,8 @@ export default function CalendarScreen() {
                         onChangeText={setUserNotes}
                         onFocus={() => {
                           setTimeout(() => {
-                            calendarModalScrollRef.current?.scrollToEnd({ animated: true });
-                          }, 200);
+                            calendarModalScrollRef.current?.scrollTo({ y: 140, animated: true });
+                          }, 150);
                         }}
                         placeholder="Escreva como se sentiu, dores, clima ou observações gerais..."
                         style={[styles.effortInput, { minHeight: 80 }]}
