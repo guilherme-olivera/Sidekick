@@ -144,11 +144,11 @@ function RootLayoutNav() {
         <Animated.Image
           source={require('../assets/images/sidekick-logo.png')}
           style={{
-            width: 160,
-            height: 160,
+            width: 250,
+            height: 250,
             opacity: logoOpacity,
             transform: [{ scale: animatedScale }],
-            marginBottom: 28,
+            marginBottom: 32,
           }}
           resizeMode="contain"
         />

@@ -322,7 +322,9 @@ export default function HomeScreen() {
     setSelectedWorkoutIdForDetail(null);
     setSharingWorkout(workout);
     setActiveTemplateIdx(0);
-    setShareCardVisible(true);
+    setTimeout(() => {
+      setShareCardVisible(true);
+    }, 250);
   };
 
   const handleShareCardImage = async () => {
@@ -1281,9 +1283,10 @@ export default function HomeScreen() {
                 {/* Sub-modal View overlay inside main detail modal to avoid stacking bugs */}
                 {effortModalVisible && (
                   <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 20 }]}>
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'flex-end', alignItems: 'center', zIndex: 1000, borderRadius: 20, paddingBottom: Platform.OS === 'ios' ? 30 : 10 }]}>
                       <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : undefined}
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
                         style={{ width: '100%', alignItems: 'center' }}
                       >
                         <TouchableWithoutFeedback onPress={() => {}}>
@@ -2133,7 +2136,10 @@ export default function HomeScreen() {
                   <TouchableOpacity onPress={handleClearChatHistory}>
                     <Text style={styles.chatClearHistoryText}>Limpar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setChatModalVisible(false)}>
+                  <TouchableOpacity onPress={() => {
+                    handleClearChatHistory();
+                    setChatModalVisible(false);
+                  }}>
                     <Text style={styles.chatCloseButtonText}>✕</Text>
                   </TouchableOpacity>
                 </View>
@@ -3875,7 +3881,7 @@ const styles = StyleSheet.create({
   chatMsgWrapper: {
     flexDirection: "row",
     marginVertical: 6,
-    alignItems: "flex-end",
+    alignItems: "flex-start",
     gap: 8,
   },
   chatMsgUserWrapper: {
@@ -3893,6 +3899,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 2,
   },
   chatMsgBubble: {
     maxWidth: "75%",

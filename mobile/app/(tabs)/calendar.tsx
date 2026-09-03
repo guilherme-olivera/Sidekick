@@ -72,9 +72,12 @@ export default function CalendarScreen() {
   const templateScrollRef = useRef<any>(null);
 
   const handleGenerateShareCard = (workout: any) => {
+    setSelectedWorkoutId(null);
     setSharingWorkout(workout);
     setActiveTemplateIdx(0);
-    setShareCardVisible(true);
+    setTimeout(() => {
+      setShareCardVisible(true);
+    }, 250);
   };
 
   const handleShareCardImage = async () => {
@@ -667,9 +670,10 @@ export default function CalendarScreen() {
                 {/* Sub-modal View overlay inside main detail modal to avoid stacking bugs */}
                 {effortModalVisible && (
                   <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, borderRadius: 20 }]}>
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'flex-end', alignItems: 'center', zIndex: 1000, borderRadius: 20, paddingBottom: Platform.OS === 'ios' ? 30 : 10 }]}>
                       <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : undefined}
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
                         style={{ width: '100%', alignItems: 'center' }}
                       >
                         <TouchableWithoutFeedback onPress={() => {}}>
