@@ -120,11 +120,38 @@ export default function ProfileScreen() {
   const [activeProfileTab, setActiveProfileTab] = useState<"evolucao" | "conquistas">("evolucao");
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
 
-  // Estados para expansão de melhores marcas e compartilhamento de RPs
+  // Estados para expansão de melhores marcas e compartilhamento de RPs/Troféus
   const [isBestsExpanded, setIsBestsExpanded] = useState(true);
   const [prShareModalVisible, setPrShareModalVisible] = useState(false);
   const [selectedPrForShare, setSelectedPrForShare] = useState<{ label: string; timeVal: string } | null>(null);
   const prViewShotRef = useRef<any>(null);
+  const trophyViewShotRef = useRef<any>(null);
+
+  const handleShareTrophyImage = async () => {
+    try {
+      if (!trophyViewShotRef.current) {
+        Alert.alert("Erro", "Não foi possível capturar a imagem da conquista.");
+        return;
+      }
+      const uri = await captureRef(trophyViewShotRef, {
+        format: "png",
+        quality: 0.95,
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Compartilhar Conquista - Sidekick",
+        });
+      } else {
+        Alert.alert("Sucesso", "Imagem da conquista gerada com sucesso!");
+      }
+    } catch (err) {
+      console.error("Failed to share trophy card image:", err);
+      Alert.alert("Erro", "Não foi possível gerar a imagem da conquista.");
+    }
+  };
 
   const handleSharePrImage = async () => {
     try {
@@ -1216,7 +1243,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1241,7 +1268,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1266,7 +1293,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1291,7 +1318,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1316,7 +1343,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1341,7 +1368,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1366,7 +1393,7 @@ export default function ProfileScreen() {
                           <Text style={styles.stravaBestsTimeIcon}>👟</Text>
                           <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
                         </View>
-                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Visualizar" : "Melhor de todos"}</Text>
                       </TouchableOpacity>
                     );
                   })()}
@@ -1736,44 +1763,68 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </Modal>
 
-        {/* Medal Share Modal */}
+        {/* Trophy / Badge Stories Share Modal */}
         <Modal
           visible={shareModalVisible}
-          animationType="fade"
+          animationType="slide"
           transparent={true}
           onRequestClose={() => setShareModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.shareCardContent}>
-              <Text style={styles.shareTitle}>Compartilhar Conquista 🏆</Text>
-              
+            <View style={{ width: "90%", backgroundColor: "#141416", borderRadius: 20, padding: 20, alignItems: "center", maxHeight: "85%" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", alignItems: "center", marginBottom: 15 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff" }}>Compartilhar Conquista 🏆</Text>
+                <TouchableOpacity onPress={() => setShareModalVisible(false)} style={{ padding: 5 }}>
+                  <Text style={{ color: "#aaa", fontSize: 18 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
               {selectedBadge && (
-                <View style={styles.shareCard}>
-                  <Text style={styles.shareLogo}>🏃‍♂️ Sidekick</Text>
-                  <Text style={styles.shareCardEmoji}>{selectedBadge.emoji}</Text>
-                  <Text style={styles.shareCardName}>{selectedBadge.name}</Text>
-                  <Text style={styles.shareCardDesc}>{selectedBadge.desc}</Text>
-                  <Text style={styles.shareCardFooter}>sidekickapp.com</Text>
-                </View>
+                <ViewShot ref={trophyViewShotRef} options={{ format: "png", quality: 0.95 }} style={{ width: 280, backgroundColor: "#0a0a0c", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 2, borderColor: "#ffd700", marginVertical: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 22 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                    <View>
+                      <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>SIDEKICK • CONQUISTA</Text>
+                      <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{user?.profile?.companionName || "Rocky"}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ fontSize: 54, marginVertical: 8 }}>{selectedBadge.emoji}</Text>
+
+                  <View style={{ backgroundColor: "rgba(255, 215, 0, 0.15)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: "#ffd700", marginBottom: 8 }}>
+                    <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>
+                      🏆 TROFÉU DESBLOQUEADO
+                    </Text>
+                  </View>
+
+                  <Text style={{ color: "#fff", fontSize: 20, fontWeight: "900", textAlign: "center", marginVertical: 4 }}>
+                    {selectedBadge.name}
+                  </Text>
+
+                  <Text style={{ color: "#aaa", fontSize: 12, textAlign: "center", marginVertical: 6, lineHeight: 16 }}>
+                    {selectedBadge.desc}
+                  </Text>
+
+                  <Text style={{ color: "#666", fontSize: 11, marginTop: 10 }}>
+                    {user?.name || "Atleta Sidekick"}
+                  </Text>
+                </ViewShot>
               )}
-              
-              <View style={styles.shareActions}>
+
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 15, width: "100%" }}>
                 <TouchableOpacity
-                  style={[styles.modalBtn, styles.modalBtnCancel]}
+                  style={{ flex: 1, backgroundColor: "#222", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
                   onPress={() => setShareModalVisible(false)}
                 >
-                  <Text style={styles.modalBtnCancelText}>Fechar</Text>
+                  <Text style={{ color: "#fff", fontWeight: "600" }}>Cancelar</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  style={[styles.modalBtn, styles.modalBtnConfirm]}
-                  onPress={() => {
-                    const Share = require("react-native").Share;
-                    Share.share({
-                      message: `Conquistei o badge "${selectedBadge?.name}" (${selectedBadge?.desc}) no app Sidekick! 🏃‍♂️🔥`,
-                    }).catch((err: any) => console.log(err));
-                  }}
+                  style={{ flex: 1.5, backgroundColor: "#ffd700", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                  onPress={handleShareTrophyImage}
                 >
-                  <Text style={styles.modalBtnConfirmText}>Compartilhar</Text>
+                  <FontAwesome name="instagram" size={16} color="#000" />
+                  <Text style={{ color: "#000", fontWeight: "700" }}>Instagram</Text>
                 </TouchableOpacity>
               </View>
             </View>
