@@ -24,20 +24,20 @@ export default function TabLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 28 : 16,
-          left: 45,
-          right: 45,
-          height: 62,
-          borderRadius: 31,
+          bottom: Platform.OS === "ios" ? 22 : 14,
+          left: 65,
+          right: 65,
+          height: 54,
+          borderRadius: 27,
           backgroundColor: "rgba(18, 18, 22, 0.95)",
           borderWidth: 1.5,
           borderColor: "rgba(255, 107, 107, 0.3)",
           borderTopWidth: 1.5,
           borderTopColor: "rgba(255, 107, 107, 0.3)",
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 10 },
+          shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.5,
-          shadowRadius: 16,
+          shadowRadius: 12,
           elevation: 12,
           paddingBottom: 0,
         },
@@ -50,7 +50,7 @@ export default function TabLayout() {
           title: "Início",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-              <FontAwesome name="home" size={22} color={color} />
+              <FontAwesome name="home" size={20} color={color} />
             </View>
           ),
         }}
@@ -67,7 +67,7 @@ export default function TabLayout() {
           title: "Calendário",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-              <FontAwesome name="calendar" size={20} color={color} />
+              <FontAwesome name="calendar" size={18} color={color} />
             </View>
           ),
         }}
@@ -78,7 +78,7 @@ export default function TabLayout() {
           title: "Perfil",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-              <FontAwesome name="user" size={20} color={color} />
+              <FontAwesome name="user" size={18} color={color} />
             </View>
           ),
         }}
@@ -89,12 +89,12 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 14 : 0,
+    marginTop: Platform.OS === "ios" ? 10 : 0,
   },
   iconWrapperActive: {
     backgroundColor: "rgba(255, 107, 107, 0.15)",
