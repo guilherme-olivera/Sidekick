@@ -105,7 +105,7 @@ export default function CalendarScreen() {
     }
   };
 
-  const selectedWorkoutDetail = workouts.find((w) => w.id === selectedWorkoutId);
+  const selectedWorkoutDetail = workouts.find((w) => w.id === selectedWorkoutId || (w as any).stravaId === selectedWorkoutId);
 
   useEffect(() => {
     return () => {
@@ -138,17 +138,7 @@ export default function CalendarScreen() {
   };
 
   const handleToggleSpeech = (text: string) => {
-    if (isSpeaking) {
-      Speech.stop();
-      setIsSpeaking(false);
-    } else {
-      setIsSpeaking(true);
-      Speech.speak(text, {
-        language: "pt-BR",
-        onDone: () => setIsSpeaking(false),
-        onError: () => setIsSpeaking(false),
-      });
-    }
+    Alert.alert("Áudio IA", "O recurso de leitura de voz da IA está temporariamente desativado.");
   };
 
   const handleCloseDetailModal = () => {
@@ -224,7 +214,10 @@ export default function CalendarScreen() {
   const handleEventPress = (event: CalendarEvent) => {
     if (event.isWorkout) {
       setModalVisible(false);
-      setSelectedWorkoutId(event.id);
+      setTimeout(() => {
+        const targetId = (event as any).workoutId || (event.id.startsWith("evt-strava-") ? event.id.replace("evt-strava-", "") : event.id);
+        setSelectedWorkoutId(targetId);
+      }, 300);
       return;
     }
 
@@ -461,7 +454,7 @@ export default function CalendarScreen() {
       >
         <View style={styles.workoutModalOverlay}>
           <View style={styles.workoutModalContent}>
-            {selectedWorkoutDetail && (
+            {selectedWorkoutDetail ? (
               <>
                 {/* Modal Header */}
                 <View style={styles.workoutModalHeader}>
@@ -499,7 +492,7 @@ export default function CalendarScreen() {
                   </View>
                 </View>
 
-                <View style={styles.workoutModalScroll}>
+                <ScrollView style={styles.workoutModalScroll} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={true}>
                   {/* Intensity Row */}
                   <View style={styles.workoutModalIntensityRow}>
                     <Text style={styles.workoutIntensityLabelDetail}>Intensidade:</Text>
@@ -669,7 +662,7 @@ export default function CalendarScreen() {
                       </TouchableOpacity>
                     )}
                   </View>
-                </View>
+                </ScrollView>
 
                 {/* Sub-modal View overlay inside main detail modal to avoid stacking bugs */}
                 {effortModalVisible && (
@@ -728,22 +721,22 @@ export default function CalendarScreen() {
                                 placeholderTextColor="#666"
                                 multiline
                               />
-                            </ScrollView>
 
-                            <View style={styles.effortModalActions}>
-                              <TouchableOpacity
-                                style={[styles.effortModalButton, styles.effortModalButtonCancel]}
-                                onPress={() => setEffortModalVisible(false)}
-                              >
-                                <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
-                                onPress={submitAnalysis}
-                              >
-                                <Text style={styles.effortModalButtonTextConfirm}>Analisar</Text>
-                              </TouchableOpacity>
-                            </View>
+                              <View style={[styles.effortModalActions, { marginTop: 16 }]}>
+                                <TouchableOpacity
+                                  style={[styles.effortModalButton, styles.effortModalButtonCancel]}
+                                  onPress={() => setEffortModalVisible(false)}
+                                >
+                                  <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
+                                  onPress={submitAnalysis}
+                                >
+                                  <Text style={styles.effortModalButtonTextConfirm}>Analisar</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </ScrollView>
                           </View>
                         </TouchableWithoutFeedback>
                       </KeyboardAvoidingView>
@@ -751,6 +744,16 @@ export default function CalendarScreen() {
                   </TouchableWithoutFeedback>
                 )}
               </>
+            ) : (
+              <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Treino não encontrado</Text>
+                <Text style={{ color: '#b0b0b0', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>
+                  Não foi possível carregar as informações deste treino.
+                </Text>
+                <TouchableOpacity onPress={handleCloseDetailModal} style={{ backgroundColor: '#ff6b6b', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+                  <Text style={{ color: '#0a0a0a', fontWeight: '800' }}>Fechar ✕</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>

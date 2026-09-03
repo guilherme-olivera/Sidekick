@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   StyleSheet,
   View,
@@ -524,7 +524,7 @@ export default function HomeScreen() {
     };
   };
 
-  const volumeData = getVolumeComparisonData();
+  const volumeData = useMemo(() => getVolumeComparisonData(), [workouts]);
 
   // Calculate current week Monday
   const currentWeekMonday = new Date(today);
@@ -1331,22 +1331,22 @@ export default function HomeScreen() {
                                 onChangeText={setUserNotes}
                                 multiline
                               />
-                            </ScrollView>
 
-                            <View style={styles.effortModalActions}>
-                              <TouchableOpacity
-                                style={[styles.effortModalButton, styles.effortModalButtonCancel]}
-                                onPress={() => setEffortModalVisible(false)}
-                              >
-                                <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
-                                onPress={submitAnalysis}
-                              >
-                                <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
-                              </TouchableOpacity>
-                            </View>
+                              <View style={[styles.effortModalActions, { marginTop: 16 }]}>
+                                <TouchableOpacity
+                                  style={[styles.effortModalButton, styles.effortModalButtonCancel]}
+                                  onPress={() => setEffortModalVisible(false)}
+                                >
+                                  <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
+                                  onPress={submitAnalysis}
+                                >
+                                  <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </ScrollView>
                           </View>
                         </TouchableWithoutFeedback>
                       </KeyboardAvoidingView>

@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import Svg, { Defs, LinearGradient, Stop, Circle, Path, G, Rect } from "react-native-svg";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import ViewShot, { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { apiService } from "@/src/services/apiService";
@@ -147,10 +149,38 @@ export default function AchievementsScreen() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<PRRecord[]>([]);
   const [monthlyChallenge, setMonthlyChallenge] = useState<{ distance: number; target: number; completed: boolean } | null>(null);
+  const [isPrSectionExpanded, setIsPrSectionExpanded] = useState(true);
   
   // Share Stories Modal States
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedRecordForShare, setSelectedRecordForShare] = useState<PRRecord | null>(null);
+  const viewShotRef = useRef<any>(null);
+
+  const handleShareCardImage = async () => {
+    try {
+      if (!viewShotRef.current) {
+        Alert.alert("Erro", "Não foi possível capturar a imagem. Tente novamente.");
+        return;
+      }
+      const uri = await captureRef(viewShotRef, {
+        format: "png",
+        quality: 0.9,
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Compartilhar Conquista Sidekick",
+        });
+      } else {
+        Alert.alert("Sucesso", "Imagem do card gerada com sucesso!");
+      }
+    } catch (err) {
+      console.error("Failed to share PR card image:", err);
+      Alert.alert("Erro", "Não foi possível gerar ou compartilhar o card.");
+    }
+  };
 
   const totalWorkouts = workouts.length;
   const companionName = user?.profile?.companionName || "Rocky";
@@ -428,62 +458,79 @@ export default function AchievementsScreen() {
         </View>
 
         {/* PR Interactive Trophy Shelf ("Estante de Troféus") */}
-        <Text style={styles.sectionTitle}>🏆 Estante de Troféus (Recordes Pessoais)</Text>
-        <Text style={styles.sectionSubtitle}>
-          Seus 3 melhores tempos em distâncias clássicas. Toque em uma medalha conquistada para abrir o Stories de Compartilhamento!
-        </Text>
-
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-            <Text style={styles.loaderText}>Carregando recordes pessoais...</Text>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 8 }}
+          onPress={() => setIsPrSectionExpanded(prev => !prev)}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={styles.sectionTitle}>🏆 Estante de Troféus (Recordes Pessoais)</Text>
+            <Text style={styles.sectionSubtitle}>
+              Seus 3 melhores tempos em distâncias clássicas. Toque para ver ou publicar no Stories!
+            </Text>
           </View>
-        ) : (
-          <View style={styles.shelfContainer}>
-            {MILESTONES.map(milestone => {
-              return (
-                <View key={milestone.id} style={styles.shelfRow}>
-                  <View style={styles.shelfRowHeader}>
-                    <Text style={styles.shelfRowTitle}>🏃‍♂️ Recorde de {milestoneLabels[milestone.id]}</Text>
-                  </View>
-
-                  <View style={styles.shelfMedalsRow}>
-                    {[1, 2, 3].map(rank => {
-                      const record = records.find(r => r.distance === milestone.id && r.rank === rank);
-                      
-                      if (record) {
-                        return (
-                          <TouchableOpacity
-                            key={rank}
-                            style={styles.medalSlotActive}
-                            onPress={() => handleOpenShareModal(record)}
-                            activeOpacity={0.8}
-                          >
-                            <PremiumMedal rank={rank} size={56} />
-                            <Text style={styles.medalSlotTime}>{formatDuration(record.time)}</Text>
-                            <Text style={styles.medalSlotDate} numberOfLines={1}>{new Date(record.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</Text>
-                          </TouchableOpacity>
-                        );
-                      } else {
-                        // Empty/Locked Slot
-                        return (
-                          <View key={rank} style={styles.medalSlotLocked}>
-                            <View style={styles.medalLockCircle}>
-                              <Text style={styles.medalLockIcon}>🔒</Text>
-                            </View>
-                            <Text style={styles.medalSlotTimeLocked}>--:--</Text>
-                            <Text style={styles.medalSlotLabelLocked}>
-                              {rank === 1 ? "Ouro" : rank === 2 ? "Prata" : "Bronze"}
-                            </Text>
-                          </View>
-                        );
-                      }
-                    })}
-                  </View>
-                </View>
-              );
-            })}
+          <View style={{ backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#444' }}>
+            <Text style={{ color: Colors.primary, fontSize: 11, fontWeight: '700' }}>
+              {isPrSectionExpanded ? "Recolher 🔼" : "Ver marcas 🔽"}
+            </Text>
           </View>
+        </TouchableOpacity>
+
+        {isPrSectionExpanded && (
+          <>
+            {loading ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.loaderText}>Carregando recordes pessoais...</Text>
+              </View>
+            ) : (
+              <View style={styles.shelfContainer}>
+                {MILESTONES.map(milestone => {
+                  return (
+                    <View key={milestone.id} style={styles.shelfRow}>
+                      <View style={styles.shelfRowHeader}>
+                        <Text style={styles.shelfRowTitle}>🏃‍♂️ Recorde de {milestoneLabels[milestone.id]}</Text>
+                      </View>
+
+                      <View style={styles.shelfMedalsRow}>
+                        {[1, 2, 3].map(rank => {
+                          const record = records.find(r => r.distance === milestone.id && r.rank === rank);
+                          
+                          if (record) {
+                            return (
+                              <TouchableOpacity
+                                key={rank}
+                                style={styles.medalSlotActive}
+                                onPress={() => handleOpenShareModal(record)}
+                                activeOpacity={0.8}
+                              >
+                                <PremiumMedal rank={rank} size={56} />
+                                <Text style={styles.medalSlotTime}>{formatDuration(record.time)}</Text>
+                                <Text style={styles.medalSlotDate} numberOfLines={1}>{new Date(record.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</Text>
+                              </TouchableOpacity>
+                            );
+                          } else {
+                            // Empty/Locked Slot
+                            return (
+                              <View key={rank} style={styles.medalSlotLocked}>
+                                <View style={styles.medalLockCircle}>
+                                  <Text style={styles.medalLockIcon}>🔒</Text>
+                                </View>
+                                <Text style={styles.medalSlotTimeLocked}>--:--</Text>
+                                <Text style={styles.medalSlotLabelLocked}>
+                                  {rank === 1 ? "Ouro" : rank === 2 ? "Prata" : "Bronze"}
+                                </Text>
+                              </View>
+                            );
+                          }
+                        })}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </>
         )}
 
         {/* Badges List Section */}
@@ -532,60 +579,59 @@ export default function AchievementsScreen() {
               </View>
 
               {/* Stories Card Body Preview */}
-              <View style={styles.storiesCard}>
-                {/* Visual Glow Layer */}
-                <View style={styles.storiesGlow} />
+              <ViewShot ref={viewShotRef} options={{ format: "png", quality: 0.9 }} style={{ borderRadius: 20, overflow: 'hidden' }}>
+                <View style={styles.storiesCard}>
+                  {/* Visual Glow Layer */}
+                  <View style={styles.storiesGlow} />
 
-                <Text style={styles.storiesWatermark}>SIDEKICK APP</Text>
-                
-                <View style={styles.storiesMedalContainer}>
-                  <PremiumMedal rank={selectedRecordForShare.rank} size={110} />
-                </View>
+                  <Text style={styles.storiesWatermark}>SIDEKICK APP</Text>
+                  
+                  <View style={styles.storiesMedalContainer}>
+                    <PremiumMedal rank={selectedRecordForShare.rank} size={110} />
+                  </View>
 
-                <Text style={styles.storiesRankTitle}>
-                  RECORDE DE {selectedRecordForShare.rank === 1 ? "OURO 🥇" : selectedRecordForShare.rank === 2 ? "PRATA 🥈" : "BRONZE 🥉"}
-                </Text>
-
-                <Text style={styles.storiesDistanceText}>
-                  {milestoneLabels[selectedRecordForShare.distance].toUpperCase()}
-                </Text>
-
-                <View style={styles.storiesTimeBox}>
-                  <Text style={styles.storiesTimeLabel}>TEMPO ESTABELECIDO</Text>
-                  <Text style={styles.storiesTimeValue}>
-                    {formatDuration(selectedRecordForShare.time)}
+                  <Text style={styles.storiesRankTitle}>
+                    RECORDE DE {selectedRecordForShare.rank === 1 ? "OURO 🥇" : selectedRecordForShare.rank === 2 ? "PRATA 🥈" : "BRONZE 🥉"}
                   </Text>
-                  <Text style={styles.storiesPaceValue}>
-                    Pace Médio: {formatDuration(Math.round(selectedRecordForShare.time / (({ "1k": 1, "5k": 5, "10k": 10, "21k": 21.0975, "42k": 42.195 } as Record<string, number>)[selectedRecordForShare.distance] || 1)))}/km
-                  </Text>
-                </View>
 
-                <View style={styles.storiesFooter}>
-                  <Text style={styles.storiesWorkoutTitle} numberOfLines={1}>
-                    Treino: "{selectedRecordForShare.workoutTitle}"
+                  <Text style={styles.storiesDistanceText}>
+                    {milestoneLabels[selectedRecordForShare.distance].toUpperCase()}
                   </Text>
-                  <Text style={styles.storiesDate}>
-                    Conquistado em: {new Date(selectedRecordForShare.date).toLocaleDateString("pt-BR")}
-                  </Text>
+
+                  <View style={styles.storiesTimeBox}>
+                    <Text style={styles.storiesTimeLabel}>TEMPO ESTABELECIDO</Text>
+                    <Text style={styles.storiesTimeValue}>
+                      {formatDuration(selectedRecordForShare.time)}
+                    </Text>
+                    <Text style={styles.storiesPaceValue}>
+                      Pace Médio: {formatDuration(Math.round(selectedRecordForShare.time / (({ "1k": 1, "5k": 5, "10k": 10, "21k": 21.0975, "42k": 42.195 } as Record<string, number>)[selectedRecordForShare.distance] || 1)))}/km
+                    </Text>
+                  </View>
+
+                  <View style={styles.storiesFooter}>
+                    <Text style={styles.storiesWorkoutTitle} numberOfLines={1}>
+                      Treino: "{selectedRecordForShare.workoutTitle}"
+                    </Text>
+                    <Text style={styles.storiesDate}>
+                      Conquistado em: {new Date(selectedRecordForShare.date).toLocaleDateString("pt-BR")}
+                    </Text>
+                  </View>
+                  
+                  {/* Mascot evolutionary logo watermark */}
+                  <View style={styles.storiesMascotLogo}>
+                    <Text style={styles.storiesMascotEmoji}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                    <Text style={styles.storiesMascotText}>{companionName}</Text>
+                  </View>
                 </View>
-                
-                {/* Mascot evolutionary logo watermark */}
-                <View style={styles.storiesMascotLogo}>
-                  <Text style={styles.storiesMascotEmoji}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                  <Text style={styles.storiesMascotText}>{companionName}</Text>
-                </View>
-              </View>
+              </ViewShot>
 
               {/* Share CTA button */}
               <TouchableOpacity
                 style={styles.shareCtaButton}
-                onPress={() => {
-                  Alert.alert("Stories Gerado!", "O card foi salvo na sua galeria. Agora você já pode postar no seu Stories do Instagram ou WhatsApp! 📱🚀");
-                  setShareModalVisible(false);
-                }}
+                onPress={handleShareCardImage}
               >
                 <Text style={styles.shareCtaButtonText}>
-                  <FontAwesome name="instagram" size={18} color="#fff" /> Compartilhar no Stories
+                  <FontAwesome name="instagram" size={18} color="#fff" /> Salvar e Compartilhar Conquista
                 </Text>
               </TouchableOpacity>
             </View>
