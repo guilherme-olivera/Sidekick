@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -18,6 +18,9 @@ import {
   RefreshControl,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import ViewShot, { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
 import { useDashboard } from "@/src/contexts/DashboardContext";
@@ -116,6 +119,38 @@ export default function ProfileScreen() {
   // Novos estados para aba Perfil Unificada
   const [activeProfileTab, setActiveProfileTab] = useState<"evolucao" | "conquistas">("evolucao");
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+
+  // Estados para expansão de melhores marcas e compartilhamento de RPs
+  const [isBestsExpanded, setIsBestsExpanded] = useState(true);
+  const [prShareModalVisible, setPrShareModalVisible] = useState(false);
+  const [selectedPrForShare, setSelectedPrForShare] = useState<{ label: string; timeVal: string } | null>(null);
+  const prViewShotRef = useRef<any>(null);
+
+  const handleSharePrImage = async () => {
+    try {
+      if (!prViewShotRef.current) {
+        Alert.alert("Erro", "Não foi possível capturar a imagem do recorde. Tente novamente.");
+        return;
+      }
+      const uri = await captureRef(prViewShotRef, {
+        format: "png",
+        quality: 0.9,
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "image/png",
+          dialogTitle: "Compartilhar Recorde Pessoal - Sidekick",
+        });
+      } else {
+        Alert.alert("Sucesso", "Imagem do card gerada com sucesso!");
+      }
+    } catch (err) {
+      console.error("Failed to share PR card image:", err);
+      Alert.alert("Erro", "Não foi possível gerar ou compartilhar o card.");
+    }
+  };
 
   const runDiagnostics = async () => {
     setIsDiagnosticModalVisible(true);
@@ -1151,138 +1186,196 @@ export default function ProfileScreen() {
 
             {/* Card: Melhores marcas style Strava */}
             <View style={styles.stravaBestsCard}>
-              <View style={styles.stravaBestsHeader}>
+              <TouchableOpacity onPress={() => setIsBestsExpanded((prev) => !prev)} style={styles.stravaBestsHeader}>
                 <View style={styles.stravaBestsTitleRow}>
                   <Text style={styles.stravaBestsLogo}>⬢</Text>
                   <Text style={styles.stravaBestsTitle}>Melhores marcas</Text>
                 </View>
-                <Text style={styles.stravaBestsChevron}>›</Text>
-              </View>
+                <Text style={styles.stravaBestsChevron}>{isBestsExpanded ? "▲" : "▼"}</Text>
+              </TouchableOpacity>
 
-              <View style={styles.stravaBestsGrid}>
-                {/* Column: 1 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 1.0);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>1 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+              {isBestsExpanded && (
+                <View style={styles.stravaBestsGrid}>
+                  {/* Column: 1 km */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 1.0);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "1 KM", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>1 km</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Column: 2 milhas */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 3.22);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>2 milhas</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+                  {/* Column: 2 milhas */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 3.22);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "2 MILHAS", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>2 milhas</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Column: 5 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 5.0);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>5 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+                  {/* Column: 5 km */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 5.0);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "5 KM", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>5 km</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Column: 10 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 10.0);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>10 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+                  {/* Column: 10 km */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 10.0);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "10 KM", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>10 km</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Column: 15 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 15.0);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>15 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+                  {/* Column: 15 km */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 15.0);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "15 KM", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>15 km</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Column: 21 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 21.097);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>21 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+                  {/* Column: 21 km */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 21.097);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "21 KM", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>21 km</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Column: 42 km */}
-                {(() => {
-                  const bestTime = getBestTimeForDistance(sportWorkouts, 42.195);
-                  const hasPR = !!bestTime;
-                  return (
-                    <View style={styles.stravaBestsCol}>
-                      <PRMedal active={hasPR} />
-                      <Text style={styles.stravaBestsLabel}>42 km</Text>
-                      <View style={styles.stravaBestsTimeRow}>
-                        <Text style={styles.stravaBestsTimeIcon}>👟</Text>
-                        <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
-                      </View>
-                      <Text style={styles.stravaBestsSub}>Melhor de todos</Text>
-                    </View>
-                  );
-                })()}
+                  {/* Column: 42 km */}
+                  {(() => {
+                    const bestTime = getBestTimeForDistance(sportWorkouts, 42.195);
+                    const hasPR = !!bestTime;
+                    return (
+                      <TouchableOpacity
+                        style={styles.stravaBestsCol}
+                        onPress={() => {
+                          if (bestTime) {
+                            setSelectedPrForShare({ label: "42 KM", timeVal: bestTime });
+                            setPrShareModalVisible(true);
+                          }
+                        }}
+                      >
+                        <PRMedal active={hasPR} />
+                        <Text style={styles.stravaBestsLabel}>42 km</Text>
+                        <View style={styles.stravaBestsTimeRow}>
+                          <Text style={styles.stravaBestsTimeIcon}>👟</Text>
+                          <Text style={styles.stravaBestsTimeVal}>{bestTime || "--"}</Text>
+                        </View>
+                        <Text style={styles.stravaBestsSub}>{hasPR ? "Compartilhar 📤" : "Melhor de todos"}</Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
 
-                {/* Placeholders to keep spacing balanced */}
-                <View style={styles.stravaBestsCol} />
-                <View style={styles.stravaBestsCol} />
-              </View>
+                  {/* Placeholders to keep spacing balanced */}
+                  <View style={styles.stravaBestsCol} />
+                  <View style={styles.stravaBestsCol} />
+                </View>
+              )}
             </View>
 
             {/* Block: Ano atual (2026) */}
@@ -1681,6 +1774,73 @@ export default function ProfileScreen() {
                   }}
                 >
                   <Text style={styles.modalBtnConfirmText}>Compartilhar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* PR Record Stories Share Modal */}
+        <Modal
+          visible={prShareModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setPrShareModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={{ width: "90%", backgroundColor: "#141416", borderRadius: 20, padding: 20, alignItems: "center", maxHeight: "85%" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", alignItems: "center", marginBottom: 15 }}>
+                <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff" }}>Compartilhar Marca 🏆</Text>
+                <TouchableOpacity onPress={() => setPrShareModalVisible(false)} style={{ padding: 5 }}>
+                  <Text style={{ color: "#aaa", fontSize: 18 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {selectedPrForShare && (
+                <ViewShot ref={prViewShotRef} options={{ format: "png", quality: 0.95 }} style={{ width: 280, backgroundColor: "#0a0a0c", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 2, borderColor: "#fc4c02", marginVertical: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 22 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                    <View>
+                      <Text style={{ color: "#fc4c02", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>SIDEKICK • RP</Text>
+                      <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{user?.profile?.companionName || "Rocky"}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={{ fontSize: 48, marginVertical: 8 }}>🏅</Text>
+
+                  <Text style={{ color: "#aaa", fontSize: 12, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
+                    RECORDE PESSOAL
+                  </Text>
+                  <Text style={{ color: "#fff", fontSize: 24, fontWeight: "900", marginVertical: 4 }}>
+                    {selectedPrForShare.label}
+                  </Text>
+
+                  <View style={{ backgroundColor: "rgba(252, 76, 2, 0.15)", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: "#fc4c02", marginVertical: 10 }}>
+                    <Text style={{ color: "#fc4c02", fontSize: 22, fontWeight: "900" }}>
+                      ⏱️ {selectedPrForShare.timeVal}
+                    </Text>
+                  </View>
+
+                  <Text style={{ color: "#888", fontSize: 11, marginTop: 6 }}>
+                    {user?.name || "Atleta Sidekick"}
+                  </Text>
+                </ViewShot>
+              )}
+
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 15, width: "100%" }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: "#222", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
+                  onPress={() => setPrShareModalVisible(false)}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "600" }}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ flex: 1.5, backgroundColor: "#fc4c02", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                  onPress={handleSharePrImage}
+                >
+                  <FontAwesome name="instagram" size={16} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>Instagram</Text>
                 </TouchableOpacity>
               </View>
             </View>

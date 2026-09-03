@@ -495,258 +495,245 @@ export default function CalendarScreen() {
                   </View>
                 </View>
 
-                <ScrollView style={styles.workoutModalScroll} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={true}>
-                  {/* Intensity Row */}
-                  <View style={styles.workoutModalIntensityRow}>
-                    <Text style={styles.workoutIntensityLabelDetail}>Intensidade:</Text>
-                    <View
-                      style={[
-                        styles.workoutIntensityBadgeDetail,
-                        {
-                          backgroundColor:
-                            selectedWorkoutDetail.intensity === "high"
-                              ? "#421f1f"
-                              : selectedWorkoutDetail.intensity === "moderate"
-                              ? "#422c1f"
-                              : "#1f3a42",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.workoutIntensityTextDetail,
-                          {
-                            color:
-                              selectedWorkoutDetail.intensity === "high"
-                                ? "#ff6b6b"
-                                : selectedWorkoutDetail.intensity === "moderate"
-                                ? "#ffa94d"
-                                : "#51cf66",
-                          },
-                        ]}
-                      >
-                        {selectedWorkoutDetail.intensity === "low"
-                          ? "Leve"
-                          : selectedWorkoutDetail.intensity === "moderate"
-                          ? "Moderado"
-                          : "Intenso"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Metrics Grid */}
-                  <View style={styles.workoutModalMetricsGrid}>
-                    <View style={styles.workoutModalMetricCard}>
-                      <Text style={styles.workoutModalMetricValue}>
-                        {Math.floor(selectedWorkoutDetail.duration / 3600) > 0
-                          ? `${Math.floor(selectedWorkoutDetail.duration / 3600)}h ${Math.floor(
-                              (selectedWorkoutDetail.duration % 3600) / 60
-                            )}m`
-                          : `${Math.floor((selectedWorkoutDetail.duration % 3600) / 60)} min`}
-                      </Text>
-                      <Text style={styles.workoutModalMetricSubLabel}>Duração</Text>
-                    </View>
-                    {selectedWorkoutDetail.distance && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.distance.toFixed(1)} km
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>Distância</Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.pace && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
-                            ? formatPace(selectedWorkoutDetail.pace)
-                            : `${selectedWorkoutDetail.pace.toFixed(1)} km/h`}
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>
-                          {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
-                            ? "Pace Médio"
-                            : "Vel. Média"}
-                        </Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.avgHeartRate && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.avgHeartRate} bpm
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>BPM Médio</Text>
-                      </View>
-                    )}
-                    {selectedWorkoutDetail.averageWatts ? (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.averageWatts} W
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>Potência</Text>
-                      </View>
-                    ) : null}
-                    {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
-                      <>
-                        <View style={styles.workoutModalMetricCard}>
-                          <Text style={styles.workoutModalMetricValue}>
-                            {selectedWorkoutDetail.averageCadence ? `${selectedWorkoutDetail.averageCadence}` : "--"}
-                          </Text>
-                          <Text style={styles.workoutModalMetricSubLabel}>
-                            {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
-                          </Text>
-                        </View>
-                        <View style={styles.workoutModalMetricCard}>
-                          <Text style={styles.workoutModalMetricValue}>
-                            {selectedWorkoutDetail.elevationGain ? `${Math.round(selectedWorkoutDetail.elevationGain)} m` : "0 m"}
-                          </Text>
-                          <Text style={styles.workoutModalMetricSubLabel}>Ganho Elevação</Text>
-                        </View>
-                      </>
-                    )}
-                    {selectedWorkoutDetail.effortRating && (
-                      <View style={styles.workoutModalMetricCard}>
-                        <Text style={styles.workoutModalMetricValue}>
-                          {selectedWorkoutDetail.effortRating} / 5
-                        </Text>
-                        <Text style={styles.workoutModalMetricSubLabel}>Esforço (RPE)</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* IA Analysis Narrative Section */}
-                  <View style={styles.workoutModalIaSection}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <Text style={[styles.workoutModalIaTitle, { marginBottom: 0 }]}>🧠 Análise do Sidekick (IA)</Text>
-                      {selectedWorkoutDetail.aiNarrative && (
-                        <TouchableOpacity
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            backgroundColor: "#222",
-                            paddingHorizontal: 12,
-                            paddingVertical: 6,
-                            borderRadius: 12,
-                            borderWidth: 1,
-                            borderColor: "#333",
-                          }}
-                          onPress={() => handleToggleSpeech(selectedWorkoutDetail.aiNarrative!)}
-                        >
-                          <Text style={{ color: "#ff6b6b", fontSize: 13, fontWeight: "700" }}>
-                            {isSpeaking ? "⏹️ Parar" : "🔊 Ouvir"}
-                          </Text>
+                <ScrollView style={styles.workoutModalScroll} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+                  {effortModalVisible ? (
+                    <View style={{ padding: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
+                        <TouchableOpacity onPress={() => setEffortModalVisible(false)} style={{ padding: 5 }}>
+                          <Text style={{ color: '#b0b0b0', fontSize: 18 }}>✕</Text>
                         </TouchableOpacity>
-                      )}
-                    </View>
-                    
-                    {selectedWorkoutDetail.aiNarrative ? (
-                      <View style={styles.workoutModalNarrativeContainer}>
-                        <Text style={styles.workoutModalNarrativeText}>
-                          {selectedWorkoutDetail.aiNarrative}
-                        </Text>
                       </View>
-                    ) : (
-                      <View style={styles.workoutModalIaEmpty}>
-                        <Text style={styles.workoutModalIaEmptyText}>
-                          Nenhuma análise gerada para esta atividade física ainda.
-                        </Text>
-                      </View>
-                    )}
+                      <Text style={styles.effortModalSubtitle}>
+                        Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
+                      </Text>
 
-                    {!selectedWorkoutDetail.aiNarrative && (
-                      <TouchableOpacity
-                        style={[styles.workoutModalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.workoutModalAnalyzeButtonDisabled]}
-                        onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
-                        disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
-                      >
-                        {analyzingWorkoutId === selectedWorkoutDetail.id ? (
-                          <ActivityIndicator color="#ffffff" size="small" />
-                        ) : (
-                          <Text style={styles.workoutModalAnalyzeButtonText}>🧠 Analisar com IA</Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </ScrollView>
-
-                {/* Sub-modal View overlay inside main detail modal to avoid stacking bugs */}
-                {effortModalVisible && (
-                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'flex-end', alignItems: 'center', zIndex: 1000, borderRadius: 20, paddingBottom: Platform.OS === 'ios' ? 30 : 10 }]}>
-                      <KeyboardAvoidingView
-                        behavior={Platform.OS === "ios" ? "padding" : "height"}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
-                        style={{ width: '100%', alignItems: 'center' }}
-                      >
-                        <TouchableWithoutFeedback onPress={() => {}}>
-                          <View style={[styles.effortModalContent, { width: '90%', padding: 20, borderRadius: 16, marginTop: 0 }]}>
-                            <ScrollView
-                              style={{ width: '100%', maxHeight: 380 }}
-                              contentContainerStyle={{ paddingBottom: 10 }}
-                              showsVerticalScrollIndicator={false}
-                              keyboardShouldPersistTaps="handled"
+                      <Text style={styles.effortLabel}>Esforço Percebido:</Text>
+                      <View style={styles.effortRatingContainer}>
+                        {[1, 2, 3, 4, 5].map((num) => {
+                          const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
+                          return (
+                            <TouchableOpacity
+                              key={num}
+                              style={[
+                                styles.effortRatingButton,
+                                effortRating === num && styles.effortRatingButtonActive,
+                              ]}
+                              onPress={() => setEffortRating(num)}
                             >
-                              <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
-                              <Text style={styles.effortModalSubtitle}>
-                                Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
-                              </Text>
+                              <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
+                              <Text style={styles.effortRatingLabel}>{num}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <Text style={styles.effortRatingDesc}>
+                        {effortRating === 1 && "Muito Leve"}
+                        {effortRating === 2 && "Leve"}
+                        {effortRating === 3 && "Moderado"}
+                        {effortRating === 4 && "Difícil"}
+                        {effortRating === 5 && "Exaustivo / Máximo"}
+                      </Text>
 
-                              <Text style={styles.effortLabel}>Esforço Percebido:</Text>
-                              <View style={styles.effortRatingContainer}>
-                                {[1, 2, 3, 4, 5].map((num) => {
-                                  const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
-                                  return (
-                                    <TouchableOpacity
-                                      key={num}
-                                      style={[
-                                        styles.effortRatingButton,
-                                        effortRating === num && styles.effortRatingButtonActive,
-                                      ]}
-                                      onPress={() => setEffortRating(num)}
-                                    >
-                                      <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
-                                      <Text style={styles.effortRatingLabel}>{num}</Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
-                              </View>
-                              <Text style={styles.effortRatingDesc}>
-                                {effortRating === 1 && "Muito Leve"}
-                                {effortRating === 2 && "Leve"}
-                                {effortRating === 3 && "Moderado"}
-                                {effortRating === 4 && "Difícil"}
-                                {effortRating === 5 && "Exaustivo / Máximo"}
-                              </Text>
+                      <Text style={styles.effortLabel}>Notas / Observações:</Text>
+                      <TextInput
+                        value={userNotes}
+                        onChangeText={setUserNotes}
+                        placeholder="Escreva como se sentiu, dores, clima ou observações gerais..."
+                        style={[styles.effortInput, { minHeight: 80 }]}
+                        placeholderTextColor="#666"
+                        multiline
+                      />
 
-                              <Text style={styles.effortLabel}>Notas / Observações:</Text>
-                              <TextInput
-                                value={userNotes}
-                                onChangeText={setUserNotes}
-                                placeholder="Escreva como se sentiu, dores, clima ou observações gerais..."
-                                style={styles.effortInput}
-                                placeholderTextColor="#666"
-                                multiline
-                              />
-
-                              <View style={[styles.effortModalActions, { marginTop: 16 }]}>
-                                <TouchableOpacity
-                                  style={[styles.effortModalButton, styles.effortModalButtonCancel]}
-                                  onPress={() => setEffortModalVisible(false)}
-                                >
-                                  <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={[styles.effortModalButton, styles.effortModalButtonConfirm]}
-                                  onPress={submitAnalysis}
-                                >
-                                  <Text style={styles.effortModalButtonTextConfirm}>Analisar</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </ScrollView>
-                          </View>
-                        </TouchableWithoutFeedback>
-                      </KeyboardAvoidingView>
+                      <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                        <TouchableOpacity
+                          style={[styles.effortModalButton, styles.effortModalButtonCancel, { flex: 1 }]}
+                          onPress={() => setEffortModalVisible(false)}
+                        >
+                          <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.effortModalButton, styles.effortModalButtonConfirm, { flex: 1 }]}
+                          onPress={submitAnalysis}
+                        >
+                          <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </TouchableWithoutFeedback>
-                )}
+                  ) : (
+                    <>
+                      {/* Intensity Row */}
+                      <View style={styles.workoutModalIntensityRow}>
+                        <Text style={styles.workoutIntensityLabelDetail}>Intensidade:</Text>
+                        <View
+                          style={[
+                            styles.workoutIntensityBadgeDetail,
+                            {
+                              backgroundColor:
+                                selectedWorkoutDetail.intensity === "high"
+                                  ? "#421f1f"
+                                  : selectedWorkoutDetail.intensity === "moderate"
+                                  ? "#422c1f"
+                                  : "#1f3a42",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.workoutIntensityTextDetail,
+                              {
+                                color:
+                                  selectedWorkoutDetail.intensity === "high"
+                                    ? "#ff6b6b"
+                                    : selectedWorkoutDetail.intensity === "moderate"
+                                    ? "#ffa94d"
+                                    : "#51cf66",
+                              },
+                            ]}
+                          >
+                            {selectedWorkoutDetail.intensity === "low"
+                              ? "Leve"
+                              : selectedWorkoutDetail.intensity === "moderate"
+                              ? "Moderado"
+                              : "Intenso"}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Metrics Grid */}
+                      <View style={styles.workoutModalMetricsGrid}>
+                        <View style={styles.workoutModalMetricCard}>
+                          <Text style={styles.workoutModalMetricValue}>
+                            {Math.floor(selectedWorkoutDetail.duration / 3600) > 0
+                              ? `${Math.floor(selectedWorkoutDetail.duration / 3600)}h ${Math.floor(
+                                  (selectedWorkoutDetail.duration % 3600) / 60
+                                )}m`
+                              : `${Math.floor((selectedWorkoutDetail.duration % 3600) / 60)} min`}
+                          </Text>
+                          <Text style={styles.workoutModalMetricSubLabel}>Duração</Text>
+                        </View>
+                        {selectedWorkoutDetail.distance && (
+                          <View style={styles.workoutModalMetricCard}>
+                            <Text style={styles.workoutModalMetricValue}>
+                              {selectedWorkoutDetail.distance.toFixed(1)} km
+                            </Text>
+                            <Text style={styles.workoutModalMetricSubLabel}>Distância</Text>
+                          </View>
+                        )}
+                        {selectedWorkoutDetail.pace && (
+                          <View style={styles.workoutModalMetricCard}>
+                            <Text style={styles.workoutModalMetricValue}>
+                              {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                                ? formatPace(selectedWorkoutDetail.pace)
+                                : `${selectedWorkoutDetail.pace.toFixed(1)} km/h`}
+                            </Text>
+                            <Text style={styles.workoutModalMetricSubLabel}>
+                              {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida")
+                                ? "Pace Médio"
+                                : "Vel. Média"}
+                            </Text>
+                          </View>
+                        )}
+                        {selectedWorkoutDetail.avgHeartRate && (
+                          <View style={styles.workoutModalMetricCard}>
+                            <Text style={styles.workoutModalMetricValue}>
+                              {selectedWorkoutDetail.avgHeartRate} bpm
+                            </Text>
+                            <Text style={styles.workoutModalMetricSubLabel}>BPM Médio</Text>
+                          </View>
+                        )}
+                        {selectedWorkoutDetail.averageWatts ? (
+                          <View style={styles.workoutModalMetricCard}>
+                            <Text style={styles.workoutModalMetricValue}>
+                              {selectedWorkoutDetail.averageWatts} W
+                            </Text>
+                            <Text style={styles.workoutModalMetricSubLabel}>Potência</Text>
+                          </View>
+                        ) : null}
+                        {(selectedWorkoutDetail.type === "run" || selectedWorkoutDetail.type === "cycling" || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") || selectedWorkoutDetail.type?.toLowerCase().includes("ciclismo")) && (
+                          <>
+                            <View style={styles.workoutModalMetricCard}>
+                              <Text style={styles.workoutModalMetricValue}>
+                                {selectedWorkoutDetail.averageCadence ? `${selectedWorkoutDetail.averageCadence}` : "--"}
+                              </Text>
+                              <Text style={styles.workoutModalMetricSubLabel}>
+                                {selectedWorkoutDetail.type?.toLowerCase().includes("run") || selectedWorkoutDetail.type?.toLowerCase().includes("corrida") ? "Cadência (spm)" : "Cadência (rpm)"}
+                              </Text>
+                            </View>
+                            <View style={styles.workoutModalMetricCard}>
+                              <Text style={styles.workoutModalMetricValue}>
+                                {selectedWorkoutDetail.elevationGain ? `${Math.round(selectedWorkoutDetail.elevationGain)} m` : "0 m"}
+                              </Text>
+                              <Text style={styles.workoutModalMetricSubLabel}>Ganho Elevação</Text>
+                            </View>
+                          </>
+                        )}
+                        {selectedWorkoutDetail.effortRating && (
+                          <View style={styles.workoutModalMetricCard}>
+                            <Text style={styles.workoutModalMetricValue}>
+                              {selectedWorkoutDetail.effortRating} / 5
+                            </Text>
+                            <Text style={styles.workoutModalMetricSubLabel}>Esforço (RPE)</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* IA Analysis Narrative Section */}
+                      <View style={styles.workoutModalIaSection}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                          <Text style={[styles.workoutModalIaTitle, { marginBottom: 0 }]}>🧠 Análise do Sidekick (IA)</Text>
+                          {selectedWorkoutDetail.aiNarrative && (
+                            <TouchableOpacity
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                backgroundColor: "#222",
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: "#333",
+                              }}
+                              onPress={() => handleToggleSpeech(selectedWorkoutDetail.aiNarrative!)}
+                            >
+                              <Text style={{ color: "#ff6b6b", fontSize: 13, fontWeight: "700" }}>
+                                {isSpeaking ? "⏹️ Parar" : "🔊 Ouvir"}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        
+                        {selectedWorkoutDetail.aiNarrative ? (
+                          <View style={styles.workoutModalNarrativeContainer}>
+                            <Text style={styles.workoutModalNarrativeText}>
+                              {selectedWorkoutDetail.aiNarrative}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={styles.workoutModalIaEmpty}>
+                            <Text style={styles.workoutModalIaEmptyText}>
+                              Nenhuma análise gerada para esta atividade física ainda.
+                            </Text>
+                          </View>
+                        )}
+
+                        {!selectedWorkoutDetail.aiNarrative && (
+                          <TouchableOpacity
+                            style={[styles.workoutModalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.workoutModalAnalyzeButtonDisabled]}
+                            onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
+                            disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
+                          >
+                            {analyzingWorkoutId === selectedWorkoutDetail.id ? (
+                              <ActivityIndicator color="#ffffff" size="small" />
+                            ) : (
+                              <Text style={styles.workoutModalAnalyzeButtonText}>🧠 Analisar com IA</Text>
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </>
+                  )}
+                </ScrollView>
               </>
             ) : (
               <View style={{ padding: 24, alignItems: 'center' }}>
