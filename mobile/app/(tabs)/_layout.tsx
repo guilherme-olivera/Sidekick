@@ -1,7 +1,7 @@
 import React from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, View, StyleSheet } from "react-native";
 
 const DarkTheme = {
   dark: true,
@@ -15,23 +15,31 @@ const DarkTheme = {
   },
 };
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>["name"];
-  color: string;
-}) {
-  return <FontAwesome size={24} style={{ marginBottom: -3 }} {...props} />;
-}
-
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: "#ff6b6b",
-        tabBarInactiveTintColor: "#b0b0b0",
+        tabBarInactiveTintColor: "#888888",
+        tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: DarkTheme.colors.card,
-          borderTopColor: DarkTheme.colors.border,
-          paddingBottom: Platform.OS === "ios" ? 8 : 0,
+          position: "absolute",
+          bottom: Platform.OS === "ios" ? 28 : 16,
+          left: 45,
+          right: 45,
+          height: 62,
+          borderRadius: 31,
+          backgroundColor: "rgba(18, 18, 22, 0.95)",
+          borderWidth: 1.5,
+          borderColor: "rgba(255, 107, 107, 0.3)",
+          borderTopWidth: 1.5,
+          borderTopColor: "rgba(255, 107, 107, 0.3)",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.5,
+          shadowRadius: 16,
+          elevation: 12,
+          paddingBottom: 0,
         },
         headerShown: false,
       }}
@@ -40,8 +48,11 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Início",
-          tabBarLabel: "Início",
-          tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+              <FontAwesome name="home" size={22} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -54,18 +65,38 @@ export default function TabLayout() {
         name="calendar"
         options={{
           title: "Calendário",
-          tabBarLabel: "Calendário",
-          tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+              <FontAwesome name="calendar" size={20} color={color} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Perfil",
-          tabBarLabel: "Perfil",
-          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
+              <FontAwesome name="user" size={20} color={color} />
+            </View>
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: Platform.OS === "ios" ? 14 : 0,
+  },
+  iconWrapperActive: {
+    backgroundColor: "rgba(255, 107, 107, 0.15)",
+  },
+});

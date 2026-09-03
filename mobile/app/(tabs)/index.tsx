@@ -139,6 +139,7 @@ export default function HomeScreen() {
   const [chatSuggestions, setChatSuggestions] = useState<string[]>([]);
   const chatFlatListRef = useRef<FlatList>(null);
   const templateScrollRef = useRef<ScrollView>(null);
+  const indexModalScrollRef = useRef<ScrollView>(null);
 
   // Baseline Welcome Modal States
   const [baselineModalVisible, setBaselineModalVisible] = useState(false);
@@ -1121,7 +1122,14 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
-                <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+                <ScrollView
+                  ref={indexModalScrollRef}
+                  style={styles.modalScroll}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                  automaticallyAdjustKeyboardInsets={true}
+                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 350 : 40 }}
+                >
                   {effortModalVisible ? (
                     <View style={{ padding: 10 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -1164,6 +1172,11 @@ export default function HomeScreen() {
                         placeholderTextColor="#888"
                         value={userNotes}
                         onChangeText={setUserNotes}
+                        onFocus={() => {
+                          setTimeout(() => {
+                            indexModalScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 200);
+                        }}
                         multiline
                       />
 
@@ -2278,7 +2291,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 110,
   },
   header: {
     marginBottom: 20,

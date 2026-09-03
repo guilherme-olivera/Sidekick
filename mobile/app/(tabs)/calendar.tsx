@@ -70,6 +70,7 @@ export default function CalendarScreen() {
   const viewShotRef1 = useRef<any>(null);
   const viewShotRef2 = useRef<any>(null);
   const templateScrollRef = useRef<any>(null);
+  const calendarModalScrollRef = useRef<ScrollView>(null);
 
   const handleGenerateShareCard = (workout: any) => {
     setSelectedWorkoutId(null);
@@ -495,7 +496,14 @@ export default function CalendarScreen() {
                   </View>
                 </View>
 
-                <ScrollView style={styles.workoutModalScroll} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+                <ScrollView
+                  ref={calendarModalScrollRef}
+                  style={styles.workoutModalScroll}
+                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 350 : 40 }}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                  automaticallyAdjustKeyboardInsets={true}
+                >
                   {effortModalVisible ? (
                     <View style={{ padding: 10 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -539,6 +547,11 @@ export default function CalendarScreen() {
                       <TextInput
                         value={userNotes}
                         onChangeText={setUserNotes}
+                        onFocus={() => {
+                          setTimeout(() => {
+                            calendarModalScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 200);
+                        }}
                         placeholder="Escreva como se sentiu, dores, clima ou observações gerais..."
                         style={[styles.effortInput, { minHeight: 80 }]}
                         placeholderTextColor="#666"
