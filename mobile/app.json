@@ -7,7 +7,7 @@
     "icon": "./assets/images/sidekick-logo.png",
     "scheme": "sidekick",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/sidekick-logo.png",
       "resizeMode": "contain",
@@ -31,7 +31,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "react-native-reanimated"
     ],
     "experiments": {
       "typedRoutes": true
