@@ -77,7 +77,7 @@ const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0]; // Mapping DAYS to Date.getDay()
 export default function HomeScreen() {
   const router = useRouter();
   const today = new Date();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { isConnected: isStravaConnected, syncActivities } = useStrava();
   const [newWorkoutsSyncedMessage, setNewWorkoutsSyncedMessage] = useState<string | null>(null);
   const {
@@ -109,9 +109,18 @@ export default function HomeScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    if (refreshUser) {
+      refreshUser();
+    }
+  }, []);
+
   const onRefresh = async () => {
     try {
       setRefreshing(true);
+      if (refreshUser) {
+        await refreshUser();
+      }
       if (isStravaConnected) {
         try {
           await syncActivities();
@@ -150,6 +159,8 @@ export default function HomeScreen() {
   const [newAchievements, setNewAchievements] = useState<any[]>([]);
   const [newConquestsModalVisible, setNewConquestsModalVisible] = useState(false);
   const [dismissedMoodModal, setDismissedMoodModal] = useState(false);
+
+  const [readinessInfoModalVisible, setReadinessInfoModalVisible] = useState(false);
 
   useEffect(() => {
     if (shareCardVisible) {
@@ -386,7 +397,10 @@ export default function HomeScreen() {
       time: "Agora",
     });
 
-    // 2. Treinos pendentes (apenas treinos a partir da data de criação da conta)
+    // 2. Treinos pendentes recentes (apenas treinos dos últimos 7 dias que ainda não foram analisados)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const userCreatedAt = (user as any)?.createdAt ? new Date((user as any).createdAt) : null;
     const userCreatedDay = userCreatedAt 
       ? new Date(userCreatedAt.getFullYear(), userCreatedAt.getMonth(), userCreatedAt.getDate())
@@ -394,10 +408,11 @@ export default function HomeScreen() {
 
     const pendingAnalysisCount = workouts.filter(w => {
       if (w.aiNarrative) return false;
-      if (!userCreatedDay) return true;
       const wDate = new Date(w.date);
-      const wDay = new Date(wDate.getFullYear(), wDate.getMonth(), wDate.getDate());
-      return wDay >= userCreatedDay;
+      // Ignorar treinos históricos antigos (mais de 7 dias) do Strava
+      if (wDate < sevenDaysAgo) return false;
+      if (userCreatedDay && wDate < userCreatedDay) return false;
+      return true;
     }).length;
 
     if (pendingAnalysisCount > 0) {
@@ -405,7 +420,7 @@ export default function HomeScreen() {
         id: "workouts",
         icon: "👟",
         title: "Treinos para analisar",
-        description: `Você tem ${pendingAnalysisCount} treino${pendingAnalysisCount > 1 ? "s" : ""} pendente${pendingAnalysisCount > 1 ? "s" : ""} de análise de IA.`,
+        description: `Você tem ${pendingAnalysisCount} treino${pendingAnalysisCount > 1 ? "s" : ""} pendente${pendingAnalysisCount > 1 ? "s" : ""} de análise de IA nos últimos dias.`,
         time: "10m atrás",
       });
     }
@@ -731,17 +746,100 @@ export default function HomeScreen() {
   };
 
   const handleShowReadinessInfo = () => {
-    Alert.alert(
-      "Prontidão Atlética (Athletic Readiness)",
-      "Este índice avalia seu estado físico atual para treinar:\n\n" +
-      "• Recuperação: Tempo de descanso diário sugerido com base no cansaço acumulado.\n" +
-      "• Sono: Projeção de repouso ideal com base no humor do seu check-in diário.\n" +
-      "• HRV (Variabilidade Cardíaca): Indica o equilíbrio do seu sistema nervoso autônomo. Valores maiores representam menor cansaço.\n" +
-      "• Estresse: Nível de fadiga muscular calculado a partir dos treinos anteriores.\n\n" +
-      "O índice diário é gerado ponderando o humor do check-in, dores/lesões e o volume total semanal.",
-      [{ text: "Entendido", style: "default" }]
-    );
+    setReadinessInfoModalVisible(true);
   };
+
+  const racePredictions = useMemo(() => {
+    const runningWorkouts = workouts.filter(w => w.type === "run" && (w.distance || 0) >= 0.5);
+    if (runningWorkouts.length === 0) {
+      return {
+        "5k": { formattedTime: "--:--", pace: "-- /km", delta: 0, deltaText: "--" },
+        "10k": { formattedTime: "--:--", pace: "-- /km", delta: 0, deltaText: "--" },
+        "21k": { formattedTime: "--:--", pace: "-- /km", delta: 0, deltaText: "--" },
+        "42k": { formattedTime: "--:--", pace: "-- /km", delta: 0, deltaText: "--" },
+      };
+    }
+
+    const sortedWorkouts = [...runningWorkouts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    let bestRun = sortedWorkouts[0];
+    let bestPace = Infinity;
+    for (const w of sortedWorkouts) {
+      const dist = w.distance || 1;
+      const dur = w.duration || 0;
+      if (dur > 0) {
+        const pace = dur / dist;
+        if (pace < bestPace) {
+          bestPace = pace;
+          bestRun = w;
+        }
+      }
+    }
+
+    const olderWorkouts = sortedWorkouts.slice(Math.min(2, sortedWorkouts.length - 1));
+    let olderRun = olderWorkouts.length > 0 ? olderWorkouts[0] : bestRun;
+    let olderBestPace = Infinity;
+    for (const w of olderWorkouts) {
+      const dist = w.distance || 1;
+      const dur = w.duration || 0;
+      if (dur > 0) {
+        const pace = dur / dist;
+        if (pace < olderBestPace) {
+          olderBestPace = pace;
+          olderRun = w;
+        }
+      }
+    }
+
+    const d1Current = bestRun.distance || 5.0;
+    const t1Current = bestRun.duration || 1500;
+
+    const d1Older = olderRun.distance || d1Current;
+    const t1Older = olderRun.duration || t1Current;
+
+    const formatDeltaText = (diffSec: number) => {
+      const absSec = Math.abs(diffSec);
+      if (absSec === 0) return "--";
+      const mins = Math.floor(absSec / 60);
+      const secs = Math.round(absSec % 60);
+      if (mins > 0) {
+        return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+      }
+      return `${secs}s`;
+    };
+
+    const calculateForDist = (d2: number) => {
+      const currentSec = Math.round(t1Current * Math.pow(d2 / d1Current, 1.06));
+      const olderSec = Math.round(t1Older * Math.pow(d2 / d1Older, 1.06));
+
+      const diffSec = olderSec - currentSec; // positive if current is faster (improved!)
+
+      const hrs = Math.floor(currentSec / 3600);
+      const mins = Math.floor((currentSec % 3600) / 60);
+      const secs = Math.round(currentSec % 60);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const formattedTime = hrs > 0 ? `${hrs}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
+
+      const paceSecPerKm = currentSec / d2;
+      const paceMins = Math.floor(paceSecPerKm / 60);
+      const paceSecs = Math.round(paceSecPerKm % 60);
+      const pace = `${pad(paceMins)}:${pad(paceSecs)} /km`;
+
+      return {
+        formattedTime,
+        pace,
+        delta: diffSec,
+        deltaText: formatDeltaText(diffSec),
+      };
+    };
+
+    return {
+      "5k": calculateForDist(5.0),
+      "10k": calculateForDist(10.0),
+      "21k": calculateForDist(21.0975),
+      "42k": calculateForDist(42.195),
+    };
+  }, [workouts]);
 
   const selectedWorkoutDetail = 
     workouts.find(w => w.id === selectedWorkoutIdForDetail) || 
@@ -829,9 +927,12 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                   <View style={styles.readinessSubBox}>
-                    <Text style={styles.readinessSubLabel}>SONO</Text>
-                    <Text style={styles.readinessSubVal}>
-                      {`${(user.readiness.details.sleepFactor / 12 + 1).toFixed(1)}H`}
+                    <Text style={styles.readinessSubLabel}>DISPOSIÇÃO</Text>
+                    <Text style={[
+                      styles.readinessSubVal,
+                      { color: user.readiness.score >= 80 ? Colors.success : user.readiness.score >= 60 ? Colors.warning : Colors.primary }
+                    ]}>
+                      {currentMood ? currentMood.toUpperCase() : "NORMAL"}
                     </Text>
                   </View>
                   <View style={styles.readinessSubBox}>
@@ -851,6 +952,50 @@ export default function HomeScreen() {
                   </View>
                 </View>
               </View>
+
+              {(() => {
+                const acwrInfo = user.readiness.acwr || {
+                  ratio: "0.00",
+                  label: "Adaptação Ótima (Seguro)",
+                  color: "#51cf66",
+                };
+                return (
+                  <View style={{
+                    marginTop: 14,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: "rgba(255, 255, 255, 0.08)",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#aaaaaa", letterSpacing: 0.5 }}>
+                        ÍNDICE ACWR (RISCO DE LESÃO)
+                      </Text>
+                      <Text style={{ fontSize: 10, color: "#777777", marginTop: 2 }}>
+                        Carga Aguda / Crônica
+                      </Text>
+                    </View>
+                    <View style={{
+                      backgroundColor: `${acwrInfo.color || Colors.success}22`,
+                      borderColor: acwrInfo.color || Colors.success,
+                      borderWidth: 1,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 12,
+                    }}>
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: acwrInfo.color || Colors.success,
+                      }}>
+                        {acwrInfo.ratio} • {acwrInfo.label}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           </View>
         )}
@@ -992,6 +1137,142 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
+
+        {/* Preditor de Ritmo de Provas (Projeção Riegel) - Posicionado abaixo do Comparativo de Volume */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>⏱️ PREVISÕES DE DESEMPENHO (PROVAS)</Text>
+          </View>
+          <View style={{
+            backgroundColor: "#16161a",
+            borderRadius: 18,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: "rgba(255, 255, 255, 0.08)",
+          }}>
+            <Text style={{ fontSize: 11, color: "#aaaaaa", marginBottom: 14, lineHeight: 16 }}>
+              Estimativa de tempo e pace ideal para concluir distâncias oficiais com variação de ritmo recente:
+            </Text>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {/* 5 km */}
+              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: "900", color: Colors.primary }}>5K</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
+                  {racePredictions["5k"]?.formattedTime || "--:--"}
+                </Text>
+                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
+                  {racePredictions["5k"]?.pace || "-- /km"}
+                </Text>
+                <View style={{
+                  backgroundColor: (racePredictions["5k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["5k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: (racePredictions["5k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["5k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                }}>
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: (racePredictions["5k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["5k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
+                  }}>
+                    {(racePredictions["5k"]?.delta || 0) > 0 ? `▼ ${racePredictions["5k"].deltaText}` : (racePredictions["5k"]?.delta || 0) < 0 ? `▲ ${racePredictions["5k"].deltaText}` : "--"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 10 km */}
+              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: "900", color: Colors.primary }}>10K</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
+                  {racePredictions["10k"]?.formattedTime || "--:--"}
+                </Text>
+                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
+                  {racePredictions["10k"]?.pace || "-- /km"}
+                </Text>
+                <View style={{
+                  backgroundColor: (racePredictions["10k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["10k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: (racePredictions["10k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["10k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                }}>
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: (racePredictions["10k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["10k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
+                  }}>
+                    {(racePredictions["10k"]?.delta || 0) > 0 ? `▼ ${racePredictions["10k"].deltaText}` : (racePredictions["10k"]?.delta || 0) < 0 ? `▲ ${racePredictions["10k"].deltaText}` : "--"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 21.1 km */}
+              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: "900", color: Colors.primary }}>21,1K</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
+                  {racePredictions["21k"]?.formattedTime || "--:--"}
+                </Text>
+                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
+                  {racePredictions["21k"]?.pace || "-- /km"}
+                </Text>
+                <View style={{
+                  backgroundColor: (racePredictions["21k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["21k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: (racePredictions["21k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["21k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                }}>
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: (racePredictions["21k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["21k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
+                  }}>
+                    {(racePredictions["21k"]?.delta || 0) > 0 ? `▼ ${racePredictions["21k"].deltaText}` : (racePredictions["21k"]?.delta || 0) < 0 ? `▲ ${racePredictions["21k"].deltaText}` : "--"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* 42.2 km */}
+              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: "900", color: Colors.primary }}>42,2K</Text>
+                </View>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
+                  {racePredictions["42k"]?.formattedTime || "--:--"}
+                </Text>
+                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
+                  {racePredictions["42k"]?.pace || "-- /km"}
+                </Text>
+                <View style={{
+                  backgroundColor: (racePredictions["42k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["42k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: (racePredictions["42k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["42k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                }}>
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: (racePredictions["42k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["42k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
+                  }}>
+                    {(racePredictions["42k"]?.delta || 0) > 0 ? `▼ ${racePredictions["42k"].deltaText}` : (racePredictions["42k"]?.delta || 0) < 0 ? `▲ ${racePredictions["42k"].deltaText}` : "--"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
 
         {/* Latest Workout */}
         <View style={styles.section}>
@@ -1414,6 +1695,58 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal Explicativo de Prontidão (Readiness & ACWR) */}
+      <Modal
+        visible={readinessInfoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setReadinessInfoModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setReadinessInfoModalVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+            <TouchableWithoutFeedback>
+              <View style={{ backgroundColor: "#1a1a1a", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, borderWidth: 1, borderColor: "#333333" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <Text style={{ fontSize: 18, fontWeight: "bold", color: "#ffffff" }}>🔋 Entendendo sua Prontidão</Text>
+                  <TouchableOpacity onPress={() => setReadinessInfoModalVisible(false)} style={{ padding: 4 }}>
+                    <FontAwesome name="times" size={20} color="#888888" />
+                  </TouchableOpacity>
+                </View>
+                
+                <ScrollView style={{ maxHeight: 400 }}>
+                  <Text style={{ fontSize: 13, color: "#dddddd", lineHeight: 20, marginBottom: 14 }}>
+                    A <Text style={{ fontWeight: "bold", color: Colors.primary }}>Prontidão Atlética (Readiness Score)</Text> mede a capacidade de regeneração do seu corpo para encarar novos treinos sem risco de sobrecarga ou lesão.
+                  </Text>
+
+                  <View style={{ backgroundColor: "#222222", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "bold", color: "#51cf66", marginBottom: 6 }}>📈 Como é calculada?</Text>
+                    <Text style={{ fontSize: 12, color: "#bbbbbb", lineHeight: 18 }}>
+                      • <Text style={{ color: "#ffffff", fontWeight: "600" }}>Status Diário / Disposição</Text>: Sua percepção de energia registrada no check-in diário.{"\n"}
+                      • <Text style={{ color: "#ffffff", fontWeight: "600" }}>Fadiga Residual</Text>: O impacto dos treinos diminui exponencialmente ao longo de 96h.{"\n"}
+                      • <Text style={{ color: "#ffffff", fontWeight: "600" }}>Bônus de Descanso</Text>: Dias sem treinar adicionam pontos de regeneração progressiva.
+                    </Text>
+                  </View>
+
+                  <View style={{ backgroundColor: "#222222", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "bold", color: "#ffa94d", marginBottom: 6 }}>⚖️ Índice ACWR (Risco de Lesão)</Text>
+                    <Text style={{ fontSize: 12, color: "#bbbbbb", lineHeight: 18 }}>
+                      Compara o volume da sua semana atual (Carga Aguda) com a média das últimas 4 semanas (Carga Crônica). O valor seguro fica entre <Text style={{ color: "#51cf66", fontWeight: "bold" }}>0.8 e 1.3</Text>.
+                    </Text>
+                  </View>
+                </ScrollView>
+
+                <TouchableOpacity
+                  onPress={() => setReadinessInfoModalVisible(false)}
+                  style={{ backgroundColor: Colors.primary, paddingVertical: 12, borderRadius: 12, alignItems: "center", marginTop: 16 }}
+                >
+                  <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 14 }}>Entendi!</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Instagram Stories Share Mockup Modal */}

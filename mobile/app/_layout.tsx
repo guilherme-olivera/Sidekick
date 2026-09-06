@@ -23,27 +23,32 @@ export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync().catch(() => {});
+// Safe Splash Screen prevention call wrapped inside try-catch to prevent native startup rejections
+try {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+} catch (e) {
+  // Ignore splash screen initialization errors on standalone release builds
+}
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
+  const [loaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    if (fontError) {
+      console.warn('[RootLayout] Font loading warning:', fontError);
+    }
+  }, [fontError]);
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded || fontError) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [loaded]);
+  }, [loaded, fontError]);
 
-  if (!loaded) {
+  if (!loaded && !fontError) {
     return null;
   }
 
@@ -70,54 +75,58 @@ function RootLayoutNav() {
   const textTranslateY = useRef(new Animated.Value(15)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 1.2,
-        tension: 40,
-        friction: 6,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      Animated.spring(logoScale, {
-        toValue: 1.0,
-        tension: 30,
-        friction: 7,
-        useNativeDriver: true,
-      }).start(() => {
-        Animated.parallel([
-          Animated.timing(textOpacity, {
-            toValue: 0.8,
-            duration: 650,
-            useNativeDriver: true,
-          }),
-          Animated.timing(textTranslateY, {
-            toValue: 0,
-            duration: 650,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          Animated.loop(
-            Animated.sequence([
-              Animated.timing(logoPulse, {
-                toValue: 1.05,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-              Animated.timing(logoPulse, {
-                toValue: 1.0,
-                duration: 1000,
-                useNativeDriver: true,
-              }),
-            ])
-          ).start();
+    try {
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1.2,
+          tension: 40,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        Animated.spring(logoScale, {
+          toValue: 1.0,
+          tension: 30,
+          friction: 7,
+          useNativeDriver: true,
+        }).start(() => {
+          Animated.parallel([
+            Animated.timing(textOpacity, {
+              toValue: 0.8,
+              duration: 650,
+              useNativeDriver: true,
+            }),
+            Animated.timing(textTranslateY, {
+              toValue: 0,
+              duration: 650,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            Animated.loop(
+              Animated.sequence([
+                Animated.timing(logoPulse, {
+                  toValue: 1.05,
+                  duration: 1000,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(logoPulse, {
+                  toValue: 1.0,
+                  duration: 1000,
+                  useNativeDriver: true,
+                }),
+              ])
+            ).start();
+          });
         });
       });
-    });
+    } catch (err) {
+      console.warn('[RootLayoutNav] Animation init warning:', err);
+    }
   }, []);
 
   const animatedScale = Animated.multiply(logoScale, logoPulse);
@@ -125,17 +134,25 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    if (!token) {
-      router.replace("/login");
-    } else {
-      registerForPushNotificationsAsync().catch(() => {});
-      const isConfigured = user?.profile?.isConfigured === true;
-      if (isConfigured) {
-        router.replace("/(tabs)");
-      } else {
-        router.replace("/onboarding");
+    const timer = setTimeout(() => {
+      try {
+        if (!token) {
+          router.replace("/login");
+        } else {
+          registerForPushNotificationsAsync().catch(() => {});
+          const isConfigured = user?.profile?.isConfigured === true;
+          if (isConfigured) {
+            router.replace("/(tabs)");
+          } else {
+            router.replace("/onboarding");
+          }
+        }
+      } catch (err) {
+        console.warn('[RootLayoutNav] Navigation redirect error:', err);
       }
-    }
+    }, 50);
+
+    return () => clearTimeout(timer);
   }, [token, user, isLoading]);
 
   if (isLoading) {

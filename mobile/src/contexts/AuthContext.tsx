@@ -37,6 +37,7 @@ interface User {
     score: number;
     label: string;
     color: string;
+    acwr?: any;
     details: {
       sleepFactor: number;
       fatiguePenalty: number;

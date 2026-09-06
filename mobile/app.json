@@ -8,6 +8,9 @@
     "scheme": "sidekick",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "splash": {
       "image": "./assets/images/sidekick-logo.png",
       "resizeMode": "contain",

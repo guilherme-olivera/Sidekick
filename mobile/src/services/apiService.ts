@@ -6,9 +6,11 @@ import Constants from 'expo-constants';
 
 const rawApiBase =
   process.env.EXPO_PUBLIC_API_URL ||
-  ((Constants.expoConfig?.extra as any)?.API_URL as string) ||
-  ((Constants.manifest?.extra as any)?.API_URL as string) ||
-  'https://sidekick-jtne.onrender.com';
+  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : ((Constants.expoConfig?.extra as any)?.API_URL as string) ||
+      ((Constants.manifest?.extra as any)?.API_URL as string) ||
+      'https://sidekick-jtne.onrender.com');
 
 export let API_BASE_URL = rawApiBase;
 // Ensure protocol is present for React Native fetch to work

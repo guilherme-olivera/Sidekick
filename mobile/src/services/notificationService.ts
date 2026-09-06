@@ -178,11 +178,47 @@ export async function cancelEventNotifications(eventId: string) {
   await saveStore(map);
 }
 
+export async function sendTestNotification(
+  title = '⚡ Sidekick — Notificação de Teste',
+  body = 'Sua notificação foi configurada e disparada com sucesso! 🚀'
+) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body });
+      } else if (Notification.permission !== 'denied') {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          new Notification(title, { body });
+        }
+      }
+    }
+    return;
+  }
+
+  await requestPermissions();
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: true,
+      data: { test: true },
+    },
+    trigger: {
+      type: 'timeInterval',
+      seconds: 2,
+      repeats: false,
+    } as any,
+  });
+}
+
 const notificationService = {
   scheduleEventNotifications,
   cancelEventNotifications,
   requestPermissions,
   registerForPushNotificationsAsync,
+  sendTestNotification,
 };
 
 export default notificationService;

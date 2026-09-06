@@ -25,6 +25,7 @@ import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { apiUpload, API_BASE_URL, apiService } from "@/src/services/apiService";
+import notificationService from "@/src/services/notificationService";
 import { router } from "expo-router";
 
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
@@ -107,9 +108,43 @@ export default function ProfileScreen() {
   const [isCompanionModalVisible, setIsCompanionModalVisible] = useState(false);
   const [savingCompanion, setSavingCompanion] = useState(false);
 
-  // Estados para compartilhamento de conquistas
+  // Estados para compartilhamento de conquistas e evolução (Stories)
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareGoalsModalVisible, setShareGoalsModalVisible] = useState(false);
+  const [shareGoalsBgUri, setShareGoalsBgUri] = useState<string | null>(null);
+  const viewShotGoalsRef = useRef<any>(null);
+
+  const handlePickShareGoalsBg = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [9, 16],
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setShareGoalsBgUri(result.assets[0].uri);
+    }
+  };
+
+  const handleShareGoalsToInstagram = async () => {
+    try {
+      if (viewShotGoalsRef.current) {
+        const uri = await captureRef(viewShotGoalsRef, {
+          format: "png",
+          quality: 1,
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri);
+        } else {
+          Alert.alert("Sucesso", "Card de Stories gerado com sucesso!");
+        }
+      }
+    } catch (err) {
+      console.error("Error sharing goals card:", err);
+      Alert.alert("Erro", "Não foi possível compartilhar o card de evolução.");
+    }
+  };
 
   // Estados para diagnóstico do sistema
   const [testingDiagnostics, setTestingDiagnostics] = useState(false);
@@ -120,8 +155,70 @@ export default function ProfileScreen() {
   const [activeProfileTab, setActiveProfileTab] = useState<"evolucao" | "conquistas">("evolucao");
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
 
+  // Estados para Transmissão Push (Admin Broadcast)
+  const [isBroadcastModalVisible, setIsBroadcastModalVisible] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("🎉 Parabéns pela sua jornada!");
+  const [broadcastBody, setBroadcastBody] = useState("Que tal se tornar Premium para desbloquear análises avançadas de IA e metas personalizadas? 🚀");
+  const [broadcastFilter, setBroadcastFilter] = useState<"all" | "free" | "premium">("all");
+  const [sendLocalCopy, setSendLocalCopy] = useState(true);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
+  const handleSendBroadcastNotification = async () => {
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) {
+      Alert.alert("Atenção", "Preencha o título e a mensagem da notificação.");
+      return;
+    }
+
+    setIsSendingBroadcast(true);
+    try {
+      // 1. Send via Backend API endpoint
+      const response = await apiService.post("/admin/broadcast-notification", {
+        title: broadcastTitle.trim(),
+        body: broadcastBody.trim(),
+        filter: broadcastFilter,
+      });
+
+      // 2. Trigger local pop-up notification if option is checked
+      if (sendLocalCopy) {
+        await notificationService.sendTestNotification(
+          broadcastTitle.trim(),
+          broadcastBody.trim()
+        );
+      }
+
+      setIsBroadcastModalVisible(false);
+
+      const sentCount = response?.result?.sent ?? 0;
+      Alert.alert(
+        "🚀 Notificação Disparada!",
+        `Sua notificação foi enviada com sucesso ao servidor de transmissão!\n\nDispositivos alcançados: ${sentCount}${sendLocalCopy ? "\n\n💡 Pop-up de teste agendado no seu dispositivo em 2 segundos." : ""}`
+      );
+    } catch (err: any) {
+      console.error("Erro ao enviar notificação broadcast:", err);
+      Alert.alert("Erro", err.message || "Falha ao enviar notificação aos usuários.");
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
+
+  const isAdmin = Boolean(
+    user?.email && (
+      (user as any).role === "admin" ||
+      (user as any).isAdmin === true ||
+      user.email.toLowerCase().includes("adm") ||
+      user.email.toLowerCase() === "adm@adm.com" ||
+      user.email.toLowerCase() === "guilherme.oliveirasantos@hotmail.com"
+    )
+  );
+
+  const applyPresetNotification = (title: string, body: string) => {
+    setBroadcastTitle(title);
+    setBroadcastBody(body);
+  };
+
   // Estados para expansão de melhores marcas e compartilhamento de RPs/Troféus
   const [isBestsExpanded, setIsBestsExpanded] = useState(true);
+  const [showAllTrophies, setShowAllTrophies] = useState(false);
   const [prShareModalVisible, setPrShareModalVisible] = useState(false);
   const [selectedPrForShare, setSelectedPrForShare] = useState<{ label: string; timeVal: string } | null>(null);
   const prViewShotRef = useRef<any>(null);
@@ -601,6 +698,21 @@ export default function ProfileScreen() {
   const currentLevel = Math.max(1, Math.floor(totalXp / xpPerLevel) + 1);
   const currentXpInLevel = totalXp % xpPerLevel;
   const xpProgressPct = (currentXpInLevel / xpPerLevel) * 100;
+  // ----- ANNUAL SVG CHART CALCULATIONS -----
+  const currentYear = new Date().getFullYear();
+  const monthsAbbr = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  
+  const monthlyData = monthsAbbr.map((label, index) => {
+    const monthWorkouts = allWorkouts.filter(w => {
+      const d = new Date(w.date);
+      return d.getFullYear() === currentYear && d.getMonth() === index && w.type === "run";
+    });
+    const distance = monthWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
+    return { label, distance };
+  });
+
+  const maxMonthlyDistance = Math.max(...monthlyData.map(d => d.distance), 10);
+  const currentMonthIdx = new Date().getMonth();
 
   const trophies = [
     {
@@ -645,6 +757,48 @@ export default function ProfileScreen() {
       emoji: "🏆",
       unlocked: monthlyChallengeComplete,
     },
+    {
+      id: "runner_21k",
+      title: "Dominador de 21K",
+      description: "Completou a marca de uma Meia Maratona (21.1km).",
+      emoji: "🏅",
+      unlocked: allWorkouts.some(w => w.type === "run" && (w.distance || 0) >= 21),
+    },
+    {
+      id: "runner_42k",
+      title: "Lenda da Maratona",
+      description: "Completou o desafio épico de uma Maratona (42.2km).",
+      emoji: "👑",
+      unlocked: allWorkouts.some(w => w.type === "run" && (w.distance || 0) >= 42),
+    },
+    {
+      id: "consistency_10",
+      title: "Imparável",
+      description: "Acumulou 10 treinos registrados no Sidekick.",
+      emoji: "⚡",
+      unlocked: totalWorkouts >= 10,
+    },
+    {
+      id: "consistency_20",
+      title: "Atleta Dedicado",
+      description: "Acumulou 20 treinos registrados no Sidekick.",
+      emoji: "🎖️",
+      unlocked: totalWorkouts >= 20,
+    },
+    {
+      id: "sub_5_pace",
+      title: "Ritmo de Fogo",
+      description: "Correu com um pace médio inferior a 5:00 min/km.",
+      emoji: "🚀",
+      unlocked: allWorkouts.some(w => w.type === "run" && w.averageSpeed && w.averageSpeed > 0 && (1000 / (w.averageSpeed * 60)) < 5),
+    },
+    {
+      id: "monthly_100k",
+      title: "Centenário do Mês",
+      description: "Superou 100 km acumulados em um único mês.",
+      emoji: "⭐",
+      unlocked: (monthlyData[currentMonthIdx]?.distance || 0) >= 100,
+    },
   ];
 
   const handleTrophyPress = (trophy: any) => {
@@ -662,22 +816,6 @@ export default function ProfileScreen() {
     });
     setShareModalVisible(true);
   };
-
-  // ----- ANNUAL SVG CHART CALCULATIONS -----
-  const currentYear = new Date().getFullYear();
-  const monthsAbbr = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  
-  const monthlyData = monthsAbbr.map((label, index) => {
-    const monthWorkouts = allWorkouts.filter(w => {
-      const d = new Date(w.date);
-      return d.getFullYear() === currentYear && d.getMonth() === index && w.type === "run";
-    });
-    const distance = monthWorkouts.reduce((sum, w) => sum + (w.distance || 0), 0);
-    return { label, distance };
-  });
-
-  const maxMonthlyDistance = Math.max(...monthlyData.map(d => d.distance), 10);
-  const currentMonthIdx = new Date().getMonth();
   const monthsToAverage = monthlyData.slice(0, currentMonthIdx + 1);
   const totalYearDistance = monthsToAverage.reduce((sum, m) => sum + m.distance, 0);
   const averageMonthlyDistance = totalYearDistance / (currentMonthIdx + 1);
@@ -873,13 +1011,25 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={styles.settingsGearBtn}
-              onPress={() => setIsSettingsModalVisible(true)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.settingsGearIcon}>⚙️</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {isAdmin && (
+                <TouchableOpacity
+                  style={styles.settingsGearBtn}
+                  onPress={() => setIsBroadcastModalVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.settingsGearIcon}>📢</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={styles.settingsGearBtn}
+                onPress={() => setIsSettingsModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.settingsGearIcon}>⚙️</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -970,6 +1120,35 @@ export default function ProfileScreen() {
                 </View>
               </View>
             )}
+
+            {/* BOTÃO SOLICITADO PELO USUÁRIO: LOGO ABAIXO DO CARD DE METAS */}
+            <TouchableOpacity
+              style={{
+                backgroundColor: "#1f1f24",
+                borderColor: "#fc4c02",
+                borderWidth: 1.5,
+                borderRadius: 16,
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                marginTop: 4,
+                shadowColor: "#fc4c02",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+              onPress={() => setShareGoalsModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 20, marginRight: 10 }}>📲</Text>
+              <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 15, letterSpacing: 0.3 }}>
+                Compartilhar Evolução nos Stories
+              </Text>
+            </TouchableOpacity>
             {/* Card 2: Evolução & Nível (IA) */}
             <View style={styles.levelCardNew}>
               <View style={styles.levelHeaderNew}>
@@ -1178,7 +1357,7 @@ export default function ProfileScreen() {
               <Text style={styles.trophyShelfSubtitleNew}>Toque em um troféu conquistado para comemorar nos Stories!</Text>
               
               <View style={styles.trophyGridNew}>
-                {trophies.map(trophy => {
+                {(showAllTrophies ? trophies : trophies.slice(0, 6)).map(trophy => {
                   return (
                     <TouchableOpacity
                       key={trophy.id}
@@ -1209,6 +1388,18 @@ export default function ProfileScreen() {
                   );
                 })}
               </View>
+
+              <TouchableOpacity
+                style={styles.showMoreTrophiesBtn}
+                onPress={() => setShowAllTrophies((prev) => !prev)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.showMoreTrophiesText}>
+                  {showAllTrophies
+                    ? "Mostrar menos ▲"
+                    : `Ver mais conquistas (${trophies.filter(t => t.unlocked).length}/${trophies.length} conquistados) ▼`}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Card: Melhores marcas style Strava */}
@@ -1218,7 +1409,7 @@ export default function ProfileScreen() {
                   <Text style={styles.stravaBestsLogo}>⬢</Text>
                   <Text style={styles.stravaBestsTitle}>Melhores marcas</Text>
                 </View>
-                <Text style={styles.stravaBestsChevron}>{isBestsExpanded ? "▲" : "▼"}</Text>
+                <FontAwesome name={isBestsExpanded ? "chevron-up" : "chevron-down"} size={14} color="#aaaaaa" />
               </TouchableOpacity>
 
               {isBestsExpanded && (
@@ -1567,15 +1758,29 @@ export default function ProfileScreen() {
                   </ScrollView>
 
                   <View style={styles.settingsActionsRow}>
-                    <TouchableOpacity
-                      style={styles.settingsDiagBtn}
-                      onPress={() => {
-                        setIsSettingsModalVisible(false);
-                        runDiagnostics();
-                      }}
-                    >
-                      <Text style={styles.settingsDiagBtnText}>🛠️ Diagnóstico</Text>
-                    </TouchableOpacity>
+                    {isAdmin && (
+                      <>
+                        <TouchableOpacity
+                          style={styles.settingsDiagBtn}
+                          onPress={() => {
+                            setIsSettingsModalVisible(false);
+                            setIsBroadcastModalVisible(true);
+                          }}
+                        >
+                          <Text style={styles.settingsDiagBtnText}>📢 Notificação Push</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.settingsDiagBtn}
+                          onPress={() => {
+                            setIsSettingsModalVisible(false);
+                            runDiagnostics();
+                          }}
+                        >
+                          <Text style={styles.settingsDiagBtnText}>🛠️ Diagnóstico</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
 
                     <TouchableOpacity
                       style={styles.settingsLogoutBtn}
@@ -1597,6 +1802,169 @@ export default function ProfileScreen() {
         </Modal>
 
         <View style={{ height: 30 }} />
+
+        {/* Modal: Disparo de Notificação Push (Admin Broadcast) */}
+        <Modal
+          visible={isBroadcastModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsBroadcastModalVisible(false)}
+        >
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { maxHeight: "90%", padding: 20 }]}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <Text style={styles.modalTitle}>📢 Disparo Push (Admin)</Text>
+                    <TouchableOpacity onPress={() => setIsBroadcastModalVisible(false)}>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 20, fontWeight: "bold" }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 18, marginBottom: 16 }}>
+                    Envie mensagens de engajamento, ofertas e lembretes diretamente para a barra de notificações de todos os seus usuários.
+                  </Text>
+
+                  {/* Atalhos Rápidos / Presets */}
+                  <Text style={{ color: Colors.text, fontWeight: "700", fontSize: 13, marginBottom: 8 }}>
+                    ⚡ Predefinições de 1 Clique:
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                    <TouchableOpacity
+                      style={styles.presetChip}
+                      onPress={() => applyPresetNotification(
+                        "🎉 Parabéns pela sua jornada!",
+                        "Que tal se tornar Premium para desbloquear análises avançadas de IA e metas personalizadas? 🚀"
+                      )}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.presetChipText}>👑 Convite Premium</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.presetChip}
+                      onPress={() => applyPresetNotification(
+                        "🏃‍♂️ Hora de Treinar!",
+                        "Sua taxa de Prontidão está excelente hoje! Que tal garantir a consistência do seu plano?"
+                      )}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.presetChipText}>🏃 Motivação Diária</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.presetChip}
+                      onPress={() => applyPresetNotification(
+                        "⚡ Novas Previsões de Tempo!",
+                        "Confira suas previsões de ritmo para 5k, 10k, 21.1k e Maratona atualizadas na sua Home."
+                      )}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.presetChipText}>📊 Novidades do App</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+
+                  {/* Título Input */}
+                  <Text style={styles.broadcastInputLabel}>Título da Notificação:</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={broadcastTitle}
+                    onChangeText={setBroadcastTitle}
+                    placeholder="Ex: 🎉 Parabéns pela sua jornada!"
+                    placeholderTextColor="#666"
+                  />
+
+                  {/* Corpo Input */}
+                  <Text style={styles.broadcastInputLabel}>Mensagem / Corpo:</Text>
+                  <TextInput
+                    style={[styles.textInput, { height: 85, textAlignVertical: "top" }]}
+                    value={broadcastBody}
+                    onChangeText={setBroadcastBody}
+                    placeholder="Ex: Que tal se tornar Premium para desbloquear análises ilimitadas?"
+                    placeholderTextColor="#666"
+                    multiline={true}
+                  />
+
+                  {/* Filtro de Destinatários */}
+                  <Text style={styles.broadcastInputLabel}>Público-Alvo:</Text>
+                  <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+                    <TouchableOpacity
+                      style={[styles.filterChip, broadcastFilter === "all" && styles.filterChipActive]}
+                      onPress={() => setBroadcastFilter("all")}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.filterChipText, broadcastFilter === "all" && styles.filterChipTextActive]}>👥 Todos</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterChip, broadcastFilter === "free" && styles.filterChipActive]}
+                      onPress={() => setBroadcastFilter("free")}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.filterChipText, broadcastFilter === "free" && styles.filterChipTextActive]}>🆓 Apenas Free</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.filterChip, broadcastFilter === "premium" && styles.filterChipActive]}
+                      onPress={() => setBroadcastFilter("premium")}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.filterChipText, broadcastFilter === "premium" && styles.filterChipTextActive]}>👑 Apenas Premium</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Checkbox Simulação Local */}
+                  <TouchableOpacity 
+                    style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 }}
+                    onPress={() => setSendLocalCopy(!sendLocalCopy)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      borderWidth: 2,
+                      borderColor: sendLocalCopy ? Colors.primary : "#555",
+                      backgroundColor: sendLocalCopy ? Colors.primary : "transparent",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}>
+                      {sendLocalCopy && <Text style={{ color: "#000", fontWeight: "bold", fontSize: 13 }}>✓</Text>}
+                    </View>
+                    <Text style={{ color: Colors.text, fontSize: 13, flex: 1 }}>
+                      Exibir também pop-up de teste no meu próprio aparelho agora (2s)
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Action Buttons */}
+                  <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+                    <TouchableOpacity
+                      style={[styles.modalBtnCancel, { flex: 1 }]}
+                      onPress={() => setIsBroadcastModalVisible(false)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.modalBtnConfirm, { flex: 1.6, backgroundColor: Colors.primary }]}
+                      onPress={handleSendBroadcastNotification}
+                      disabled={isSendingBroadcast}
+                      activeOpacity={0.8}
+                    >
+                      {isSendingBroadcast ? (
+                        <ActivityIndicator color="#000" />
+                      ) : (
+                        <Text style={[styles.modalBtnConfirmText, { color: "#000" }]}>🚀 Enviar Push</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
 
         {/* Diagnostic Modal */}
         <Modal
@@ -1892,6 +2260,118 @@ export default function ProfileScreen() {
                 >
                   <FontAwesome name="instagram" size={16} color="#fff" />
                   <Text style={{ color: "#fff", fontWeight: "700" }}>Instagram</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Compartilhamento da Evolução de Metas nos Stories */}
+        <Modal
+          visible={shareGoalsModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShareGoalsModalVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 16 }}>
+            <View style={{ backgroundColor: "#18181c", borderRadius: 20, padding: 20, width: "100%", maxWidth: 420, alignItems: "center", borderWidth: 1, borderColor: "#333333" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", alignItems: "center", marginBottom: 14 }}>
+                <Text style={{ fontSize: 16, fontWeight: "bold", color: "#ffffff" }}>📲 Stories de Evolução</Text>
+                <TouchableOpacity onPress={() => setShareGoalsModalVisible(false)}>
+                  <Text style={{ color: "#888888", fontSize: 20 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ViewShot Target (Stories 9:16 aspect card) */}
+              <ViewShot
+                ref={viewShotGoalsRef}
+                options={{ format: "png", quality: 1 }}
+                style={{
+                  width: 280,
+                  height: 480,
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  backgroundColor: "#0d0d11",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.15)",
+                  padding: 20,
+                  justifyContent: "space-between",
+                  position: "relative",
+                }}
+              >
+                {/* Background Image if selected */}
+                {shareGoalsBgUri && (
+                  <Image
+                    source={{ uri: shareGoalsBgUri }}
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.5 }}
+                    resizeMode="cover"
+                  />
+                )}
+
+                {/* Top Header */}
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={{ fontSize: 22, marginRight: 6 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
+                    <View>
+                      <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 13 }}>{user?.name || "Atleta"}</Text>
+                      <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: "700" }}>SIDEKICK EVOLUTION</Text>
+                    </View>
+                  </View>
+                  <View style={{ backgroundColor: "rgba(255, 107, 107, 0.2)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
+                    <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: "bold" }}>Lvl {currentLevel}</Text>
+                  </View>
+                </View>
+
+                {/* Center Content Box */}
+                <View style={{ backgroundColor: "rgba(20, 20, 26, 0.88)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)", zIndex: 2, alignItems: "center" }}>
+                  <Text style={{ color: "#aaaaaa", fontSize: 10, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
+                    MINHA META ATUAL
+                  </Text>
+                  <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "900", textAlign: "center", marginBottom: 8 }}>
+                    {user?.profile?.goalDistance === "5k" ? "Corrida de 5km" :
+                     user?.profile?.goalDistance === "10k" ? "Corrida de 10km" :
+                     user?.profile?.goalDistance === "15k" ? "Corrida de 15km" :
+                     user?.profile?.goalDistance === "half_marathon" ? "Meia Maratona (21km)" :
+                     user?.profile?.goalDistance === "marathon" ? "Maratona (42km)" : "Meta Personalizada"}
+                  </Text>
+
+                  <View style={{ width: "100%", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                    <Text style={{ color: "#888888", fontSize: 10, marginBottom: 2 }}>Frequência Semanal</Text>
+                    <Text style={{ color: Colors.success, fontSize: 13, fontWeight: "bold" }}>
+                      {currentWeekData.weeklyWorkouts.length} de {user?.profile?.weeklyFrequency || 3} treinos nesta semana
+                    </Text>
+                  </View>
+
+                  <Text style={{ color: "#cccccc", fontSize: 11, fontStyle: "italic", textAlign: "center", marginTop: 4 }}>
+                    "{currentWeekData.weeklyWorkouts.length >= (user?.profile?.weeklyFrequency || 3) ? "Meta batida! Foco no progresso! 🔥" : "Consistência é a única regra que importa! 🏃‍♂️"}"
+                  </Text>
+                </View>
+
+                {/* Bottom Footer */}
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", zIndex: 2 }}>
+                  <View>
+                    <Text style={{ color: "#aaaaaa", fontSize: 9 }}>Companheiro:</Text>
+                    <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "bold" }}>{companionNameStr}</Text>
+                  </View>
+                  <Text style={{ color: Colors.primary, fontSize: 11, fontWeight: "900" }}>#SidekickApp 👟</Text>
+                </View>
+              </ViewShot>
+
+              {/* Controls */}
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 16, width: "100%" }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: "#26262d", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
+                  onPress={handlePickShareGoalsBg}
+                >
+                  <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 12 }}>📷 Foto de Fundo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ flex: 1.5, backgroundColor: "#fc4c02", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                  onPress={handleShareGoalsToInstagram}
+                >
+                  <FontAwesome name="instagram" size={16} color="#ffffff" />
+                  <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 13 }}>Compartilhar</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3382,6 +3862,23 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: "700",
   },
+  showMoreTrophiesBtn: {
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    alignItems: "center",
+    width: "100%",
+  },
+  showMoreTrophiesText: {
+    color: "#ffd700",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
 
   // Strava Personal Best Marks Styles
   stravaBestsCard: {
@@ -3454,5 +3951,60 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     fontWeight: "500",
     marginTop: 3,
+  },
+  // Admin Push Broadcast Modal Styles
+  presetChip: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  presetChipText: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  filterChip: {
+    flex: 1,
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  filterChipActive: {
+    backgroundColor: "rgba(255, 215, 0, 0.15)",
+    borderColor: Colors.primary,
+  },
+  filterChipText: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  filterChipTextActive: {
+    color: Colors.primary,
+    fontWeight: "800",
+  },
+  broadcastInputLabel: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  textInput: {
+    backgroundColor: Colors.dark,
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: Colors.text,
+    fontSize: 14,
+    marginBottom: 12,
   },
 });
