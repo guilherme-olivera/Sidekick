@@ -27,7 +27,7 @@ export async function saveUserPushToken(userId: string, pushToken: string): Prom
  * Sends push notifications using Expo Push API (https://exp.host/--/api/v2/push/send)
  */
 export async function sendExpoPushNotifications(tokens: string[], title: string, body: string, data: any = {}) {
-  const validTokens = tokens.filter(t => t && t.startsWith("ExponentPushToken"));
+  const validTokens = tokens.filter(t => t && (t.startsWith("ExponentPushToken") || t.startsWith("ExpoPushToken") || t.includes("PushToken")));
   if (validTokens.length === 0) {
     console.log("[PushService] No valid push tokens to send to.");
     return { sent: 0, failed: 0 };

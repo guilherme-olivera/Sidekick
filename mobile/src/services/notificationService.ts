@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from './apiService';
@@ -51,6 +52,15 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 
   try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#ff6b6b',
+      });
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -64,12 +74,15 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync().catch(err => {
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId || "3b69b29e-876f-4286-8c61-339dddd6a282";
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId }).catch(err => {
       console.log('[NotificationService] Push token fetch info:', err.message);
       return null;
     });
 
     if (!tokenData?.data) {
+      console.log('[NotificationService] tokenData is empty or null');
       return null;
     }
 
