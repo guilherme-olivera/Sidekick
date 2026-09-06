@@ -1041,7 +1041,7 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Text style={[styles.subTabText, activeProfileTab === "evolucao" && styles.subTabTextActive]}>
-              Evolução
+              📈 Evolução
             </Text>
           </TouchableOpacity>
           
@@ -1051,7 +1051,7 @@ export default function ProfileScreen() {
             activeOpacity={0.8}
           >
             <Text style={[styles.subTabText, activeProfileTab === "conquistas" && styles.subTabTextActive]}>
-              Conquistas
+              🏆 Conquistas
             </Text>
           </TouchableOpacity>
         </View>
@@ -2406,7 +2406,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
   profileHeader: {
     alignItems: "center",
@@ -3344,12 +3344,12 @@ const styles = StyleSheet.create({
   // Sub Tab Bar Styles
   subTabBarContainer: {
     flexDirection: "row",
-    backgroundColor: Colors.darkCard,
-    borderRadius: 12,
+    backgroundColor: "#141418",
+    borderRadius: 14,
     padding: 4,
     marginVertical: 14,
     borderWidth: 1,
-    borderColor: Colors.darkBorder,
+    borderColor: "rgba(255, 255, 255, 0.08)",
     width: "100%",
   },
   subTabItem: {
@@ -3357,19 +3357,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 10,
   },
   subTabItemActive: {
-    backgroundColor: "#2a2a2a",
+    backgroundColor: "#FF5500", // Cor Laranja Padrão do Sistema
+    shadowColor: "#FF5500",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
   subTabText: {
-    color: Colors.textSecondary,
+    color: "#888888",
     fontSize: 14,
     fontWeight: "600",
   },
   subTabTextActive: {
-    color: Colors.text,
-    fontWeight: "700",
+    color: "#ffffff",
+    fontWeight: "800",
   },
 
   // Evolution Level Card

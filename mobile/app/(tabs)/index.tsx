@@ -1138,140 +1138,78 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Preditor de Ritmo de Provas (Projeção Riegel) - Posicionado abaixo do Comparativo de Volume */}
+        {/* Preditor de Ritmo de Provas (Projeção Riegel) - Compacto & Sofisticado */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>⏱️ PREVISÕES DE DESEMPENHO (PROVAS)</Text>
+          <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
+            <Text style={styles.sectionTitle}>⏱️ PREVISÕES DE DESEMPENHO</Text>
+            <Text style={{ fontSize: 11, color: "#888888", fontStyle: "italic" }}>Projeção Riegel</Text>
           </View>
-          <View style={{
-            backgroundColor: "#16161a",
-            borderRadius: 18,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: "rgba(255, 255, 255, 0.08)",
-          }}>
-            <Text style={{ fontSize: 11, color: "#aaaaaa", marginBottom: 14, lineHeight: 16 }}>
-              Estimativa de tempo e pace ideal para concluir distâncias oficiais com variação de ritmo recente:
-            </Text>
+          
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 16, gap: 10 }}
+          >
+            {[
+              { key: "5k", label: "5K" },
+              { key: "10k", label: "10K" },
+              { key: "21k", label: "21,1K" },
+              { key: "42k", label: "42,2K" },
+            ].map(({ key, label }) => {
+              const pred = racePredictions[key as keyof typeof racePredictions];
+              const time = pred?.formattedTime || "--:--";
+              const pace = pred?.pace || "-- /km";
+              const delta = pred?.delta || 0;
+              const deltaText = pred?.deltaText || "--";
+              const isFaster = delta > 0;
+              const isSlower = delta < 0;
 
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {/* 5 km */}
-              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "900", color: Colors.primary }}>5K</Text>
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
-                  {racePredictions["5k"]?.formattedTime || "--:--"}
-                </Text>
-                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
-                  {racePredictions["5k"]?.pace || "-- /km"}
-                </Text>
-                <View style={{
-                  backgroundColor: (racePredictions["5k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["5k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: (racePredictions["5k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["5k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
-                }}>
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: "800",
-                    color: (racePredictions["5k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["5k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
-                  }}>
-                    {(racePredictions["5k"]?.delta || 0) > 0 ? `▼ ${racePredictions["5k"].deltaText}` : (racePredictions["5k"]?.delta || 0) < 0 ? `▲ ${racePredictions["5k"].deltaText}` : "--"}
+              return (
+                <View
+                  key={key}
+                  style={{
+                    width: 124,
+                    backgroundColor: "#16161a",
+                    borderRadius: 14,
+                    padding: 10,
+                    borderWidth: 1,
+                    borderColor: "rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <View style={{
+                      paddingHorizontal: 7,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      backgroundColor: "rgba(255, 107, 107, 0.15)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255, 107, 107, 0.3)",
+                    }}>
+                      <Text style={{ fontSize: 10, fontWeight: "900", color: Colors.primary }}>{label}</Text>
+                    </View>
+
+                    {delta !== 0 && (
+                      <Text style={{
+                        fontSize: 9,
+                        fontWeight: "800",
+                        color: isFaster ? Colors.success : isSlower ? Colors.warning : "#aaaaaa",
+                      }}>
+                        {isFaster ? `▼ ${deltaText}` : `▲ ${deltaText}`}
+                      </Text>
+                    )}
+                  </View>
+
+                  <Text style={{ fontSize: 16, fontWeight: "900", color: "#ffffff", marginBottom: 2, letterSpacing: -0.3 }}>
+                    {time}
+                  </Text>
+
+                  <Text style={{ fontSize: 10, color: "#888888", fontWeight: "500" }}>
+                    {pace}
                   </Text>
                 </View>
-              </View>
-
-              {/* 10 km */}
-              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "900", color: Colors.primary }}>10K</Text>
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
-                  {racePredictions["10k"]?.formattedTime || "--:--"}
-                </Text>
-                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
-                  {racePredictions["10k"]?.pace || "-- /km"}
-                </Text>
-                <View style={{
-                  backgroundColor: (racePredictions["10k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["10k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: (racePredictions["10k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["10k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
-                }}>
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: "800",
-                    color: (racePredictions["10k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["10k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
-                  }}>
-                    {(racePredictions["10k"]?.delta || 0) > 0 ? `▼ ${racePredictions["10k"].deltaText}` : (racePredictions["10k"]?.delta || 0) < 0 ? `▲ ${racePredictions["10k"].deltaText}` : "--"}
-                  </Text>
-                </View>
-              </View>
-
-              {/* 21.1 km */}
-              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "900", color: Colors.primary }}>21,1K</Text>
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
-                  {racePredictions["21k"]?.formattedTime || "--:--"}
-                </Text>
-                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
-                  {racePredictions["21k"]?.pace || "-- /km"}
-                </Text>
-                <View style={{
-                  backgroundColor: (racePredictions["21k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["21k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: (racePredictions["21k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["21k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
-                }}>
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: "800",
-                    color: (racePredictions["21k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["21k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
-                  }}>
-                    {(racePredictions["21k"]?.delta || 0) > 0 ? `▼ ${racePredictions["21k"].deltaText}` : (racePredictions["21k"]?.delta || 0) < 0 ? `▲ ${racePredictions["21k"].deltaText}` : "--"}
-                  </Text>
-                </View>
-              </View>
-
-              {/* 42.2 km */}
-              <View style={{ flex: 1, minWidth: 125, backgroundColor: "#202026", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)", alignItems: "center" }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255, 107, 107, 0.15)", borderWidth: 1, borderColor: "rgba(255, 107, 107, 0.4)", justifyContent: "center", alignItems: "center", marginBottom: 4 }}>
-                  <Text style={{ fontSize: 9, fontWeight: "900", color: Colors.primary }}>42,2K</Text>
-                </View>
-                <Text style={{ fontSize: 18, fontWeight: "900", color: "#ffffff", marginVertical: 3 }}>
-                  {racePredictions["42k"]?.formattedTime || "--:--"}
-                </Text>
-                <Text style={{ fontSize: 10, color: "#888888", marginBottom: 6 }}>
-                  {racePredictions["42k"]?.pace || "-- /km"}
-                </Text>
-                <View style={{
-                  backgroundColor: (racePredictions["42k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.15)" : (racePredictions["42k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: (racePredictions["42k"]?.delta || 0) > 0 ? "rgba(81, 207, 102, 0.4)" : (racePredictions["42k"]?.delta || 0) < 0 ? "rgba(255, 169, 77, 0.4)" : "rgba(255, 255, 255, 0.1)",
-                }}>
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: "800",
-                    color: (racePredictions["42k"]?.delta || 0) > 0 ? Colors.success : (racePredictions["42k"]?.delta || 0) < 0 ? Colors.warning : "#aaaaaa",
-                  }}>
-                    {(racePredictions["42k"]?.delta || 0) > 0 ? `▼ ${racePredictions["42k"].deltaText}` : (racePredictions["42k"]?.delta || 0) < 0 ? `▲ ${racePredictions["42k"].deltaText}` : "--"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Latest Workout */}
@@ -2621,7 +2559,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
   header: {
     marginBottom: 20,

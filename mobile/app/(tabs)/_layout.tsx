@@ -2,6 +2,7 @@ import React from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
 import { Platform, View, StyleSheet, Dimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const TAB_BAR_WIDTH = 180;
@@ -20,6 +21,9 @@ const DarkTheme = {
 };
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomMargin = insets.bottom > 0 ? insets.bottom + 10 : (Platform.OS === "ios" ? 24 : 20);
+
   return (
     <Tabs
       screenOptions={{
@@ -28,16 +32,16 @@ export default function TabLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
-          bottom: Platform.OS === "ios" ? 24 : 14,
-          left: 50,
-          right: 50,
+          bottom: bottomMargin,
+          left: 44,
+          right: 44,
           height: 56,
           borderRadius: 28,
-          backgroundColor: "rgba(18, 18, 22, 0.95)",
+          backgroundColor: "rgba(18, 18, 22, 0.96)",
           borderWidth: 1.5,
-          borderColor: "rgba(255, 107, 107, 0.3)",
+          borderColor: "rgba(255, 107, 107, 0.35)",
           borderTopWidth: 1.5,
-          borderTopColor: "rgba(255, 107, 107, 0.3)",
+          borderTopColor: "rgba(255, 107, 107, 0.35)",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.5,
