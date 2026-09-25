@@ -319,7 +319,8 @@ export async function generateChatResponse(
   message: string,
   chatHistory: { role: "user" | "model"; parts: string }[],
   userProfile?: any,
-  mood?: string
+  mood?: string,
+  recentWorkouts?: any[]
 ): Promise<string> {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -333,6 +334,18 @@ export async function generateChatResponse(
     const trainingGoal = userProfile?.trainingGoal || "Se manter saudável";
     const experienceLevel = userProfile?.experienceLevel || "iniciante";
 
+    let recentWorkoutsContext = "";
+    if (recentWorkouts && recentWorkouts.length > 0) {
+      recentWorkoutsContext = `\nHistórico real dos últimos treinos do atleta (use essas informações para responder com precisão sobre o desempenho recente dele):\n` +
+        recentWorkouts.map((w, idx) => {
+          const dateStr = w.date ? new Date(w.date).toLocaleDateString("pt-BR") : "";
+          const km = w.distance ? `${w.distance.toFixed(1)} km` : "sem distância";
+          const dur = w.duration ? `${Math.round(w.duration / 60)} min` : "sem tempo";
+          const suffer = w.sufferScore ? ` (Suffer Score: ${w.sufferScore})` : "";
+          return `- Treino #${idx + 1} (${dateStr}): ${w.title || w.type} • ${km} • ${dur}${suffer}`;
+        }).join("\n");
+    }
+
     const systemInstruction = `
 Você é o ${companionName}, o companheiro digital de treinos de corrida e ciclismo do usuário.
 Gênero da IA: ${aiGender} (use termos de gênero apropriados para o seu tom).
@@ -342,8 +355,11 @@ Seu objetivo é dar suporte ao usuário, responder a dúvidas de treinos de form
 
 ${mood ? `O usuário registrou o humor dele hoje como: "${mood}". Leve isso em consideração ao responder na sua personalidade (ex: se ele estiver exausto/cansado ou doente/estressado, seja mais compreensivo, sugira repouso ou um treino leve; se estiver excelente/feliz, anime-o).` : ""}
 
+${recentWorkoutsContext}
+
 Instruções cruciais:
 - Dê respostas completas, úteis, focadas em fisiologia do esporte, corrida ou ciclismo.
+- Quando o usuário perguntar como foram seus treinos, evolução ou desempenho recente, use os dados REAIS do histórico acima.
 - Seja conciso (mensagens médias para exibição em chat mobile).
 - NUNCA saia do personagem. Seu nome é ${companionName}.
 - Não use formatação markdown excessiva (use apenas negrito ocasional).

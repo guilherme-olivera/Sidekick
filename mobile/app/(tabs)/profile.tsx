@@ -693,7 +693,19 @@ export default function ProfileScreen() {
   if (challenge3Complete) challengeXp += 150;
   if (monthlyChallengeComplete) challengeXp += 500;
 
-  const totalXp = totalWorkouts * 150 + (hasStrava ? 200 : 0) + (user?.profile?.companionName ? 100 : 0) + challengeXp;
+  // XP Cutoff: Only workouts created on or after user registration earn XP (no retroactive XP for historical workouts)
+  const userRegistrationDate = user?.createdAt ? new Date(user.createdAt) : null;
+  if (userRegistrationDate) {
+    userRegistrationDate.setHours(0, 0, 0, 0);
+  }
+
+  const eligibleXpWorkoutsCount = allWorkouts.filter(w => {
+    if (!userRegistrationDate) return true;
+    const workoutDate = new Date(w.date);
+    return workoutDate >= userRegistrationDate;
+  }).length;
+
+  const totalXp = eligibleXpWorkoutsCount * 150 + (hasStrava ? 200 : 0) + (user?.profile?.companionName ? 100 : 0) + challengeXp;
   const xpPerLevel = 500;
   const currentLevel = Math.max(1, Math.floor(totalXp / xpPerLevel) + 1);
   const currentXpInLevel = totalXp % xpPerLevel;

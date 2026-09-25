@@ -41,6 +41,11 @@ interface StravaActivity {
   average_temp?: number;
   suffer_score?: number;
   pr_count?: number;
+  map?: {
+    id?: string;
+    summary_polyline?: string;
+    resource_state?: number;
+  };
   splits_metric?: Array<{
     distance: number;
     elapsed_time: number;
@@ -221,6 +226,7 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     sufferScore: stravaActivity.suffer_score || undefined,
     prCount: stravaActivity.pr_count || undefined,
     splits: stravaActivity.splits_metric ? JSON.stringify(stravaActivity.splits_metric) : undefined,
+    mapPolyline: stravaActivity.map?.summary_polyline || undefined,
   };
 }
 

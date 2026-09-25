@@ -29,6 +29,7 @@ interface User {
   name: string;
   avatar?: string;
   planType?: string;
+  createdAt?: string | Date;
   stravaAthleteName?: string;
   stravaAthleteUsername?: string;
   stravaAthleteProfile?: string;

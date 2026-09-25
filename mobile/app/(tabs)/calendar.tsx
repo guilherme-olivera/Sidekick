@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import Svg, { Defs, LinearGradient, Stop, Circle } from "react-native-svg";
+import Svg, { Defs, LinearGradient, Stop, Circle, Path, Line, Rect } from "react-native-svg";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
@@ -25,6 +25,8 @@ import { useDashboard } from "@/src/contexts/DashboardContext";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { CalendarEvent } from "@/src/services/calendarMockService";
 import * as Speech from "expo-speech";
+import { polylineToSvgPath } from "@/src/utils/polylineDecoder";
+import { WorkoutStoryCard } from "@/src/components/WorkoutStoryCard";
 const formatPace = (speedKmH: number | null | undefined) => {
   if (!speedKmH || speedKmH <= 0) return "-";
   const totalMinutes = 60 / speedKmH;
@@ -69,6 +71,8 @@ export default function CalendarScreen() {
   const viewShotRef0 = useRef<any>(null);
   const viewShotRef1 = useRef<any>(null);
   const viewShotRef2 = useRef<any>(null);
+  const viewShotRef3 = useRef<any>(null);
+  const viewShotRef4 = useRef<any>(null);
   const templateScrollRef = useRef<any>(null);
   const calendarModalScrollRef = useRef<ScrollView>(null);
 
@@ -83,7 +87,12 @@ export default function CalendarScreen() {
 
   const handleShareCardImage = async () => {
     try {
-      const activeRef = activeTemplateIdx === 0 ? viewShotRef0 : activeTemplateIdx === 1 ? viewShotRef1 : viewShotRef2;
+      const activeRef =
+        activeTemplateIdx === 0 ? viewShotRef0 :
+        activeTemplateIdx === 1 ? viewShotRef1 :
+        activeTemplateIdx === 2 ? viewShotRef2 :
+        activeTemplateIdx === 3 ? viewShotRef3 :
+        viewShotRef4;
       if (!activeRef?.current) {
         Alert.alert("Erro", "Não foi possível gerar a imagem. Tente novamente.");
         return;
@@ -343,105 +352,107 @@ export default function CalendarScreen() {
             <View style={styles.modalOverlay}>
               <TouchableWithoutFeedback onPress={() => {}}>
                 <View style={styles.modalContent}>
-                  <View style={styles.modalHeaderRow}>
-                    <View>
-                      <Text style={styles.modalTitle}>{selectedDate ? formatCalendarLabel(selectedDate) : "Selecionar data"}</Text>
-                      <Text style={styles.modalSubtitle}>Eventos e lembretes</Text>
-                    </View>
-                    <TouchableOpacity onPress={() => setModalVisible(false)}>
-                      <Text style={styles.closeIcon}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {selectedDayEvents.length > 0 ? (
-                    <View style={styles.eventList}>
-                      {selectedDayEvents.map((event) => (
-                        <TouchableOpacity
-                          key={event.id}
-                          style={styles.eventRow}
-                          onPress={() => handleEventPress(event)}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-                              <View style={[
-                                styles.smallDot,
-                                event.isWorkout ? styles.smallWorkoutDot : styles.smallReminderDot
-                              ]} />
-                              <Text style={[styles.eventTitle, { marginBottom: 0 }]}>{event.title}</Text>
-                            </View>
-                            <Text style={styles.eventSubtitle} numberOfLines={2}>
-                              {event.description || "Sem descrição"}
-                            </Text>
-                            <Text style={styles.eventMeta}>{event.time}</Text>
-                          </View>
-                          <Text style={[
-                            styles.eventSource,
-                            event.isWorkout ? { color: "#51cf66" } : { color: "#ff922b" }
-                          ]}>
-                            {event.isWorkout ? "Treino" : "Lembrete"}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : (
-                    <Text style={styles.emptyText}>
-                      Nenhum evento salvo para este dia. Crie um novo evento abaixo.
-                    </Text>
-                  )}
-
-                  {!(selectedDate && selectedDate < new Date().toISOString().split('T')[0]) ? (
-                    <>
-                      <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
-                      <TextInput
-                        value={title}
-                        onChangeText={setTitle}
-                        placeholder="Título"
-                        style={styles.input}
-                        placeholderTextColor="#888"
-                      />
-                      <TextInput
-                        value={description}
-                        onChangeText={setDescription}
-                        placeholder="Descrição"
-                        style={[styles.input, styles.textArea]}
-                        placeholderTextColor="#888"
-                        multiline
-                      />
-                      <Text style={styles.inputLabel}>Horário do Lembrete</Text>
-                      <TextInput
-                        value={time}
-                        onChangeText={setTime}
-                        placeholder="Ex: 08:30 ou 14:00"
-                        style={styles.input}
-                        placeholderTextColor="#888"
-                        keyboardType="numbers-and-punctuation"
-                        maxLength={5}
-                      />
-
-                      <View style={styles.modalActions}>
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                          <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
-                        </TouchableOpacity>
-                        {editingId && (
-                          <TouchableOpacity 
-                            style={[styles.cancelButtonInline, { backgroundColor: "#e03c3c", borderColor: "#e03c3c" }]} 
-                            onPress={handleDelete}
-                          >
-                            <Text style={[styles.cancelText, { color: "#ffffff" }]}>Excluir</Text>
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
-                          <Text style={styles.cancelText}>Cancelar</Text>
-                        </TouchableOpacity>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 10 }}>
+                    <View style={styles.modalHeaderRow}>
+                      <View>
+                        <Text style={styles.modalTitle}>{selectedDate ? formatCalendarLabel(selectedDate) : "Selecionar data"}</Text>
+                        <Text style={styles.modalSubtitle}>Eventos e lembretes</Text>
                       </View>
-                    </>
-                  ) : (
-                    <View style={styles.modalActions}>
-                      <TouchableOpacity style={styles.saveButton} onPress={() => setModalVisible(false)}>
-                        <Text style={styles.saveText}>Fechar</Text>
+                      <TouchableOpacity onPress={() => setModalVisible(false)}>
+                        <Text style={styles.closeIcon}>✕</Text>
                       </TouchableOpacity>
                     </View>
-                  )}
+
+                    {selectedDayEvents.length > 0 ? (
+                      <View style={styles.eventList}>
+                        {selectedDayEvents.map((event) => (
+                          <TouchableOpacity
+                            key={event.id}
+                            style={styles.eventRow}
+                            onPress={() => handleEventPress(event)}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                                <View style={[
+                                  styles.smallDot,
+                                  event.isWorkout ? styles.smallWorkoutDot : styles.smallReminderDot
+                                ]} />
+                                <Text style={[styles.eventTitle, { marginBottom: 0 }]}>{event.title}</Text>
+                              </View>
+                              <Text style={styles.eventSubtitle} numberOfLines={2}>
+                                {event.description || "Sem descrição"}
+                              </Text>
+                              <Text style={styles.eventMeta}>{event.time}</Text>
+                            </View>
+                            <Text style={[
+                              styles.eventSource,
+                              event.isWorkout ? { color: "#51cf66" } : { color: "#ff922b" }
+                            ]}>
+                              {event.isWorkout ? "Treino" : "Lembrete"}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={styles.emptyText}>
+                        Nenhum evento salvo para este dia. Crie um novo evento abaixo.
+                      </Text>
+                    )}
+
+                    {!(selectedDate && selectedDate < new Date().toISOString().split('T')[0]) ? (
+                      <>
+                        <Text style={styles.sectionLabel}>{editingId ? "Editar evento" : "Criar novo lembrete"}</Text>
+                        <TextInput
+                          value={title}
+                          onChangeText={setTitle}
+                          placeholder="Título"
+                          style={styles.input}
+                          placeholderTextColor="#888"
+                        />
+                        <TextInput
+                          value={description}
+                          onChangeText={setDescription}
+                          placeholder="Descrição"
+                          style={[styles.input, styles.textArea]}
+                          placeholderTextColor="#888"
+                          multiline
+                        />
+                        <Text style={styles.inputLabel}>Horário do Lembrete</Text>
+                        <TextInput
+                          value={time}
+                          onChangeText={setTime}
+                          placeholder="Ex: 08:30 ou 14:00"
+                          style={styles.input}
+                          placeholderTextColor="#888"
+                          keyboardType="numbers-and-punctuation"
+                          maxLength={5}
+                        />
+
+                        <View style={styles.modalActions}>
+                          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                            <Text style={styles.saveText}>{editingId ? "Atualizar" : "Salvar"}</Text>
+                          </TouchableOpacity>
+                          {editingId && (
+                            <TouchableOpacity 
+                              style={[styles.cancelButtonInline, { backgroundColor: "#e03c3c", borderColor: "#e03c3c" }]} 
+                              onPress={handleDelete}
+                            >
+                              <Text style={[styles.cancelText, { color: "#ffffff" }]}>Excluir</Text>
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity style={styles.cancelButtonInline} onPress={() => setModalVisible(false)}>
+                            <Text style={styles.cancelText}>Cancelar</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    ) : (
+                      <View style={styles.modalActions}>
+                        <TouchableOpacity style={styles.saveButton} onPress={() => setModalVisible(false)}>
+                          <Text style={styles.saveText}>Fechar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
               </TouchableWithoutFeedback>
             </View>
@@ -456,102 +467,106 @@ export default function CalendarScreen() {
         transparent={true}
         onRequestClose={handleCloseDetailModal}
       >
-        <View style={styles.workoutModalOverlay}>
-          <View style={styles.workoutModalContent}>
-            {selectedWorkoutDetail ? (
-              <>
-                {/* Modal Header */}
-                <View style={styles.workoutModalHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                    <Text style={styles.workoutIconDetail}>
-                      {selectedWorkoutDetail.type === "run"
-                        ? "👟"
-                        : selectedWorkoutDetail.type === "cycling"
-                        ? "🚲"
-                        : "🏋️"}
-                    </Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.workoutModalTitle} numberOfLines={1}>{selectedWorkoutDetail.title}</Text>
-                      <Text style={styles.workoutModalSubtitle}>
-                        {new Date(selectedWorkoutDetail.date).toLocaleDateString("pt-BR", {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.workoutModalOverlay}>
+            <View style={styles.workoutModalContent}>
+              {selectedWorkoutDetail ? (
+                <>
+                  {/* Modal Header */}
+                  <View style={styles.workoutModalHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <Text style={styles.workoutIconDetail}>
+                        {selectedWorkoutDetail.type === "run"
+                          ? "👟"
+                          : selectedWorkoutDetail.type === "cycling"
+                          ? "🚲"
+                          : "🏋️"}
                       </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.workoutModalTitle} numberOfLines={1}>{selectedWorkoutDetail.title}</Text>
+                        <Text style={styles.workoutModalSubtitle}>
+                          {new Date(selectedWorkoutDetail.date).toLocaleDateString("pt-BR", {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity 
+                        onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
+                        style={{ marginRight: 20, padding: 5 }}
+                      >
+                        <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleCloseDetailModal} style={{ padding: 5 }}>
+                        <Text style={styles.workoutModalCloseButton}>✕</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity 
-                      onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
-                      style={{ marginRight: 20, padding: 5 }}
-                    >
-                      <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleCloseDetailModal} style={{ padding: 5 }}>
-                      <Text style={styles.workoutModalCloseButton}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
 
-                <ScrollView
-                  ref={calendarModalScrollRef}
-                  style={styles.workoutModalScroll}
-                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 120 : 40 }}
-                  showsVerticalScrollIndicator={true}
-                  keyboardShouldPersistTaps="handled"
-                  automaticallyAdjustKeyboardInsets={true}
-                >
-                  {effortModalVisible ? (
-                    <View style={{ padding: 10 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
-                        <TouchableOpacity onPress={() => setEffortModalVisible(false)} style={{ padding: 5 }}>
-                          <Text style={{ color: '#b0b0b0', fontSize: 18 }}>✕</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.effortModalSubtitle}>
-                        Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
-                      </Text>
+                  <ScrollView
+                    ref={calendarModalScrollRef}
+                    style={styles.workoutModalScroll}
+                    contentContainerStyle={{ paddingBottom: effortModalVisible ? 320 : 40 }}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                    automaticallyAdjustKeyboardInsets={true}
+                  >
+                    {effortModalVisible ? (
+                      <View style={{ padding: 10 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
+                          <TouchableOpacity onPress={() => setEffortModalVisible(false)} style={{ padding: 5 }}>
+                            <Text style={{ color: '#b0b0b0', fontSize: 18 }}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={styles.effortModalSubtitle}>
+                          Defina o esforço físico e anote como se sentiu para calibrar o conselho do seu companheiro.
+                        </Text>
 
-                      <Text style={styles.effortLabel}>Esforço Percebido:</Text>
-                      <View style={styles.effortRatingContainer}>
-                        {[1, 2, 3, 4, 5].map((num) => {
-                          const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
-                          return (
-                            <TouchableOpacity
-                              key={num}
-                              style={[
-                                styles.effortRatingButton,
-                                effortRating === num && styles.effortRatingButtonActive,
-                              ]}
-                              onPress={() => setEffortRating(num)}
-                            >
-                              <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
-                              <Text style={styles.effortRatingLabel}>{num}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                      <Text style={styles.effortRatingDesc}>
-                        {effortRating === 1 && "Muito Leve"}
-                        {effortRating === 2 && "Leve"}
-                        {effortRating === 3 && "Moderado"}
-                        {effortRating === 4 && "Difícil"}
-                        {effortRating === 5 && "Exaustivo / Máximo"}
-                      </Text>
+                        <Text style={styles.effortLabel}>Esforço Percebido:</Text>
+                        <View style={styles.effortRatingContainer}>
+                          {[1, 2, 3, 4, 5].map((num) => {
+                            const labelMap = ["😌", "🙂", "🏃", "🥵", "💀"];
+                            return (
+                              <TouchableOpacity
+                                key={num}
+                                style={[
+                                  styles.effortRatingButton,
+                                  effortRating === num && styles.effortRatingButtonActive,
+                                ]}
+                                onPress={() => setEffortRating(num)}
+                              >
+                                <Text style={styles.effortRatingEmoji}>{labelMap[num - 1]}</Text>
+                                <Text style={styles.effortRatingLabel}>{num}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                        <Text style={styles.effortRatingDesc}>
+                          {effortRating === 1 && "Muito Leve"}
+                          {effortRating === 2 && "Leve"}
+                          {effortRating === 3 && "Moderado"}
+                          {effortRating === 4 && "Difícil"}
+                          {effortRating === 5 && "Exaustivo / Máximo"}
+                        </Text>
 
-                      <Text style={styles.effortLabel}>Notas / Observações:</Text>
-                      <TextInput
-                        value={userNotes}
-                        onChangeText={setUserNotes}
-                        onFocus={() => {
-                          setTimeout(() => {
-                            calendarModalScrollRef.current?.scrollTo({ y: 140, animated: true });
-                          }, 150);
-                        }}
+                        <Text style={styles.effortLabel}>Notas / Observações:</Text>
+                        <TextInput
+                          value={userNotes}
+                          onChangeText={setUserNotes}
+                          onFocus={() => {
+                            setTimeout(() => {
+                              calendarModalScrollRef.current?.scrollToEnd({ animated: true });
+                            }, 200);
+                          }}
                         placeholder="Escreva como se sentiu, dores, clima ou observações gerais..."
                         style={[styles.effortInput, { minHeight: 80 }]}
                         placeholderTextColor="#666"
@@ -761,7 +776,8 @@ export default function CalendarScreen() {
             )}
           </View>
         </View>
-      </Modal>
+      </KeyboardAvoidingView>
+    </Modal>
 
       {/* Instagram Stories Share Mockup Modal */}
       <Modal
@@ -786,22 +802,31 @@ export default function CalendarScreen() {
                                        sharingWorkout.title?.toLowerCase().includes("recorde");
               return (
                 <ScrollView contentContainerStyle={{ alignItems: "center", paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
-                  
                   {/* Template Selector Carousel Header */}
                   <View style={styles.carouselSelectorRow}>
                     <TouchableOpacity 
-                      onPress={() => setActiveTemplateIdx(prev => prev === 0 ? 2 : prev - 1)}
+                      onPress={() => {
+                        const next = activeTemplateIdx === 0 ? 4 : activeTemplateIdx - 1;
+                        setActiveTemplateIdx(next);
+                        templateScrollRef.current?.scrollTo({ x: next * 290, animated: true });
+                      }}
                       style={styles.carouselSelectorArrow}
                     >
                       <Text style={styles.carouselSelectorArrowText}>◀</Text>
                     </TouchableOpacity>
                     <Text style={styles.carouselSelectorTitle}>
-                      {activeTemplateIdx === 0 ? "Card Esportivo Dark 🖤" :
-                       activeTemplateIdx === 1 ? "Sunset Glow Gradient 🧡" :
-                       "Minimalist Light 🤍"}
+                      {activeTemplateIdx === 0 ? "1. Percurso / Infográfico 🗺️⚡" :
+                       activeTemplateIdx === 1 ? "2. Cyberpunk Telemetry 🏎️🔥" :
+                       activeTemplateIdx === 2 ? "3. Sunset Glassmorphism 🌅✨" :
+                       activeTemplateIdx === 3 ? "4. Obsidian Gold Editorial 📰🏆" :
+                       "5. Sidekick Wanted Poster 🦖⚡"}
                     </Text>
                     <TouchableOpacity 
-                      onPress={() => setActiveTemplateIdx(prev => prev === 2 ? 0 : prev + 1)}
+                      onPress={() => {
+                        const next = activeTemplateIdx === 4 ? 0 : activeTemplateIdx + 1;
+                        setActiveTemplateIdx(next);
+                        templateScrollRef.current?.scrollTo({ x: next * 290, animated: true });
+                      }}
                       style={styles.carouselSelectorArrow}
                     >
                       <Text style={styles.carouselSelectorArrowText}>▶</Text>
@@ -818,404 +843,31 @@ export default function CalendarScreen() {
                     onMomentumScrollEnd={(e) => {
                       const offsetX = e.nativeEvent.contentOffset.x;
                       const index = Math.round(offsetX / 290);
-                      setActiveTemplateIdx(index);
+                      if (index >= 0 && index <= 4) {
+                        setActiveTemplateIdx(index);
+                      }
                     }}
                   >
-                    
-                    {/* Template 0: Dark Premium */}
-                    <View style={{ width: 290, height: 480 }}>
-                      <ViewShot ref={viewShotRef0} options={{ format: "png", quality: 0.9 }}>
-                        <View style={{
-                          width: 290,
-                          height: 480,
-                          backgroundColor: "#0d0d12",
-                          borderRadius: 20,
-                          padding: 20,
-                          justifyContent: "space-between",
-                          borderWidth: 1,
-                          borderColor: "#1f1f2e",
-                          position: "relative",
-                        }}>
-                          {/* Header */}
-                          <View style={styles.cleanHeader}>
-                            <Text style={[styles.cleanLogo, { color: "#ffffff" }]}>👟 SIDEKICK</Text>
-                            <View style={{
-                              backgroundColor: isPersonalRecord ? "#ffd700" : "#ff6b6b",
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                            }}>
-                              <Text style={{
-                                color: "#000000",
-                                fontSize: 8,
-                                fontWeight: "800",
-                                letterSpacing: 0.5,
-                              }}>
-                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Main Stat & Workout Info */}
-                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
-                            <Text style={{ color: "#88888b", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-                              {sharingWorkout.title || "Treino"}
-                            </Text>
-                            <Text style={{ color: "#ffffff", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
-                              {sharingWorkout.distance 
-                                ? `${sharingWorkout.distance.toFixed(2)} km`
-                                : Math.floor(sharingWorkout.duration / 3600) > 0
-                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
-                              }
-                            </Text>
-                            
-                            {/* Horizontal Stats Row */}
-                            <View style={{
-                              flexDirection: "row",
-                              borderTopWidth: 1,
-                              borderTopColor: "#1f1f2e",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "#1f1f2e",
-                              paddingVertical: 12,
-                              marginTop: 15,
-                              justifyContent: "space-between"
-                            }}>
-                              {sharingWorkout.distance ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {Math.floor(sharingWorkout.duration / 3600) > 0
-                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.pace ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {formatPace(sharingWorkout.pace)}
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
-                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.avgHeartRate ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.avgHeartRate} bpm
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
-                                </View>
-                              ) : sharingWorkout.sufferScore ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.sufferScore}
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-
-                          {/* Coach Insight quotes block */}
-                          <View style={{
-                            backgroundColor: "#161622",
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1,
-                            borderColor: "#222235",
-                            marginBottom: 10,
-                          }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                              <Text style={{ color: "#ff6b6b", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Insight do {user?.profile?.companionName || "Rocky"}
-                              </Text>
-                            </View>
-                            <Text style={{ color: "#d1d1d6", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "#88888b", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                            <Text style={{ color: "#ff6b6b", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
-                          </View>
-                        </View>
-                      </ViewShot>
-                    </View>
-
-                    {/* Template 1: Glow Gradient */}
-                    <View style={{ width: 290, height: 480 }}>
-                      <ViewShot ref={viewShotRef1} options={{ format: "png", quality: 0.9 }}>
-                        <View style={{
-                          width: 290,
-                          height: 480,
-                          backgroundColor: "#ff5e3a",
-                          borderRadius: 20,
-                          padding: 20,
-                          justifyContent: "space-between",
-                          overflow: "hidden",
-                        }}>
-                          {/* Rich Coral/Orange Sunset Gradient background */}
-                          <Svg style={StyleSheet.absoluteFillObject} width="100%" height="100%">
-                            <Defs>
-                              <LinearGradient id="sunset" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <Stop offset="0%" stopColor="#fc4c02" />
-                                <Stop offset="100%" stopColor="#fe8c00" />
-                              </LinearGradient>
-                            </Defs>
-                            <Circle cx="145" cy="240" r="300" fill="url(#sunset)" />
-                          </Svg>
-
-                          {/* Header */}
-                          <View style={styles.cleanHeader}>
-                            <Text style={[styles.cleanLogo, { color: "#ffffff" }]}>👟 SIDEKICK</Text>
-                            <View style={{
-                              backgroundColor: "rgba(255, 255, 255, 0.25)",
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                            }}>
-                              <Text style={{
-                                color: "#ffffff",
-                                fontSize: 8,
-                                fontWeight: "800",
-                                letterSpacing: 0.5,
-                              }}>
-                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Main Stat & Workout Info */}
-                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
-                            <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-                              {sharingWorkout.title || "Treino"}
-                            </Text>
-                            <Text style={{ color: "#ffffff", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
-                              {sharingWorkout.distance 
-                                ? `${sharingWorkout.distance.toFixed(2)} km`
-                                : Math.floor(sharingWorkout.duration / 3600) > 0
-                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
-                              }
-                            </Text>
-                            
-                            {/* Horizontal Stats Row */}
-                            <View style={{
-                              flexDirection: "row",
-                              borderTopWidth: 1,
-                              borderTopColor: "rgba(255, 255, 255, 0.25)",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "rgba(255, 255, 255, 0.25)",
-                              paddingVertical: 12,
-                              marginTop: 15,
-                              justifyContent: "space-between"
-                            }}>
-                              {sharingWorkout.distance ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {Math.floor(sharingWorkout.duration / 3600) > 0
-                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.pace ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {formatPace(sharingWorkout.pace)}
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
-                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.avgHeartRate ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.avgHeartRate} bpm
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
-                                </View>
-                              ) : sharingWorkout.sufferScore ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.sufferScore}
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-
-                          {/* Coach Insight quotes block */}
-                          <View style={{
-                            backgroundColor: "rgba(255, 255, 255, 0.15)",
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1,
-                            borderColor: "rgba(255, 255, 255, 0.25)",
-                            marginBottom: 10,
-                          }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                              <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Insight do {user?.profile?.companionName || "Rocky"}
-                              </Text>
-                            </View>
-                            <Text style={{ color: "#ffffff", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                            <Text style={{ color: "#ffffff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
-                          </View>
-                        </View>
-                      </ViewShot>
-                    </View>
-
-                    {/* Template 2: Minimalist Light */}
-                    <View style={{ width: 290, height: 480 }}>
-                      <ViewShot ref={viewShotRef2} options={{ format: "png", quality: 0.9 }}>
-                        <View style={{
-                          width: 290,
-                          height: 480,
-                          backgroundColor: "#ffffff",
-                          borderRadius: 20,
-                          padding: 20,
-                          justifyContent: "space-between",
-                          borderWidth: 1,
-                          borderColor: "#e5e5ea",
-                          position: "relative",
-                        }}>
-                          {/* Header */}
-                          <View style={styles.cleanHeader}>
-                            <Text style={[styles.cleanLogo, { color: "#1c1c1e" }]}>👟 SIDEKICK</Text>
-                            <View style={{
-                              backgroundColor: isPersonalRecord ? "#ffd700" : "#e5e5ea",
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                            }}>
-                              <Text style={{
-                                color: "#1c1c1e",
-                                fontSize: 8,
-                                fontWeight: "800",
-                                letterSpacing: 0.5,
-                              }}>
-                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Main Stat & Workout Info */}
-                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
-                            <Text style={{ color: "#636366", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-                              {sharingWorkout.title || "Treino"}
-                            </Text>
-                            <Text style={{ color: "#1c1c1e", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
-                              {sharingWorkout.distance 
-                                ? `${sharingWorkout.distance.toFixed(2)} km`
-                                : Math.floor(sharingWorkout.duration / 3600) > 0
-                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
-                              }
-                            </Text>
-                            
-                            {/* Horizontal Stats Row */}
-                            <View style={{
-                              flexDirection: "row",
-                              borderTopWidth: 1,
-                              borderTopColor: "#e5e5ea",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "#e5e5ea",
-                              paddingVertical: 12,
-                              marginTop: 15,
-                              justifyContent: "space-between"
-                            }}>
-                              {sharingWorkout.distance ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {Math.floor(sharingWorkout.duration / 3600) > 0
-                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.pace ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {formatPace(sharingWorkout.pace)}
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
-                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.avgHeartRate ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.avgHeartRate} bpm
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
-                                </View>
-                              ) : sharingWorkout.sufferScore ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.sufferScore}
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-
-                          {/* Coach Insight quotes block */}
-                          <View style={{
-                            backgroundColor: "#f2f2f7",
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1,
-                            borderColor: "#e5e5ea",
-                            marginBottom: 10,
-                          }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                              <Text style={{ color: "#ff6b6b", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Insight do {user?.profile?.companionName || "Rocky"}
-                              </Text>
-                            </View>
-                            <Text style={{ color: "#1c1c1e", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "#8e8e93", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                            <Text style={{ color: "#ff6b6b", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
-                          </View>
-                        </View>
-                      </ViewShot>
-                    </View>
-
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={0} viewShotRef={viewShotRef0} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={1} viewShotRef={viewShotRef1} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={2} viewShotRef={viewShotRef2} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={3} viewShotRef={viewShotRef3} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={4} viewShotRef={viewShotRef4} />
                   </ScrollView>
 
-                  {/* Indicator Dots */}
+                  {/* Indicator Dots (5 dots) */}
                   <View style={styles.carouselIndicatorRow}>
-                    <View style={[styles.carouselDot, activeTemplateIdx === 0 && styles.carouselDotActive]} />
-                    <View style={[styles.carouselDot, activeTemplateIdx === 1 && styles.carouselDotActive]} />
-                    <View style={[styles.carouselDot, activeTemplateIdx === 2 && styles.carouselDotActive]} />
+                    {[0, 1, 2, 3, 4].map((idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => {
+                          setActiveTemplateIdx(idx);
+                          templateScrollRef.current?.scrollTo({ x: idx * 290, animated: true });
+                        }}
+                      >
+                        <View style={[styles.carouselDot, activeTemplateIdx === idx && styles.carouselDotActive]} />
+                      </TouchableOpacity>
+                    ))}
                   </View>
 
                   {/* Actions */}

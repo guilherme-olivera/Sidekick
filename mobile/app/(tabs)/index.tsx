@@ -18,11 +18,12 @@ import {
   Image,
   RefreshControl,
 } from "react-native";
-import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
+import Svg, { Path, Circle, Rect, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useDashboard } from "@/src/contexts/DashboardContext";
 import { useAuth } from "@/src/contexts/AuthContext";
@@ -31,6 +32,8 @@ import { apiService, API_BASE_URL } from "@/src/services/apiService";
 import { MoodWidget } from "@/components/MoodWidget";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import notificationService from "@/src/services/notificationService";
+import { polylineToSvgPath } from "@/src/utils/polylineDecoder";
+import { WorkoutStoryCard } from "@/src/components/WorkoutStoryCard";
 
 const formatPace = (speedKmH: number | null | undefined) => {
   if (!speedKmH || speedKmH <= 0) return "-";
@@ -106,6 +109,8 @@ export default function HomeScreen() {
   const viewShotRef0 = useRef<any>(null);
   const viewShotRef1 = useRef<any>(null);
   const viewShotRef2 = useRef<any>(null);
+  const viewShotRef3 = useRef<any>(null);
+  const viewShotRef4 = useRef<any>(null);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -139,6 +144,9 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   };
+
+  const insets = useSafeAreaInsets();
+  const [failedChatText, setFailedChatText] = useState<string | null>(null);
 
   // Companion Chat Overlay States
   const [chatModalVisible, setChatModalVisible] = useState(false);
@@ -277,6 +285,7 @@ export default function HomeScreen() {
       });
 
       if (res && res.success && res.response) {
+        setFailedChatText(null);
         const botMsg = {
           id: `bot_${Date.now()}`,
           sender: "bot" as const,
@@ -291,10 +300,11 @@ export default function HomeScreen() {
       }
     } catch (error) {
       console.error("Chat response error:", error);
+      setFailedChatText(userText);
       const errorMsg = {
         id: `err_${Date.now()}`,
         sender: "bot" as const,
-        text: "Desculpe, tive um probleminha para me conectar. Pode tentar me mandar a mensagem novamente? 🥹",
+        text: "Desculpe, tive um probleminha para me conectar. Você pode tentar reenviar a mensagem pelo botão abaixo! 🥹",
         timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
       };
       setChatMessages((prev) => [...prev, errorMsg]);
@@ -341,7 +351,7 @@ export default function HomeScreen() {
 
   const handleShareCardImage = async () => {
     try {
-      const activeRef = activeTemplateIdx === 0 ? viewShotRef0 : activeTemplateIdx === 1 ? viewShotRef1 : viewShotRef2;
+      const activeRef = activeTemplateIdx === 0 ? viewShotRef0 : activeTemplateIdx === 1 ? viewShotRef1 : activeTemplateIdx === 2 ? viewShotRef2 : activeTemplateIdx === 3 ? viewShotRef3 : viewShotRef4;
       if (!activeRef?.current) {
         Alert.alert("Erro", "Não foi possível gerar a imagem. Tente novamente.");
         return;
@@ -1000,6 +1010,106 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Weekly AI Progress & Feedback Card */}
+        {latestWorkout && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>🤖 FEEDBACK SEMANAL DA IA</Text>
+            </View>
+            <View style={{
+              backgroundColor: "#16161a",
+              borderRadius: 18,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: "rgba(255, 107, 107, 0.25)",
+            }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <View style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: "rgba(255, 107, 107, 0.15)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 107, 107, 0.4)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}>
+                  <Text style={{ fontSize: 24 }}>{user?.profile?.companionAvatar || "🦊"}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#ffffff" }}>
+                    Resumo de {user?.profile?.companionName || "Sidekick"}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: "#888888" }}>
+                    Análise semanal da sua evolução e carga
+                  </Text>
+                </View>
+              </View>
+
+              {/* Weekly Highlights Row */}
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+                <View style={{ flex: 1, backgroundColor: "#202026", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)" }}>
+                  <Text style={{ fontSize: 9, color: "#888888", fontWeight: "700", textTransform: "uppercase" }}>Volume Semanal</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "900", color: Colors.primary, marginTop: 2 }}>{volumeData.thisWeekTotalStr}</Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: "#202026", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)" }}>
+                  <Text style={{ fontSize: 9, color: "#888888", fontWeight: "700", textTransform: "uppercase" }}>Constância</Text>
+                  <Text style={{ fontSize: 15, fontWeight: "900", color: "#ffffff", marginTop: 2 }}>{workouts.filter((w: any) => {
+                    const d = new Date(w.date);
+                    const today = new Date();
+                    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
+                    const monday = new Date(today);
+                    monday.setDate(today.getDate() + offset);
+                    monday.setHours(0,0,0,0);
+                    return d >= monday;
+                  }).length} sessões</Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 12, color: "#cccccc", lineHeight: 18, marginBottom: 14 }}>
+                {(() => {
+                  const count = workouts.filter((w: any) => {
+                    const d = new Date(w.date);
+                    const today = new Date();
+                    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
+                    const monday = new Date(today);
+                    monday.setDate(today.getDate() + offset);
+                    monday.setHours(0,0,0,0);
+                    return d >= monday;
+                  }).length;
+                  if (count >= 3) {
+                    return `Excelente consistência nesta semana! Você acumulou ${volumeData.thisWeekTotalStr} em ${count} treinos. Sua curva de carga está evoluindo de forma equilibrada sem picos de sobrecarga.`;
+                  } else if (count > 0) {
+                    return `Você completou ${count} treino(s) totalizando ${volumeData.thisWeekTotalStr} nesta semana. Mantenha os dias de regenerativo para manter sua prontidão atlética alta!`;
+                  } else {
+                    return `Nenhum treino registrado nesta semana ainda. Que tal fazer uma corrida leve ou caminhada hoje para calibrar sua prontidão?`;
+                  }
+                })()}
+              </Text>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "rgba(255, 107, 107, 0.15)",
+                  borderWidth: 1,
+                  borderColor: Colors.primary,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+                onPress={() => {
+                  setChatModalVisible(true);
+                  handleSendChatMessage("Como foi meu desempenho nesta semana e qual conselho você tem para os próximos treinos?");
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "800", color: Colors.primary }}>
+                  💬 Conversar sobre o feedback no Chat
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Weekly Volume Comparison Chart Card */}
         {latestWorkout && (
           <View style={styles.section}>
@@ -1055,13 +1165,25 @@ export default function HomeScreen() {
                   <Path d={volumeData.lastWeekPath} fill="none" stroke="#a0a0b0" strokeWidth="2.5" strokeDasharray="3 3" />
                   <Path d={volumeData.coralPath} fill="none" stroke="#ff6b6b" strokeWidth="3" />
 
+                  {/* Column highlight for selected day */}
+                  {selectedSplitIndex !== null && (
+                    <Rect
+                      x={(35 + selectedSplitIndex * (230 / 6) - (230 / 12)).toFixed(1)}
+                      y="10"
+                      width={(230 / 6).toFixed(1)}
+                      height="85"
+                      fill="rgba(255, 107, 107, 0.12)"
+                      rx="4"
+                    />
+                  )}
+
                   {/* Dot Markers (Last Week) */}
                   {volumeData.lastWeekPoints.map((pt, i) => (
                     <Circle 
                       key={`lw-vis-${i}`} 
                       cx={pt.x.toFixed(1)} 
                       cy={pt.y.toFixed(1)} 
-                      r="4" 
+                      r={selectedSplitIndex === i ? "5" : "3.5"}
                       fill={selectedSplitIndex === i ? "#ffffff" : "#a0a0b0"} 
                       stroke="#1a1a1a" 
                       strokeWidth="1.5" 
@@ -1073,7 +1195,7 @@ export default function HomeScreen() {
                       key={`c-vis-${i}`} 
                       cx={pt.x.toFixed(1)} 
                       cy={pt.y.toFixed(1)} 
-                      r="4.5" 
+                      r={selectedSplitIndex === i ? "6" : "4.5"}
                       fill={selectedSplitIndex === i ? "#ffffff" : "#ff6b6b"} 
                       stroke="#1a1a1a" 
                       strokeWidth="1.5" 
@@ -1083,14 +1205,15 @@ export default function HomeScreen() {
                   {/* X Axis Labels */}
                   {volumeData.labels.map((lbl, idx) => {
                     const x = 35 + idx * (230 / 6);
+                    const isSelected = selectedSplitIndex === idx;
                     return (
                       <SvgText
                         key={`x-${idx}`}
                         x={x.toFixed(1)}
                         y="112"
-                        fill="#a0a0b0"
-                        fontSize="9"
-                        fontWeight="600"
+                        fill={isSelected ? "#ff6b6b" : "#a0a0b0"}
+                        fontSize={isSelected ? "10" : "9"}
+                        fontWeight={isSelected ? "900" : "600"}
                         textAnchor="middle"
                       >
                         {lbl}
@@ -1098,39 +1221,51 @@ export default function HomeScreen() {
                     );
                   })}
 
-                  {/* Invisible touch targets */}
-                  {volumeData.coralPoints.map((pt, i) => (
-                    <Circle 
-                      key={`touch-${i}`} 
-                      cx={pt.x.toFixed(1)} 
-                      cy={pt.y.toFixed(1)} 
-                      r="20" 
-                      fill="transparent" 
-                      onPress={() => setSelectedSplitIndex(selectedSplitIndex === i ? null : i)} 
-                    />
-                  ))}
+                  {/* 7 Vertical Touch Target Rectangles */}
+                  {volumeData.labels.map((_, i) => {
+                    const colWidth = 230 / 6;
+                    const x = 35 + i * colWidth - colWidth / 2;
+                    return (
+                      <Rect 
+                        key={`touch-col-${i}`} 
+                        x={x.toFixed(1)} 
+                        y="0" 
+                        width={colWidth.toFixed(1)}
+                        height="125" 
+                        fill="rgba(255, 255, 255, 0.001)" 
+                        onPress={() => setSelectedSplitIndex(selectedSplitIndex === i ? null : i)} 
+                      />
+                    );
+                  })}
                 </Svg>
               </View>
 
               {/* Interactive Tooltip area */}
               <View style={styles.chartInteractiveLegend}>
                 {selectedSplitIndex !== null ? (
-                  <View style={styles.chartTooltip}>
-                    <Text style={styles.chartTooltipLabel}>
-                      {["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][selectedSplitIndex]}
-                    </Text>
+                  <TouchableOpacity 
+                    style={styles.chartTooltip}
+                    onPress={() => setSelectedSplitIndex(null)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={styles.chartTooltipLabel}>
+                        📅 {["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"][selectedSplitIndex]}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: '#888' }}>✕ Fechar</Text>
+                    </View>
                     <Text style={styles.chartTooltipText}>
-                      Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "700" }}>{volumeData.thisWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>  |  Anterior: <Text style={{ color: "#a0a0b0", fontWeight: "700" }}>{volumeData.lastWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>
+                      Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "800" }}>{volumeData.thisWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>  •  Anterior: <Text style={{ color: "#a0a0b0", fontWeight: "800" }}>{volumeData.lastWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>
                       {"\n"}
-                      Diferença: <Text style={{ color: (volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? Colors.success : Colors.warning, fontWeight: "700" }}>
+                      Diferença: <Text style={{ color: (volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? Colors.success : Colors.warning, fontWeight: "800" }}>
                         {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? "+" : ""}
                         {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]).toFixed(1)} km
                       </Text>
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ) : (
                   <Text style={styles.chartLegendHelp}>
-                    💡 Toque nos marcadores do gráfico para comparar o volume diário!
+                    💡 Toque nas colunas do gráfico para comparar o volume diário!
                   </Text>
                 )}
               </View>
@@ -1301,54 +1436,58 @@ export default function HomeScreen() {
         transparent={true}
         onRequestClose={() => setSelectedWorkoutIdForDetail(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedWorkoutDetail && (
-              <>
-                {/* Modal Header */}
-                <View style={styles.modalHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                    <Text style={styles.workoutIconDetail}>
-                      {selectedWorkoutDetail.type === "run"
-                        ? "👟"
-                        : selectedWorkoutDetail.type === "cycling"
-                        ? "🚲"
-                        : "🏋️"}
-                    </Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.modalTitle} numberOfLines={1}>{selectedWorkoutDetail.title}</Text>
-                      <Text style={styles.modalSubtitle}>
-                        {new Date(selectedWorkoutDetail.date).toLocaleDateString("pt-BR", {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              {selectedWorkoutDetail && (
+                <>
+                  {/* Modal Header */}
+                  <View style={styles.modalHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <Text style={styles.workoutIconDetail}>
+                        {selectedWorkoutDetail.type === "run"
+                          ? "👟"
+                          : selectedWorkoutDetail.type === "cycling"
+                          ? "🚲"
+                          : "🏋️"}
                       </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.modalTitle} numberOfLines={1}>{selectedWorkoutDetail.title}</Text>
+                        <Text style={styles.modalSubtitle}>
+                          {new Date(selectedWorkoutDetail.date).toLocaleDateString("pt-BR", {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TouchableOpacity 
+                        onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
+                        style={{ marginRight: 20, padding: 5 }}
+                      >
+                        <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setSelectedWorkoutIdForDetail(null)} style={{ padding: 5 }}>
+                        <Text style={styles.modalCloseButton}>✕</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity 
-                      onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
-                      style={{ marginRight: 20, padding: 5 }}
-                    >
-                      <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setSelectedWorkoutIdForDetail(null)} style={{ padding: 5 }}>
-                      <Text style={styles.modalCloseButton}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
 
-                <ScrollView
-                  ref={indexModalScrollRef}
-                  style={styles.modalScroll}
-                  showsVerticalScrollIndicator={true}
-                  keyboardShouldPersistTaps="handled"
-                  automaticallyAdjustKeyboardInsets={true}
-                  contentContainerStyle={{ paddingBottom: effortModalVisible ? 120 : 40 }}
-                >
+                  <ScrollView
+                    ref={indexModalScrollRef}
+                    style={styles.modalScroll}
+                    showsVerticalScrollIndicator={true}
+                    keyboardShouldPersistTaps="handled"
+                    automaticallyAdjustKeyboardInsets={true}
+                    contentContainerStyle={{ paddingBottom: effortModalVisible ? 320 : 40 }}
+                  >
                   {effortModalVisible ? (
                     <View style={{ padding: 10 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -1393,8 +1532,8 @@ export default function HomeScreen() {
                         onChangeText={setUserNotes}
                         onFocus={() => {
                           setTimeout(() => {
-                            indexModalScrollRef.current?.scrollTo({ y: 140, animated: true });
-                          }, 150);
+                            indexModalScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 200);
                         }}
                         multiline
                       />
@@ -1579,7 +1718,8 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
-      </Modal>
+      </KeyboardAvoidingView>
+    </Modal>
 
       {/* Modal: Painel de Notificações */}
       <Modal
@@ -1740,18 +1880,28 @@ export default function HomeScreen() {
                   {/* Template Selector Carousel Header */}
                   <View style={styles.carouselSelectorRow}>
                     <TouchableOpacity 
-                      onPress={() => setActiveTemplateIdx(prev => prev === 0 ? 2 : prev - 1)}
+                      onPress={() => {
+                        const next = activeTemplateIdx === 0 ? 4 : activeTemplateIdx - 1;
+                        setActiveTemplateIdx(next);
+                        templateScrollRef.current?.scrollTo({ x: next * 290, animated: true });
+                      }}
                       style={styles.carouselSelectorArrow}
                     >
                       <Text style={styles.carouselSelectorArrowText}>◀</Text>
                     </TouchableOpacity>
                     <Text style={styles.carouselSelectorTitle}>
-                      {activeTemplateIdx === 0 ? "Card Esportivo Dark 🖤" :
-                       activeTemplateIdx === 1 ? "Sunset Glow Gradient 🧡" :
-                       "Minimalist Light 🤍"}
+                      {activeTemplateIdx === 0 ? "1. Percurso / Infográfico 🗺️⚡" :
+                       activeTemplateIdx === 1 ? "2. Cyberpunk Telemetry 🏎️🔥" :
+                       activeTemplateIdx === 2 ? "3. Sunset Glassmorphism 🌅✨" :
+                       activeTemplateIdx === 3 ? "4. Obsidian Gold Editorial 📰🏆" :
+                       "5. Sidekick Wanted Poster 🦖⚡"}
                     </Text>
                     <TouchableOpacity 
-                      onPress={() => setActiveTemplateIdx(prev => prev === 2 ? 0 : prev + 1)}
+                      onPress={() => {
+                        const next = activeTemplateIdx === 4 ? 0 : activeTemplateIdx + 1;
+                        setActiveTemplateIdx(next);
+                        templateScrollRef.current?.scrollTo({ x: next * 290, animated: true });
+                      }}
                       style={styles.carouselSelectorArrow}
                     >
                       <Text style={styles.carouselSelectorArrowText}>▶</Text>
@@ -1768,404 +1918,31 @@ export default function HomeScreen() {
                     onMomentumScrollEnd={(e) => {
                       const offsetX = e.nativeEvent.contentOffset.x;
                       const index = Math.round(offsetX / 290);
-                      setActiveTemplateIdx(index);
+                      if (index >= 0 && index <= 4) {
+                        setActiveTemplateIdx(index);
+                      }
                     }}
                   >
-                    
-                    {/* Template 0: Dark Premium */}
-                    <View style={{ width: 290, height: 480 }}>
-                      <ViewShot ref={viewShotRef0} options={{ format: "png", quality: 0.9 }}>
-                        <View style={{
-                          width: 290,
-                          height: 480,
-                          backgroundColor: "#0d0d12",
-                          borderRadius: 20,
-                          padding: 20,
-                          justifyContent: "space-between",
-                          borderWidth: 1,
-                          borderColor: "#1f1f2e",
-                          position: "relative",
-                        }}>
-                          {/* Header */}
-                          <View style={styles.cleanHeader}>
-                            <Text style={[styles.cleanLogo, { color: "#ffffff" }]}>👟 SIDEKICK</Text>
-                            <View style={{
-                              backgroundColor: isPersonalRecord ? "#ffd700" : "#ff6b6b",
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                            }}>
-                              <Text style={{
-                                color: "#000000",
-                                fontSize: 8,
-                                fontWeight: "800",
-                                letterSpacing: 0.5,
-                              }}>
-                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Main Stat & Workout Info */}
-                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
-                            <Text style={{ color: "#88888b", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-                              {sharingWorkout.title || "Treino"}
-                            </Text>
-                            <Text style={{ color: "#ffffff", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
-                              {sharingWorkout.distance 
-                                ? `${sharingWorkout.distance.toFixed(2)} km`
-                                : Math.floor(sharingWorkout.duration / 3600) > 0
-                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
-                              }
-                            </Text>
-                            
-                            {/* Horizontal Stats Row */}
-                            <View style={{
-                              flexDirection: "row",
-                              borderTopWidth: 1,
-                              borderTopColor: "#1f1f2e",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "#1f1f2e",
-                              paddingVertical: 12,
-                              marginTop: 15,
-                              justifyContent: "space-between"
-                            }}>
-                              {sharingWorkout.distance ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {Math.floor(sharingWorkout.duration / 3600) > 0
-                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.pace ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {formatPace(sharingWorkout.pace)}
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
-                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.avgHeartRate ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.avgHeartRate} bpm
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
-                                </View>
-                              ) : sharingWorkout.sufferScore ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.sufferScore}
-                                  </Text>
-                                  <Text style={{ color: "#88888b", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-
-                          {/* Coach Insight quotes block */}
-                          <View style={{
-                            backgroundColor: "#161622",
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1,
-                            borderColor: "#222235",
-                            marginBottom: 10,
-                          }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                              <Text style={{ color: "#ff6b6b", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Insight do {user?.profile?.companionName || "Rocky"}
-                              </Text>
-                            </View>
-                            <Text style={{ color: "#d1d1d6", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "#88888b", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                            <Text style={{ color: "#ff6b6b", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
-                          </View>
-                        </View>
-                      </ViewShot>
-                    </View>
-
-                    {/* Template 1: Glow Gradient */}
-                    <View style={{ width: 290, height: 480 }}>
-                      <ViewShot ref={viewShotRef1} options={{ format: "png", quality: 0.9 }}>
-                        <View style={{
-                          width: 290,
-                          height: 480,
-                          backgroundColor: "#ff5e3a",
-                          borderRadius: 20,
-                          padding: 20,
-                          justifyContent: "space-between",
-                          overflow: "hidden",
-                        }}>
-                          {/* Rich Coral/Orange Sunset Gradient background */}
-                          <Svg style={StyleSheet.absoluteFillObject} width="100%" height="100%">
-                            <Defs>
-                              <LinearGradient id="sunset" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <Stop offset="0%" stopColor="#fc4c02" />
-                                <Stop offset="100%" stopColor="#fe8c00" />
-                              </LinearGradient>
-                            </Defs>
-                            <Circle cx="145" cy="240" r="300" fill="url(#sunset)" />
-                          </Svg>
-
-                          {/* Header */}
-                          <View style={styles.cleanHeader}>
-                            <Text style={[styles.cleanLogo, { color: "#ffffff" }]}>👟 SIDEKICK</Text>
-                            <View style={{
-                              backgroundColor: "rgba(255, 255, 255, 0.25)",
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                            }}>
-                              <Text style={{
-                                color: "#ffffff",
-                                fontSize: 8,
-                                fontWeight: "800",
-                                letterSpacing: 0.5,
-                              }}>
-                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Main Stat & Workout Info */}
-                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
-                            <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-                              {sharingWorkout.title || "Treino"}
-                            </Text>
-                            <Text style={{ color: "#ffffff", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
-                              {sharingWorkout.distance 
-                                ? `${sharingWorkout.distance.toFixed(2)} km`
-                                : Math.floor(sharingWorkout.duration / 3600) > 0
-                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
-                              }
-                            </Text>
-                            
-                            {/* Horizontal Stats Row */}
-                            <View style={{
-                              flexDirection: "row",
-                              borderTopWidth: 1,
-                              borderTopColor: "rgba(255, 255, 255, 0.25)",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "rgba(255, 255, 255, 0.25)",
-                              paddingVertical: 12,
-                              marginTop: 15,
-                              justifyContent: "space-between"
-                            }}>
-                              {sharingWorkout.distance ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {Math.floor(sharingWorkout.duration / 3600) > 0
-                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.pace ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {formatPace(sharingWorkout.pace)}
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
-                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.avgHeartRate ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.avgHeartRate} bpm
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
-                                </View>
-                              ) : sharingWorkout.sufferScore ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.sufferScore}
-                                  </Text>
-                                  <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-
-                          {/* Coach Insight quotes block */}
-                          <View style={{
-                            backgroundColor: "rgba(255, 255, 255, 0.15)",
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1,
-                            borderColor: "rgba(255, 255, 255, 0.25)",
-                            marginBottom: 10,
-                          }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                              <Text style={{ color: "#ffffff", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Insight do {user?.profile?.companionName || "Rocky"}
-                              </Text>
-                            </View>
-                            <Text style={{ color: "#ffffff", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "rgba(255, 255, 255, 0.8)", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                            <Text style={{ color: "#ffffff", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
-                          </View>
-                        </View>
-                      </ViewShot>
-                    </View>
-
-                    {/* Template 2: Minimalist Light */}
-                    <View style={{ width: 290, height: 480 }}>
-                      <ViewShot ref={viewShotRef2} options={{ format: "png", quality: 0.9 }}>
-                        <View style={{
-                          width: 290,
-                          height: 480,
-                          backgroundColor: "#ffffff",
-                          borderRadius: 20,
-                          padding: 20,
-                          justifyContent: "space-between",
-                          borderWidth: 1,
-                          borderColor: "#e5e5ea",
-                          position: "relative",
-                        }}>
-                          {/* Header */}
-                          <View style={styles.cleanHeader}>
-                            <Text style={[styles.cleanLogo, { color: "#1c1c1e" }]}>👟 SIDEKICK</Text>
-                            <View style={{
-                              backgroundColor: isPersonalRecord ? "#ffd700" : "#e5e5ea",
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              borderRadius: 4,
-                            }}>
-                              <Text style={{
-                                color: "#1c1c1e",
-                                fontSize: 8,
-                                fontWeight: "800",
-                                letterSpacing: 0.5,
-                              }}>
-                                {isPersonalRecord ? "🏆 RECORDE PESSOAL" : (sharingWorkout.type === "run" ? "CORRIDA" : sharingWorkout.type === "cycling" ? "CICLISMO" : "FORÇA")}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Main Stat & Workout Info */}
-                          <View style={{ flex: 1, justifyContent: "center", marginVertical: 10 }}>
-                            <Text style={{ color: "#636366", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-                              {sharingWorkout.title || "Treino"}
-                            </Text>
-                            <Text style={{ color: "#1c1c1e", fontSize: 36, fontWeight: "900", marginTop: 4 }}>
-                              {sharingWorkout.distance 
-                                ? `${sharingWorkout.distance.toFixed(2)} km`
-                                : Math.floor(sharingWorkout.duration / 3600) > 0
-                                  ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                  : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`
-                              }
-                            </Text>
-                            
-                            {/* Horizontal Stats Row */}
-                            <View style={{
-                              flexDirection: "row",
-                              borderTopWidth: 1,
-                              borderTopColor: "#e5e5ea",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "#e5e5ea",
-                              paddingVertical: 12,
-                              marginTop: 15,
-                              justifyContent: "space-between"
-                            }}>
-                              {sharingWorkout.distance ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {Math.floor(sharingWorkout.duration / 3600) > 0
-                                      ? `${Math.floor(sharingWorkout.duration / 3600)}h ${Math.floor((sharingWorkout.duration % 3600) / 60)}m`
-                                      : `${Math.floor((sharingWorkout.duration % 3600) / 60)} min`}
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Tempo</Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.pace ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {formatPace(sharingWorkout.pace)}
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>
-                                    {sharingWorkout.type === "run" ? "Ritmo" : "Velocidade"}
-                                  </Text>
-                                </View>
-                              ) : null}
-                              {sharingWorkout.avgHeartRate ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.avgHeartRate} bpm
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Freq. Cardíaca</Text>
-                                </View>
-                              ) : sharingWorkout.sufferScore ? (
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: "#1c1c1e", fontSize: 14, fontWeight: "800" }}>
-                                    {sharingWorkout.sufferScore}
-                                  </Text>
-                                  <Text style={{ color: "#8e8e93", fontSize: 8, fontWeight: "700", textTransform: "uppercase", marginTop: 2 }}>Esforço Relativo</Text>
-                                </View>
-                              ) : null}
-                            </View>
-                          </View>
-
-                          {/* Coach Insight quotes block */}
-                          <View style={{
-                            backgroundColor: "#f2f2f7",
-                            borderRadius: 12,
-                            padding: 12,
-                            borderWidth: 1,
-                            borderColor: "#e5e5ea",
-                            marginBottom: 10,
-                          }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <Text style={{ fontSize: 16 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
-                              <Text style={{ color: "#ff6b6b", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Insight do {user?.profile?.companionName || "Rocky"}
-                              </Text>
-                            </View>
-                            <Text style={{ color: "#1c1c1e", fontSize: 11, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                              "{sharingWorkout.aiNarrative || "Nenhum limite é obstáculo. Bora pra cima! 🔥"}"
-                            </Text>
-                          </View>
-
-                          {/* Footer */}
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                            <Text style={{ color: "#8e8e93", fontSize: 9 }}>{new Date(sharingWorkout.date).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-                            <Text style={{ color: "#ff6b6b", fontSize: 9, fontWeight: "700", letterSpacing: 0.5 }}>@sidekick.fit</Text>
-                          </View>
-                        </View>
-                      </ViewShot>
-                    </View>
-
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={0} viewShotRef={viewShotRef0} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={1} viewShotRef={viewShotRef1} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={2} viewShotRef={viewShotRef2} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={3} viewShotRef={viewShotRef3} />
+                    <WorkoutStoryCard workout={sharingWorkout} user={user} templateIdx={4} viewShotRef={viewShotRef4} />
                   </ScrollView>
 
                   {/* Indicator Dots */}
                   <View style={styles.carouselIndicatorRow}>
-                    <View style={[styles.carouselDot, activeTemplateIdx === 0 && styles.carouselDotActive]} />
-                    <View style={[styles.carouselDot, activeTemplateIdx === 1 && styles.carouselDotActive]} />
-                    <View style={[styles.carouselDot, activeTemplateIdx === 2 && styles.carouselDotActive]} />
+                    {[0, 1, 2, 3, 4].map((idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => {
+                          setActiveTemplateIdx(idx);
+                          templateScrollRef.current?.scrollTo({ x: idx * 290, animated: true });
+                        }}
+                      >
+                        <View style={[styles.carouselDot, activeTemplateIdx === idx && styles.carouselDotActive]} />
+                      </TouchableOpacity>
+                    ))}
                   </View>
 
                   {/* Actions */}
@@ -2186,7 +1963,10 @@ export default function HomeScreen() {
 
       {/* Companion Chat Floating Button */}
       <TouchableOpacity
-        style={styles.chatFloatingButton}
+        style={[
+          styles.chatFloatingButton,
+          { bottom: insets.bottom > 0 ? insets.bottom + 72 : (Platform.OS === "ios" ? 100 : 88) }
+        ]}
         onPress={() => setChatModalVisible(true)}
       >
         <Text style={styles.chatCompanionAvatarEmoji}>
@@ -2466,6 +2246,43 @@ export default function HomeScreen() {
                       <Text style={styles.chatSuggestionText}>{sug}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              )}
+
+              {failedChatText && (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: 'rgba(255, 107, 107, 0.15)',
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  marginBottom: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 107, 107, 0.35)',
+                }}>
+                  <Text style={{ fontSize: 11, color: '#ff6b6b', fontWeight: '700' }}>
+                    ⚠️ Falha no envio da mensagem
+                  </Text>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#ff6b6b',
+                      paddingHorizontal: 12,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                    }}
+                    onPress={() => {
+                      const textToRetry = failedChatText;
+                      setFailedChatText(null);
+                      handleSendChatMessage(textToRetry);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '900', color: '#ffffff' }}>
+                      Tentar novamente 🔄
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 

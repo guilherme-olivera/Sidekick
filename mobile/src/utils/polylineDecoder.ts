@@ -1,10 +1,11 @@
-/**
- * Decodes Google/Strava Encoded Polyline into Lat/Lng coordinates
- */
-export function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
-  if (!encoded) return [];
+export interface LatLng {
+  latitude: number;
+  longitude: number;
+}
 
-  const points: { latitude: number; longitude: number }[] = [];
+export function decodePolyline(encoded: string): LatLng[] {
+  if (!encoded) return [];
+  const points: LatLng[] = [];
   let index = 0;
   const len = encoded.length;
   let lat = 0;
@@ -19,7 +20,7 @@ export function decodePolyline(encoded: string): { latitude: number; longitude: 
       result |= (b & 0x1f) << shift;
       shift += 5;
     } while (b >= 0x20);
-    const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
     lat += dlat;
 
     shift = 0;
@@ -29,34 +30,39 @@ export function decodePolyline(encoded: string): { latitude: number; longitude: 
       result |= (b & 0x1f) << shift;
       shift += 5;
     } while (b >= 0x20);
-    const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
     lng += dlng;
 
-    points.push({
-      latitude: lat / 1e5,
-      longitude: lng / 1e5,
-    });
+    points.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
   }
-
   return points;
 }
 
-/**
- * Converts Lat/Lng points into a scaled SVG path string (d="M...") fitting width & height bounds
- */
-export function pointsToSvgPath(
-  points: { latitude: number; longitude: number }[],
-  width: number = 280,
-  height: number = 180,
-  padding: number = 20
-): string {
-  if (!points || points.length === 0) return "";
+export function polylineToSvgPath(
+  encodedOrPoints?: string | LatLng[] | null,
+  width = 250,
+  height = 180,
+  padding = 24
+): { hasGps: boolean; pathD: string; startPoint: { x: number; y: number }; endPoint: { x: number; y: number } } {
+  let points: LatLng[] = [];
 
-  let minLat = Infinity;
-  let maxLat = -Infinity;
-  let minLng = Infinity;
-  let maxLng = -Infinity;
+  if (typeof encodedOrPoints === "string" && encodedOrPoints.length > 0) {
+    points = decodePolyline(encodedOrPoints);
+  } else if (Array.isArray(encodedOrPoints) && encodedOrPoints.length > 0) {
+    points = encodedOrPoints;
+  }
 
+  // If workout has no GPS polyline data, return hasGps: false cleanly!
+  if (!points || points.length < 2) {
+    return {
+      hasGps: false,
+      pathD: "",
+      startPoint: { x: 0, y: 0 },
+      endPoint: { x: 0, y: 0 },
+    };
+  }
+
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
   for (const pt of points) {
     if (pt.latitude < minLat) minLat = pt.latitude;
     if (pt.latitude > maxLat) maxLat = pt.latitude;
@@ -64,25 +70,28 @@ export function pointsToSvgPath(
     if (pt.longitude > maxLng) maxLng = pt.longitude;
   }
 
-  const latRange = maxLat - minLat || 0.001;
-  const lngRange = maxLng - minLng || 0.001;
+  const latDelta = (maxLat - minLat) || 0.001;
+  const lngDelta = (maxLng - minLng) || 0.001;
 
-  const drawableW = width - padding * 2;
-  const drawableH = height - padding * 2;
+  const drawableWidth = width - padding * 2;
+  const drawableHeight = height - padding * 2;
 
-  const pathParts: string[] = [];
+  const scale = Math.min(drawableWidth / lngDelta, drawableHeight / latDelta);
+  const xOffset = padding + (drawableWidth - lngDelta * scale) / 2;
+  const yOffset = padding + (drawableHeight - latDelta * scale) / 2;
 
-  points.forEach((pt, idx) => {
-    // Normalize X (lng) and Y (lat - inverted because SVG Y grows down)
-    const x = padding + ((pt.longitude - minLng) / lngRange) * drawableW;
-    const y = padding + (1 - (pt.latitude - minLat) / latRange) * drawableH;
-
-    if (idx === 0) {
-      pathParts.push(`M ${x.toFixed(1)} ${y.toFixed(1)}`);
-    } else {
-      pathParts.push(`L ${x.toFixed(1)} ${y.toFixed(1)}`);
-    }
+  const mappedPoints = points.map(pt => {
+    const x = xOffset + (pt.longitude - minLng) * scale;
+    const y = height - (yOffset + (pt.latitude - minLat) * scale);
+    return { x, y };
   });
 
-  return pathParts.join(" ");
+  const pathD = mappedPoints.map((pt, i) => `${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" ");
+
+  return {
+    hasGps: true,
+    pathD,
+    startPoint: mappedPoints[0],
+    endPoint: mappedPoints[mappedPoints.length - 1],
+  };
 }

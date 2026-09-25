@@ -36,7 +36,22 @@ export const chatHandler = async (req: any, res: Response) => {
       },
     });
 
-    const response = await generateChatResponse(message, history || [], user.profile, moodCheck?.mood);
+    const recentWorkouts = await prisma.workout.findMany({
+      where: { userId },
+      orderBy: { date: "desc" },
+      take: 7,
+      select: {
+        title: true,
+        type: true,
+        distance: true,
+        duration: true,
+        averageSpeed: true,
+        sufferScore: true,
+        date: true,
+      },
+    });
+
+    const response = await generateChatResponse(message, history || [], user.profile, moodCheck?.mood, recentWorkouts);
     
     return res.json({ success: true, response });
   } catch (error) {
