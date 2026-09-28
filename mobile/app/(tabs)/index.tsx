@@ -507,24 +507,24 @@ export default function HomeScreen() {
     const maxVal = Math.max(...thisWeekDaily, ...lastWeekDaily, 5.0);
     const range = maxVal || 1.0;
 
-    // Coordinate mapping (Width 280, height 125, plot area X: 35 to 265, Y: 15 to 90)
+    // Coordinate mapping (Width 700, height 130, plot area X: 50 to 650, Y: 15 to 95)
     const coralPoints = thisWeekDaily.map((dist, i) => {
-      const x = 35 + i * (230 / 6);
-      const y = 90 - (dist / range) * 75;
+      const x = 50 + i * 100;
+      const y = 95 - (dist / range) * 80;
       return { x, y };
     });
 
     const lastWeekPoints = lastWeekDaily.map((dist, i) => {
-      const x = 35 + i * (230 / 6);
-      const y = 90 - (dist / range) * 75;
+      const x = 50 + i * 100;
+      const y = 95 - (dist / range) * 80;
       return { x, y };
     });
 
     const coralPath = `M ${coralPoints.map(pt => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" L ")}`;
     const lastWeekPath = `M ${lastWeekPoints.map(pt => `${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`).join(" L ")}`;
 
-    const coralArea = `${coralPath} L ${coralPoints[6].x.toFixed(1)} 90 L ${coralPoints[0].x.toFixed(1)} 90 Z`;
-    const lastWeekArea = `${lastWeekPath} L ${lastWeekPoints[6].x.toFixed(1)} 90 L ${lastWeekPoints[0].x.toFixed(1)} 90 Z`;
+    const coralArea = `${coralPath} L ${coralPoints[6].x.toFixed(1)} 95 L ${coralPoints[0].x.toFixed(1)} 95 Z`;
+    const lastWeekArea = `${lastWeekPath} L ${lastWeekPoints[6].x.toFixed(1)} 95 L ${lastWeekPoints[0].x.toFixed(1)} 95 Z`;
 
     const labels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
     
@@ -1010,106 +1010,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Weekly AI Progress & Feedback Card */}
-        {latestWorkout && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🤖 FEEDBACK SEMANAL DA IA</Text>
-            </View>
-            <View style={{
-              backgroundColor: "#16161a",
-              borderRadius: 18,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "rgba(255, 107, 107, 0.25)",
-            }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <View style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: "rgba(255, 107, 107, 0.15)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255, 107, 107, 0.4)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}>
-                  <Text style={{ fontSize: 24 }}>{user?.profile?.companionAvatar || "🦊"}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#ffffff" }}>
-                    Resumo de {user?.profile?.companionName || "Sidekick"}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: "#888888" }}>
-                    Análise semanal da sua evolução e carga
-                  </Text>
-                </View>
-              </View>
-
-              {/* Weekly Highlights Row */}
-              <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
-                <View style={{ flex: 1, backgroundColor: "#202026", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)" }}>
-                  <Text style={{ fontSize: 9, color: "#888888", fontWeight: "700", textTransform: "uppercase" }}>Volume Semanal</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "900", color: Colors.primary, marginTop: 2 }}>{volumeData.thisWeekTotalStr}</Text>
-                </View>
-                <View style={{ flex: 1, backgroundColor: "#202026", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.05)" }}>
-                  <Text style={{ fontSize: 9, color: "#888888", fontWeight: "700", textTransform: "uppercase" }}>Constância</Text>
-                  <Text style={{ fontSize: 15, fontWeight: "900", color: "#ffffff", marginTop: 2 }}>{workouts.filter((w: any) => {
-                    const d = new Date(w.date);
-                    const today = new Date();
-                    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
-                    const monday = new Date(today);
-                    monday.setDate(today.getDate() + offset);
-                    monday.setHours(0,0,0,0);
-                    return d >= monday;
-                  }).length} sessões</Text>
-                </View>
-              </View>
-
-              <Text style={{ fontSize: 12, color: "#cccccc", lineHeight: 18, marginBottom: 14 }}>
-                {(() => {
-                  const count = workouts.filter((w: any) => {
-                    const d = new Date(w.date);
-                    const today = new Date();
-                    const offset = today.getDay() === 0 ? -6 : 1 - today.getDay();
-                    const monday = new Date(today);
-                    monday.setDate(today.getDate() + offset);
-                    monday.setHours(0,0,0,0);
-                    return d >= monday;
-                  }).length;
-                  if (count >= 3) {
-                    return `Excelente consistência nesta semana! Você acumulou ${volumeData.thisWeekTotalStr} em ${count} treinos. Sua curva de carga está evoluindo de forma equilibrada sem picos de sobrecarga.`;
-                  } else if (count > 0) {
-                    return `Você completou ${count} treino(s) totalizando ${volumeData.thisWeekTotalStr} nesta semana. Mantenha os dias de regenerativo para manter sua prontidão atlética alta!`;
-                  } else {
-                    return `Nenhum treino registrado nesta semana ainda. Que tal fazer uma corrida leve ou caminhada hoje para calibrar sua prontidão?`;
-                  }
-                })()}
-              </Text>
-
-              <TouchableOpacity
-                style={{
-                  backgroundColor: "rgba(255, 107, 107, 0.15)",
-                  borderWidth: 1,
-                  borderColor: Colors.primary,
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  alignItems: "center",
-                }}
-                onPress={() => {
-                  setChatModalVisible(true);
-                  handleSendChatMessage("Como foi meu desempenho nesta semana e qual conselho você tem para os próximos treinos?");
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 12, fontWeight: "800", color: Colors.primary }}>
-                  💬 Conversar sobre o feedback no Chat
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         {/* Weekly Volume Comparison Chart Card */}
         {latestWorkout && (
           <View style={styles.section}>
@@ -1131,9 +1031,9 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              {/* Chart Grid Area */}
-              <View style={styles.chartWrapper}>
-                <Svg width="100%" height="125" viewBox="0 0 280 125" style={styles.svgCanvas}>
+              {/* Chart Grid Area with 100% Reliable Touch Overlay */}
+              <View style={[styles.chartWrapper, { position: "relative" }]}>
+                <Svg width="100%" height="130" viewBox="0 0 700 130" style={styles.svgCanvas}>
                   <Defs>
                     <LinearGradient id="coralGradient" x1="0" y1="0" x2="0" y2="1">
                       <Stop offset="0%" stopColor="#ff6b6b" stopOpacity="0.25" />
@@ -1146,16 +1046,16 @@ export default function HomeScreen() {
                   </Defs>
 
                   {/* Horizontal gridlines */}
-                  <Line x1="35" y1="15" x2="265" y2="15" stroke="#22222b" strokeWidth="1" />
-                  <Line x1="35" y1="40" x2="265" y2="40" stroke="#22222b" strokeWidth="1" />
-                  <Line x1="35" y1="65" x2="265" y2="65" stroke="#22222b" strokeWidth="1" />
-                  <Line x1="35" y1="90" x2="265" y2="90" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="50" y1="15" x2="650" y2="15" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="50" y1="41.6" x2="650" y2="41.6" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="50" y1="68.3" x2="650" y2="68.3" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="50" y1="95" x2="650" y2="95" stroke="#22222b" strokeWidth="1" />
 
                   {/* Y Axis Labels */}
-                  <SvgText x="27" y="18" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[0]}</SvgText>
-                  <SvgText x="27" y="43" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[1]}</SvgText>
-                  <SvgText x="27" y="68" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[2]}</SvgText>
-                  <SvgText x="27" y="93" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[3]}</SvgText>
+                  <SvgText x="42" y="18" fill="#a0a0b0" fontSize="10" fontWeight="600" textAnchor="end">{volumeData.yLabels[0]}</SvgText>
+                  <SvgText x="42" y="44.6" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[1]}</SvgText>
+                  <SvgText x="42" y="71.3" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[2]}</SvgText>
+                  <SvgText x="42" y="98" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[3]}</SvgText>
 
                   {/* Fills under path */}
                   <Path d={volumeData.lastWeekArea} fill="url(#greyGradient)" />
@@ -1168,12 +1068,12 @@ export default function HomeScreen() {
                   {/* Column highlight for selected day */}
                   {selectedSplitIndex !== null && (
                     <Rect
-                      x={(35 + selectedSplitIndex * (230 / 6) - (230 / 12)).toFixed(1)}
+                      x={(50 + selectedSplitIndex * 100 - 45).toFixed(1)}
                       y="10"
-                      width={(230 / 6).toFixed(1)}
-                      height="85"
-                      fill="rgba(255, 107, 107, 0.12)"
-                      rx="4"
+                      width="90"
+                      height="90"
+                      fill="rgba(255, 107, 107, 0.22)"
+                      rx="6"
                     />
                   )}
 
@@ -1183,7 +1083,7 @@ export default function HomeScreen() {
                       key={`lw-vis-${i}`} 
                       cx={pt.x.toFixed(1)} 
                       cy={pt.y.toFixed(1)} 
-                      r={selectedSplitIndex === i ? "5" : "3.5"}
+                      r={selectedSplitIndex === i ? "6" : "4"}
                       fill={selectedSplitIndex === i ? "#ffffff" : "#a0a0b0"} 
                       stroke="#1a1a1a" 
                       strokeWidth="1.5" 
@@ -1195,7 +1095,7 @@ export default function HomeScreen() {
                       key={`c-vis-${i}`} 
                       cx={pt.x.toFixed(1)} 
                       cy={pt.y.toFixed(1)} 
-                      r={selectedSplitIndex === i ? "6" : "4.5"}
+                      r={selectedSplitIndex === i ? "7" : "5"}
                       fill={selectedSplitIndex === i ? "#ffffff" : "#ff6b6b"} 
                       stroke="#1a1a1a" 
                       strokeWidth="1.5" 
@@ -1204,15 +1104,15 @@ export default function HomeScreen() {
 
                   {/* X Axis Labels */}
                   {volumeData.labels.map((lbl, idx) => {
-                    const x = 35 + idx * (230 / 6);
+                    const x = 50 + idx * 100;
                     const isSelected = selectedSplitIndex === idx;
                     return (
                       <SvgText
                         key={`x-${idx}`}
                         x={x.toFixed(1)}
-                        y="112"
+                        y="118"
                         fill={isSelected ? "#ff6b6b" : "#a0a0b0"}
-                        fontSize={isSelected ? "10" : "9"}
+                        fontSize={isSelected ? "11" : "10"}
                         fontWeight={isSelected ? "900" : "600"}
                         textAnchor="middle"
                       >
@@ -1220,24 +1120,22 @@ export default function HomeScreen() {
                       </SvgText>
                     );
                   })}
-
-                  {/* 7 Vertical Touch Target Rectangles */}
-                  {volumeData.labels.map((_, i) => {
-                    const colWidth = 230 / 6;
-                    const x = 35 + i * colWidth - colWidth / 2;
-                    return (
-                      <Rect 
-                        key={`touch-col-${i}`} 
-                        x={x.toFixed(1)} 
-                        y="0" 
-                        width={colWidth.toFixed(1)}
-                        height="125" 
-                        fill="rgba(255, 255, 255, 0.001)" 
-                        onPress={() => setSelectedSplitIndex(selectedSplitIndex === i ? null : i)} 
-                      />
-                    );
-                  })}
                 </Svg>
+
+                {/* Absolute Touchable Column Overlay: 7 equal flex columns matching exact SVG 100px steps */}
+                <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, flexDirection: "row" }}>
+                  {volumeData.labels.map((_, i) => (
+                    <TouchableOpacity
+                      key={`touch-col-${i}`}
+                      style={{
+                        flex: 1,
+                        height: "100%",
+                      }}
+                      activeOpacity={0.6}
+                      onPress={() => setSelectedSplitIndex(selectedSplitIndex === i ? null : i)}
+                    />
+                  ))}
+                </View>
               </View>
 
               {/* Interactive Tooltip area */}
@@ -1246,13 +1144,12 @@ export default function HomeScreen() {
                   <TouchableOpacity 
                     style={styles.chartTooltip}
                     onPress={() => setSelectedSplitIndex(null)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.85}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <Text style={styles.chartTooltipLabel}>
                         📅 {["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"][selectedSplitIndex]}
                       </Text>
-                      <Text style={{ fontSize: 10, color: '#888' }}>✕ Fechar</Text>
                     </View>
                     <Text style={styles.chartTooltipText}>
                       Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "800" }}>{volumeData.thisWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>  •  Anterior: <Text style={{ color: "#a0a0b0", fontWeight: "800" }}>{volumeData.lastWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>
@@ -1261,11 +1158,14 @@ export default function HomeScreen() {
                         {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? "+" : ""}
                         {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]).toFixed(1)} km
                       </Text>
+                      {volumeData.thisWeekDaily[selectedSplitIndex] === 0 && volumeData.lastWeekDaily[selectedSplitIndex] === 0 && (
+                        <Text style={{ color: "#888899", fontSize: 10, fontStyle: "italic" }}>  (Dia de Descanso / Sem Treinos)</Text>
+                      )}
                     </Text>
                   </TouchableOpacity>
                 ) : (
                   <Text style={styles.chartLegendHelp}>
-                    💡 Toque nas colunas do gráfico para comparar o volume diário!
+                    💡 Toque em qualquer dia do gráfico para ver a quilometragem detalhada!
                   </Text>
                 )}
               </View>
@@ -1273,18 +1173,14 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Preditor de Ritmo de Provas (Projeção Riegel) - Compacto & Sofisticado */}
+        {/* Preditor de Ritmo de Provas (Projeção Riegel) - Grid Responsivo para Celular & Tablet */}
         <View style={styles.section}>
           <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
             <Text style={styles.sectionTitle}>⏱️ PREVISÕES DE DESEMPENHO</Text>
             <Text style={{ fontSize: 11, color: "#888888", fontStyle: "italic" }}>Projeção Riegel</Text>
           </View>
           
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 16, gap: 10 }}
-          >
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, width: "100%" }}>
             {[
               { key: "5k", label: "5K" },
               { key: "10k", label: "10K" },
@@ -1303,10 +1199,11 @@ export default function HomeScreen() {
                 <View
                   key={key}
                   style={{
-                    width: 124,
+                    flex: 1,
+                    minWidth: 120,
                     backgroundColor: "#16161a",
                     borderRadius: 14,
-                    padding: 10,
+                    padding: 12,
                     borderWidth: 1,
                     borderColor: "rgba(255, 255, 255, 0.08)",
                   }}
@@ -1344,7 +1241,7 @@ export default function HomeScreen() {
                 </View>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {/* Latest Workout */}
@@ -1680,37 +1577,28 @@ export default function HomeScreen() {
                       </View>
 
                       {/* IA Analysis Narrative Section */}
-                      <View style={styles.modalIaSection}>
-                        <Text style={styles.modalIaTitle}>🧠 Análise do Sidekick (IA)</Text>
-                        
-                        {selectedWorkoutDetail.aiNarrative ? (
+                      {selectedWorkoutDetail.aiNarrative ? (
+                        <View style={styles.modalIaSection}>
+                          <Text style={styles.modalIaTitle}>🧠 Análise do Sidekick (IA)</Text>
                           <View style={styles.modalNarrativeContainer}>
                             <Text style={styles.modalNarrativeText}>
                               {selectedWorkoutDetail.aiNarrative}
                             </Text>
                           </View>
-                        ) : (
-                          <View style={styles.modalIaEmpty}>
-                            <Text style={styles.modalIaEmptyText}>
-                              Nenhuma análise gerada para esta atividade física ainda.
-                            </Text>
-                          </View>
-                        )}
-
-                        {!selectedWorkoutDetail.aiNarrative && (
-                          <TouchableOpacity
-                            style={[styles.modalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.modalAnalyzeButtonDisabled]}
-                            onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
-                            disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
-                          >
-                            {analyzingWorkoutId === selectedWorkoutDetail.id ? (
-                              <ActivityIndicator color="#ffffff" size="small" />
-                            ) : (
-                              <Text style={styles.modalAnalyzeButtonText}>🧠 Analisar com IA</Text>
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.modalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.modalAnalyzeButtonDisabled, { marginTop: 16 }]}
+                          onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
+                          disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
+                        >
+                          {analyzingWorkoutId === selectedWorkoutDetail.id ? (
+                            <ActivityIndicator color="#ffffff" size="small" />
+                          ) : (
+                            <Text style={styles.modalAnalyzeButtonText}>🧠 Analisar com IA</Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </>
                   )}
                 </ScrollView>
@@ -3239,7 +3127,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 20,
-    padding: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
   },
   telemetryHeader: {
     flexDirection: "column",

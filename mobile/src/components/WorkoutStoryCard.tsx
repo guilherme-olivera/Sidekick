@@ -11,11 +11,121 @@ interface WorkoutStoryCardProps {
   viewShotRef: React.RefObject<any>;
 }
 
+// -----------------------------------------------------------------------------
+// Banco de Frases Motivacionais de Alto Impacto para os Fotocards (35+ Frases)
+// -----------------------------------------------------------------------------
+const HIGH_IMPACT_MOTIVATIONAL_QUOTES = [
+  // Superação & Mentalidade Pro
+  "A dor do treino é temporária, mas o orgulho de vencer é para sempre.",
+  "Menos desculpas, mais foco e quilômetros rodados com garra.",
+  "O único treino ruim é aquele que você não fez.",
+  "Construindo hoje o atleta de alta performance que você será amanhã.",
+  "Garra inabalável no processo, vitória garantida no resultado.",
+  "Sua única competição real é contra a sua versão de ontem.",
+  "Suor e dedicação no treino para celebrar com orgulho no topo.",
+  "Disciplina é fazer o que precisa ser feito, mesmo sem motivação.",
+  "Ritmo constante, mente blindada e foco total na evolução.",
+  "A consistência diária constrói resultados extraordinários.",
+  "Não espere o momento perfeito. Pegue o momento e faça perfeito.",
+  "Seu corpo aguenta quase tudo. É a sua mente que você precisa convencer.",
+  "Desafios são apenas convites para você demonstrar a sua força.",
+  "Progresso diário é melhor do que perfeição ilusória.",
+
+  // Corrida & Endurance
+  "Cada passo dado é um metro a menos entre você e o seu objetivo.",
+  "As pernas obedecem quando a mente recusa a desistir.",
+  "Pace forte, respiração controlada e coração pulsando garra.",
+  "O asfalto testa sua resistência, mas a sua determinação vence.",
+  "Corra com o coração quando as pernas começarem a cansar.",
+  "A linha de chegada é apenas o começo da sua nova meta.",
+
+  // Ciclismo & Giro
+  "Giro forte, pernas de aço e foco no horizonte.",
+  "Nas subidas que testam as pernas, a mente do ciclista se fortalece.",
+  "Empurre os pedais como se cada watt fosse um passo para a vitória.",
+  "Vento no rosto, cadência perfeita e superação em cada quilômetro.",
+
+  // Musculação & Força
+  "Carga pesada constrói mente forte e físico inabalável.",
+  "Uma repetição de cada vez. A força se constrói no limite.",
+  "Sem atalhos no treino: o resultado vem do esforço bruto.",
+  "Cada série é um degrau rumo ao seu topo pessoal.",
+
+  // Geral Esportivo & Foco
+  "Mais um treino gravado no histórico dos campeões.",
+  "A constância silenciosa vence o talento sem disciplina.",
+  "Vença a si mesmo todos os dias e o mundo respeitará o seu ritmo.",
+  "O impossível é apenas algo que ainda não foi treinado o suficiente.",
+  "Treine em silêncio. Deixe que o seu progresso faça todo o barulho.",
+  "Foco no objetivo, energia no topo e orgulho inegociável."
+];
+
+function getPunchyMotivationalQuote(workout: any): string {
+  // Utiliza estritamente o Banco de Frases Motivacionais de Alto Impacto como padrão!
+  const seedStr = (workout?.id || workout?.title || workout?.date || "sidekick_quote").toString();
+  let hash = 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    hash = (hash << 5) - hash + seedStr.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % HIGH_IMPACT_MOTIVATIONAL_QUOTES.length;
+  return HIGH_IMPACT_MOTIVATIONAL_QUOTES[idx];
+}
+
+// -----------------------------------------------------------------------------
+// Formatters & Fun Calorie Equivalencies
+// -----------------------------------------------------------------------------
 function formatPace(pace: number | null | undefined): string {
   if (!pace || pace <= 0) return "--:--";
   const mins = Math.floor(pace);
   const secs = Math.round((pace - mins) * 60);
   return `${mins}'${secs < 10 ? "0" : ""}${secs}"/km`;
+}
+
+function formatSpeed(speedKmH: number | null | undefined, pace: number | null | undefined): string {
+  if (speedKmH && speedKmH > 0) return `${speedKmH.toFixed(1)} km/h`;
+  if (pace && pace > 0) {
+    const kmh = 60 / pace;
+    return `${kmh.toFixed(1)} km/h`;
+  }
+  return "-- km/h";
+}
+
+function formatSwimPace(paceMinKm: number | null | undefined): string {
+  if (!paceMinKm || paceMinKm <= 0) return "--:--/100m";
+  const pace100m = paceMinKm / 10;
+  const mins = Math.floor(pace100m);
+  const secs = Math.round((pace100m - mins) * 60);
+  return `${mins}'${secs < 10 ? "0" : ""}${secs}"/100m`;
+}
+
+function getCalorieEquivalence(calories: number): string {
+  if (calories >= 700) {
+    const qty = (calories / 700).toFixed(1);
+    return `🥩 Equivalente a ~${qty} picanhas suculentas queimadas!`;
+  }
+  if (calories >= 450) {
+    const qty = Math.max(1, Math.round(calories / 450));
+    return `🍔 Equivalente a ~${qty} ${qty === 1 ? "hambúrguer gourmet queimado" : "hambúrgueres gourmet queimados"}!`;
+  }
+  if (calories >= 250) {
+    const qty = Math.max(1, Math.round(calories / 250));
+    return `🍕 Equivalente a ~${qty} ${qty === 1 ? "fatia de pizza queimada" : "fatias de pizza queimadas"} com garra!`;
+  }
+  if (calories >= 140) {
+    const qty = Math.max(1, Math.round(calories / 140));
+    return `🍺 Equivalente a ~${qty} ${qty === 1 ? "chopp gelado queimado" : "chopps gelados queimados"}!`;
+  }
+  const qty = Math.max(1, Math.round(calories / 90));
+  return `⚡ Equivalente a ~${qty} ${qty === 1 ? "coxinha queimada" : "coxinhas queimadas"} no treino!`;
+}
+
+function getShortCalorieBadge(calories: number): string {
+  if (calories >= 700) return `🥩 ~${(calories / 700).toFixed(1)} picanha`;
+  if (calories >= 450) return `🍔 ~${Math.max(1, Math.round(calories / 450))} burger`;
+  if (calories >= 250) return `🍕 ~${Math.max(1, Math.round(calories / 250))} pizza`;
+  if (calories >= 140) return `🍺 ~${Math.max(1, Math.round(calories / 140))} chopp`;
+  return `⚡ ~${Math.max(1, Math.round(calories / 90))} coxinha`;
 }
 
 export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
@@ -26,21 +136,42 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
 }) => {
   if (!workout) return null;
 
+  const type = (workout.type || "").toLowerCase();
+  const title = (workout.title || "").toLowerCase();
+
+  const isCycling =
+    type === "cycling" ||
+    type === "bike" ||
+    title.includes("bike") ||
+    title.includes("ciclismo") ||
+    title.includes("pedal") ||
+    title.includes("rolo");
+
+  const isSwimming =
+    type === "swim" ||
+    type === "swimming" ||
+    title.includes("natação") ||
+    title.includes("natacao") ||
+    title.includes("piscina") ||
+    title.includes("águas abertas");
+
+  const isStrength =
+    type === "strength" ||
+    title.includes("muscul") ||
+    title.includes("força") ||
+    title.includes("forca") ||
+    title.includes("crossfit") ||
+    title.includes("funcional") ||
+    title.includes("peso");
+
+  const isRunning = !isCycling && !isSwimming && !isStrength;
+
   const routeSvg = polylineToSvgPath(
     workout.mapPolyline || workout.splits,
     250,
     150,
     18
   );
-
-  const isStrength =
-    workout.type === "strength" ||
-    workout.title?.toLowerCase().includes("muscul") ||
-    workout.title?.toLowerCase().includes("força");
-  const isCycling =
-    workout.type === "cycling" ||
-    workout.title?.toLowerCase().includes("bike") ||
-    workout.title?.toLowerCase().includes("pedal");
 
   const durationMin = Math.floor((workout.duration || 0) / 60);
   const durationHours = Math.floor(durationMin / 60);
@@ -63,8 +194,14 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
     year: "numeric",
   });
 
-  // Generate 4 synthetic splits if real splits metric is not provided
-  let splitsList: Array<{ km: number; paceStr: string }> = [];
+  const rawSpeedKmH = workout.speed || workout.averageSpeed ? (workout.speed || workout.averageSpeed) * (workout.averageSpeed < 20 ? 3.6 : 1) : null;
+  const speedStr = formatSpeed(rawSpeedKmH, workout.pace);
+  const paceStr = formatPace(workout.pace);
+  const swimPaceStr = formatSwimPace(workout.pace);
+  const punchyQuote = getPunchyMotivationalQuote(workout);
+
+  // Generate 4 synthetic splits formatted for modality
+  let splitsList: Array<{ label: string; valStr: string }> = [];
   if (workout.splits) {
     try {
       const parsed = typeof workout.splits === "string" ? JSON.parse(workout.splits) : workout.splits;
@@ -72,7 +209,15 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
         splitsList = parsed.slice(0, 4).map((item: any, idx: number) => {
           const speedMs = item.average_speed || 0;
           const pace = speedMs > 0 ? (1000 / speedMs) / 60 : (workout.pace || 5);
-          return { km: idx + 1, paceStr: formatPace(pace) };
+          const speedKmH = speedMs > 0 ? speedMs * 3.6 : (workout.pace ? 60 / workout.pace : 25);
+          
+          if (isCycling) {
+            return { label: `KM ${idx + 1}`, valStr: `${speedKmH.toFixed(1)} km/h` };
+          } else if (isSwimming) {
+            return { label: `${(idx + 1) * 100}m`, valStr: formatSwimPace(pace) };
+          } else {
+            return { label: `KM ${idx + 1}`, valStr: formatPace(pace) };
+          }
         });
       }
     } catch (e) {
@@ -82,16 +227,36 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
 
   if (splitsList.length === 0) {
     const basePace = workout.pace || 5.2;
-    splitsList = [
-      { km: 1, paceStr: formatPace(basePace + 0.2) },
-      { km: 2, paceStr: formatPace(basePace - 0.1) },
-      { km: 3, paceStr: formatPace(basePace - 0.2) },
-      { km: 4, paceStr: formatPace(basePace + 0.05) },
-    ];
+    if (isCycling) {
+      const baseSpeed = rawSpeedKmH || 26.5;
+      splitsList = [
+        { label: "KM 1", valStr: `${(baseSpeed + 1.2).toFixed(1)} km/h` },
+        { label: "KM 2", valStr: `${(baseSpeed - 0.5).toFixed(1)} km/h` },
+        { label: "KM 3", valStr: `${(baseSpeed + 0.8).toFixed(1)} km/h` },
+        { label: "KM 4", valStr: `${(baseSpeed - 0.2).toFixed(1)} km/h` },
+      ];
+    } else if (isSwimming) {
+      splitsList = [
+        { label: "100m", valStr: formatSwimPace(basePace - 0.2) },
+        { label: "200m", valStr: formatSwimPace(basePace) },
+        { label: "300m", valStr: formatSwimPace(basePace + 0.1) },
+        { label: "400m", valStr: formatSwimPace(basePace - 0.1) },
+      ];
+    } else {
+      splitsList = [
+        { label: "KM 1", valStr: formatPace(basePace + 0.2) },
+        { label: "KM 2", valStr: formatPace(basePace - 0.1) },
+        { label: "KM 3", valStr: formatPace(basePace - 0.2) },
+        { label: "KM 4", valStr: formatPace(basePace + 0.05) },
+      ];
+    }
   }
 
+  const sportEmoji = isStrength ? "🏋️‍♂️" : isCycling ? "🚴‍♂️" : isSwimming ? "🏊‍♂️" : "🏃‍♂️";
+  const sportNameUpper = isStrength ? "MUSCULAÇÃO" : isCycling ? "CICLISMO" : isSwimming ? "NATAÇÃO" : "CORRIDA";
+
   // =========================================================================
-  // TEMPLATE 0: MAP & ELEVATION HERO 🗺️ (Foco Visual no Percurso GPS & Relevo)
+  // TEMPLATE 0: MAP & ELEVATION HERO 🗺️
   // =========================================================================
   if (templateIdx === 0) {
     return (
@@ -101,12 +266,12 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
             {/* Header */}
             <View style={styles.headerRow}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ fontSize: 16 }}>👟</Text>
+                <Text style={{ fontSize: 16 }}>{sportEmoji}</Text>
                 <Text style={{ color: "#ffffff", fontSize: 14, fontWeight: "900", letterSpacing: 1 }}>SIDEKICK</Text>
               </View>
               <View style={{ backgroundColor: "#FF5500", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
                 <Text style={{ color: "#ffffff", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 }}>
-                  {routeSvg.hasGps ? "🗺️ PERCURSO GPS" : (isStrength ? "🏋️ MUSCULAÇÃO" : isCycling ? "🚴 CICLISMO" : "🏃 INDOOR")}
+                  {routeSvg.hasGps ? "🗺️ PERCURSO GPS" : `${sportEmoji} ${sportNameUpper}`}
                 </Text>
               </View>
             </View>
@@ -133,14 +298,12 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
               </View>
             ) : (
               <View style={styles.sportBadgeBox}>
-                <Text style={{ fontSize: 46, marginBottom: 4 }}>
-                  {isStrength ? "🏋️‍♂️" : isCycling ? "🚴‍♂️" : "🏃‍♂️"}
-                </Text>
+                <Text style={{ fontSize: 46, marginBottom: 4 }}>{sportEmoji}</Text>
                 <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "900", letterSpacing: 0.5 }}>
-                  {workout.title || "Treino Esportivo"}
+                  {workout.title || `Treino de ${sportNameUpper}`}
                 </Text>
                 <Text style={{ color: "#FF5500", fontSize: 10, fontWeight: "800", marginTop: 2 }}>
-                  {isStrength ? "TREINO DE FORÇA & CARGA" : "SESSÃO INDOOR COMPLETA"}
+                  {isStrength ? "TREINO DE FORÇA & CARGA" : "SESSÃO COMPLETA"}
                 </Text>
               </View>
             )}
@@ -152,7 +315,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
                   {distanceKm ? `${distanceKm} km` : `${durationMin} min`}
                 </Text>
                 <Text style={{ color: "#FF5500", fontSize: 12, fontWeight: "800", textTransform: "uppercase" }}>
-                  {workout.type === "run" ? "Corrida" : workout.type === "cycling" ? "Ciclismo" : "Musculação"}
+                  {sportNameUpper}
                 </Text>
               </View>
 
@@ -161,20 +324,44 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
                   <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>{formattedDuration}</Text>
                   <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>DURAÇÃO</Text>
                 </View>
-                {workout.pace ? (
-                  <View>
-                    <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>{formatPace(workout.pace)}</Text>
-                    <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>RITMO</Text>
-                  </View>
-                ) : null}
+
+                {/* Modality Specific Secondary Metric */}
                 <View>
-                  <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>{workout.elevationGain ? `+${workout.elevationGain}m` : `${calories} kcal`}</Text>
-                  <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>{workout.elevationGain ? "ELEVAÇÃO" : "CALORIAS"}</Text>
+                  {isCycling ? (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>{speedStr}</Text>
+                      <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>VEL. MÉDIA</Text>
+                    </>
+                  ) : isSwimming ? (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>{swimPaceStr}</Text>
+                      <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>PACE 100M</Text>
+                    </>
+                  ) : isStrength ? (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>3.850 kg</Text>
+                      <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>CARGA ESTIMADA</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>{paceStr}</Text>
+                      <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>RITMO</Text>
+                    </>
+                  )}
+                </View>
+
+                <View>
+                  <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>
+                    {workout.elevationGain ? `+${workout.elevationGain}m` : `${calories} kcal`}
+                  </Text>
+                  <Text style={{ color: "#777785", fontSize: 8, fontWeight: "700" }}>
+                    {workout.elevationGain ? "ELEVAÇÃO" : "CALORIAS"}
+                  </Text>
                 </View>
               </View>
             </View>
 
-            {/* AI Quote */}
+            {/* High Impact Motivational Quote + Calorie Equivalency */}
             <View style={styles.aiQuoteBox}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
                 <Text style={{ fontSize: 14 }}>{companionAvatar}</Text>
@@ -183,7 +370,10 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
                 </Text>
               </View>
               <Text style={{ color: "#d1d1d6", fontSize: 10, fontStyle: "italic", lineHeight: 14 }} numberOfLines={2}>
-                "{workout.aiNarrative || "Superação constante e ritmo sólido do início ao fim!"}"
+                "{punchyQuote}"
+              </Text>
+              <Text style={{ color: "#FF5500", fontSize: 8, fontWeight: "700", marginTop: 4 }}>
+                {getCalorieEquivalence(calories)}
               </Text>
             </View>
 
@@ -199,7 +389,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
   }
 
   // =========================================================================
-  // TEMPLATE 1: SPLIT LAPS & TELEMETRY HUD 🏎️🔥 (Tabela de Parciais & Zonas HR)
+  // TEMPLATE 1: SPLIT LAPS & TELEMETRY HUD 🏎️🔥
   // =========================================================================
   if (templateIdx === 1) {
     return (
@@ -209,7 +399,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
             {/* Header */}
             <View style={styles.headerRow}>
               <Text style={{ color: "#00E5FF", fontSize: 12, fontWeight: "900", letterSpacing: 1.5 }}>
-                ⚡ TELEMETRIA DE RITMO
+                {isCycling ? "⚡ TELEMETRIA DE VELOCIDADE" : isSwimming ? "⚡ TELEMETRIA DE BRAÇADAS" : isStrength ? "⚡ RESUMO DE CARGA & FORÇA" : "⚡ TELEMETRIA DE RITMO"}
               </Text>
               <View style={{ backgroundColor: "#FF0055", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}>
                 <Text style={{ color: "#ffffff", fontSize: 8, fontWeight: "900" }}>SPLIT HUD</Text>
@@ -223,7 +413,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
                   {distanceKm ? `${distanceKm} KM` : `${durationMin} MIN`}
                 </Text>
                 <Text style={{ color: "#00E5FF", fontSize: 11, fontWeight: "800" }}>
-                  Pace Médio: {formatPace(workout.pace)}
+                  {isCycling ? `Vel. Média: ${speedStr}` : isSwimming ? `Pace 100m: ${swimPaceStr}` : isStrength ? `${calories} kcal` : `Pace Médio: ${paceStr}`}
                 </Text>
               </View>
             </View>
@@ -232,15 +422,15 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
             {!isStrength ? (
               <View style={{ backgroundColor: "#090414", padding: 10, borderRadius: 12, borderWidth: 1, borderColor: "#1e0f38" }}>
                 <Text style={{ color: "#a0a0c0", fontSize: 8, fontWeight: "900", letterSpacing: 1, marginBottom: 6 }}>
-                  📊 PARCIAIS POR QUILÔMETRO (SPLITS)
+                  {isCycling ? "📊 VELOCIDADE POR TRECHO" : isSwimming ? "📊 RITMO POR 100M" : "📊 PARCIAIS POR QUILÔMETRO (SPLITS)"}
                 </Text>
                 {splitsList.map((sp, idx) => (
                   <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: idx < splitsList.length - 1 ? 1 : 0, borderBottomColor: "#170c2e", paddingVertical: 4 }}>
-                    <Text style={{ color: "#00E5FF", fontSize: 11, fontWeight: "800" }}>KM {sp.km}</Text>
+                    <Text style={{ color: "#00E5FF", fontSize: 11, fontWeight: "800" }}>{sp.label}</Text>
                     <View style={{ flex: 1, height: 4, backgroundColor: "#1c1036", marginHorizontal: 10, borderRadius: 2, overflow: "hidden" }}>
                       <View style={{ width: `${Math.min(100, Math.max(30, 100 - idx * 12))}%`, height: "100%", backgroundColor: idx % 2 === 0 ? "#00E5FF" : "#FF0055" }} />
                     </View>
-                    <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "900" }}>{sp.paceStr}</Text>
+                    <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "900" }}>{sp.valStr}</Text>
                   </View>
                 ))}
               </View>
@@ -266,20 +456,23 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
               </View>
             )}
 
-            {/* Heart Rate Zone Bar Graphic */}
+            {/* Heart Rate & Calorie Food Badge */}
             <View style={{ backgroundColor: "#0e071c", padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,0,85,0.3)" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
                 <Text style={{ color: "#a0a0c0", fontSize: 8, fontWeight: "800" }}>ZONAS DE FREQUÊNCIA CARDÍACA</Text>
                 <Text style={{ color: "#FF0055", fontSize: 9, fontWeight: "900" }}>
-                  {workout.avgHeartRate ? `${workout.avgHeartRate} bpm méd` : "ZONA 3 AERÓBICA"}
+                  {workout.avgHeartRate ? `${workout.avgHeartRate} bpm` : "ZONA 3 AERÓBICA"}
                 </Text>
               </View>
-              <View style={{ flexDirection: "row", height: 8, borderRadius: 4, overflow: "hidden", gap: 2 }}>
+              <View style={{ flexDirection: "row", height: 8, borderRadius: 4, overflow: "hidden", gap: 2, marginBottom: 4 }}>
                 <View style={{ flex: 2, backgroundColor: "#51cf66" }} />
                 <View style={{ flex: 4, backgroundColor: "#ffc078" }} />
                 <View style={{ flex: 3, backgroundColor: "#FF5500" }} />
                 <View style={{ flex: 1, backgroundColor: "#FF0055" }} />
               </View>
+              <Text style={{ color: "#00E5FF", fontSize: 8, fontWeight: "800", fontStyle: "italic", textAlign: "right" }}>
+                {getShortCalorieBadge(calories)} queimados 🔥
+              </Text>
             </View>
 
             {/* Footer */}
@@ -294,7 +487,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
   }
 
   // =========================================================================
-  // TEMPLATE 2: BIG METRIC POWER & CALORIES 💥 (Tipografia Gigante 60pt & Calorias)
+  // TEMPLATE 2: BIG METRIC POWER & CALORIES 💥
   // =========================================================================
   if (templateIdx === 2) {
     return (
@@ -313,7 +506,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
 
             {/* Header */}
             <View style={styles.headerRow}>
-              <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "900", letterSpacing: 1 }}>👟 SIDEKICK POWER</Text>
+              <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "900", letterSpacing: 1 }}>{sportEmoji} SIDEKICK POWER</Text>
               <View style={{ backgroundColor: "rgba(0, 0, 0, 0.3)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}>
                 <Text style={{ color: "#ffffff", fontSize: 8, fontWeight: "900" }}>BIG METRIC</Text>
               </View>
@@ -322,7 +515,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
             {/* Massive 56pt Metric Center Display */}
             <View style={{ alignItems: "center", marginVertical: 6 }}>
               <Text style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: 10, fontWeight: "900", letterSpacing: 2, textTransform: "uppercase" }}>
-                {workout.title || "DISTÂNCIA RECORDE"}
+                {workout.title || `SESSÃO DE ${sportNameUpper}`}
               </Text>
               <Text style={{ color: "#ffffff", fontSize: 56, fontWeight: "900", letterSpacing: -2, lineHeight: 60, marginVertical: 4 }}>
                 {distanceKm ? distanceKm : durationMin}
@@ -332,7 +525,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
               </Text>
             </View>
 
-            {/* Calorie & Pace Highlights Box */}
+            {/* Calorie & Modality Highlights Box */}
             <View style={{ backgroundColor: "rgba(0, 0, 0, 0.45)", padding: 12, borderRadius: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", gap: 8 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -342,17 +535,36 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
                     <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, fontWeight: "700" }}>ENERGIA GASTA</Text>
                   </View>
                 </View>
-                {workout.pace ? (
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>{formatPace(workout.pace)}</Text>
-                    <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, fontWeight: "700" }}>PACE MÉDIO</Text>
-                  </View>
-                ) : null}
+
+                {/* Metric by Modality */}
+                <View style={{ alignItems: "flex-end" }}>
+                  {isCycling ? (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>{speedStr}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, fontWeight: "700" }}>VEL. MÉDIA</Text>
+                    </>
+                  ) : isSwimming ? (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>{swimPaceStr}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, fontWeight: "700" }}>PACE 100M</Text>
+                    </>
+                  ) : isStrength ? (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>{formattedDuration}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, fontWeight: "700" }}>TEMPO TOTAL</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>{paceStr}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 8, fontWeight: "700" }}>PACE MÉDIO</Text>
+                    </>
+                  )}
+                </View>
               </View>
 
               <View style={{ borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.2)", paddingTop: 6 }}>
                 <Text style={{ color: "#ffffff", fontSize: 10, fontStyle: "italic", textAlign: "center" }}>
-                  🍕 Equivalente a ~{Math.max(1, Math.round(calories / 250))} fatias de pizza queimadas com garra!
+                  {getCalorieEquivalence(calories)}
                 </Text>
               </View>
             </View>
@@ -369,76 +581,69 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
   }
 
   // =========================================================================
-  // TEMPLATE 3: SIDEKICK MASCOT AI COACH & XP RANK 🦖✨ (Card do Mascote & XP)
+  // TEMPLATE 3: AI COMPANION QUOTE STICKER OVERLAY 💬✨ (Card de Citação em PNG/Overlay)
   // =========================================================================
   if (templateIdx === 3) {
     return (
       <View style={styles.cardContainer}>
         <ViewShot ref={viewShotRef} options={{ format: "png", quality: 0.9 }}>
-          <View style={[styles.storyCard, { backgroundColor: "#0f0926", borderColor: "#00FF87", borderWidth: 1.5 }]}>
-            {/* Header */}
+          <View style={[styles.storyCard, { backgroundColor: "rgba(10, 10, 18, 0.94)", borderColor: "#00FF87", borderWidth: 1.5, padding: 18 }]}>
+            {/* Header / Companion Tag */}
             <View style={styles.headerRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,255,135,0.15)", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#00FF87" }}>
+                  <Text style={{ fontSize: 18 }}>{companionAvatar}</Text>
+                </View>
+                <View>
+                  <Text style={{ color: "#00FF87", fontSize: 11, fontWeight: "900", letterSpacing: 1 }}>
+                    {companionName.toUpperCase()} COACH
+                  </Text>
+                  <Text style={{ color: "#a0a0c0", fontSize: 8, fontWeight: "700" }}>MOTIVAÇÃO DE ALTO IMPACTO</Text>
+                </View>
+              </View>
+              <View style={{ backgroundColor: "rgba(0, 255, 135, 0.2)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: "#00FF87" }}>
+                <Text style={{ color: "#00FF87", fontSize: 8, fontWeight: "900" }}>💬 CITAÇÃO PNG</Text>
+              </View>
+            </View>
+
+            {/* Giant Quotation Mark & High-Impact Punchy Quote */}
+            <View style={{ flex: 1, justifyContent: "center", paddingVertical: 8 }}>
+              <Text style={{ color: "#00FF87", fontSize: 44, fontWeight: "900", lineHeight: 28, opacity: 0.8, marginBottom: 2 }}>
+                “
+              </Text>
+              <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "700", fontStyle: "italic", lineHeight: 22, letterSpacing: 0.2 }} numberOfLines={3}>
+                {punchyQuote}
+              </Text>
+              <Text style={{ color: "#00FF87", fontSize: 11, fontWeight: "900", marginTop: 8, alignSelf: "flex-end" }}>
+                — {companionName} AI Coach
+              </Text>
+            </View>
+
+            {/* Compact Telemetry Pill Banner with Food Equivalency */}
+            <View style={{ backgroundColor: "rgba(22, 22, 35, 0.95)", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: "rgba(0, 255, 135, 0.4)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ fontSize: 16 }}>{companionAvatar}</Text>
-                <Text style={{ color: "#00FF87", fontSize: 13, fontWeight: "900", letterSpacing: 1 }}>
-                  {companionName.toUpperCase()} RELATÓRIO
+                <Text style={{ fontSize: 14 }}>{sportEmoji}</Text>
+                <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "900" }}>
+                  {distanceKm ? `${distanceKm} KM` : `${durationMin} MIN`}
                 </Text>
               </View>
-              <View style={{ backgroundColor: "#00FF87", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 }}>
-                <Text style={{ color: "#0f0926", fontSize: 8, fontWeight: "900" }}>LVL 14 ATHLETE</Text>
-              </View>
-            </View>
 
-            {/* Mascot Avatar Circle & Tier Badge */}
-            <View style={{ alignItems: "center", marginVertical: 4 }}>
-              <View style={{
-                width: 68,
-                height: 68,
-                borderRadius: 34,
-                backgroundColor: "#1c1142",
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2.5,
-                borderColor: "#00FF87",
-              }}>
-                <Text style={{ fontSize: 36 }}>{companionAvatar}</Text>
-              </View>
-              <View style={{ backgroundColor: "#00FF87", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10, marginTop: -10 }}>
-                <Text style={{ color: "#0f0926", fontSize: 9, fontWeight: "900" }}>⭐ S-TIER WORKOUT</Text>
-              </View>
-            </View>
+              <View style={{ height: 16, width: 1, backgroundColor: "rgba(255,255,255,0.2)" }} />
 
-            {/* AI Speech Bubble */}
-            <View style={{ backgroundColor: "#1a103c", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#312068" }}>
-              <Text style={{ color: "#00FF87", fontSize: 9, fontWeight: "900", marginBottom: 2 }}>
-                💬 ANÁLISE DO COMPANION
+              <Text style={{ color: "#00FF87", fontSize: 12, fontWeight: "900" }}>
+                {isCycling ? speedStr : isSwimming ? swimPaceStr : isStrength ? "3.850 kg" : paceStr}
               </Text>
-              <Text style={{ color: "#e0e0ff", fontSize: 10, lineHeight: 15, fontStyle: "italic" }} numberOfLines={3}>
-                "{workout.aiNarrative || "Manteve ritmo forte e foco inabalável. Mais um treino gravado no histórico de vitória!"}"
-              </Text>
-            </View>
 
-            {/* XP & Gamification Row */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#150c33", padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#28185c" }}>
-              <View style={{ alignItems: "center" }}>
-                <Text style={{ color: "#00FF87", fontSize: 15, fontWeight: "900" }}>+350 XP</Text>
-                <Text style={{ color: "#a0a0c0", fontSize: 7, fontWeight: "800" }}>EVOLUÇÃO</Text>
-              </View>
-              <View style={{ width: 1, backgroundColor: "#28185c" }} />
-              <View style={{ alignItems: "center" }}>
-                <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: "900" }}>🔥 14 DIAS</Text>
-                <Text style={{ color: "#a0a0c0", fontSize: 7, fontWeight: "800" }}>SEQUÊNCIA</Text>
-              </View>
-              <View style={{ width: 1, backgroundColor: "#28185c" }} />
-              <View style={{ alignItems: "center" }}>
-                <Text style={{ color: "#00FF87", fontSize: 15, fontWeight: "900" }}>{distanceKm ? `${distanceKm}k` : `${durationMin}m`}</Text>
-                <Text style={{ color: "#a0a0c0", fontSize: 7, fontWeight: "800" }}>CONQUISTA</Text>
-              </View>
+              <View style={{ height: 16, width: 1, backgroundColor: "rgba(255,255,255,0.2)" }} />
+
+              <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "800" }}>
+                🔥 {calories} kcal ({getShortCalorieBadge(calories)})
+              </Text>
             </View>
 
             {/* Footer */}
-            <View style={styles.footerRow}>
-              <Text style={{ color: "#a0a0c0", fontSize: 9 }}>{workoutDateStr}</Text>
+            <View style={[styles.footerRow, { marginTop: 10 }]}>
+              <Text style={{ color: "#777785", fontSize: 9 }}>{workoutDateStr}</Text>
               <Text style={{ color: "#00FF87", fontSize: 9, fontWeight: "900" }}>@sidekick.fit</Text>
             </View>
           </View>
@@ -448,7 +653,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
   }
 
   // =========================================================================
-  // TEMPLATE 4: OBSIDIAN GOLD EDITORIAL 🏆 (Capa de Revista Esportiva)
+  // TEMPLATE 4: OBSIDIAN GOLD EDITORIAL 🏆
   // =========================================================================
   return (
     <View style={styles.cardContainer}>
@@ -478,19 +683,21 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
           {/* Gold Stats Panel */}
           <View style={{ backgroundColor: "#111116", padding: 12, borderRadius: 12, borderWidth: 1, borderColor: "#2a2a35", gap: 6 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: "#a0a0a8", fontSize: 9, fontWeight: "800" }}>PACE DE ELITE</Text>
-              <Text style={{ color: "#ffd700", fontSize: 12, fontWeight: "900" }}>{formatPace(workout.pace)}</Text>
+              <Text style={{ color: "#a0a0a8", fontSize: 9, fontWeight: "800" }}>
+                {isCycling ? "VELOCIDADE MÉDIA DE ELITE" : isSwimming ? "PACE DE ELITE (100M)" : isStrength ? "VOLUME ESTIMADO DE ELITE" : "PACE DE ELITE"}
+              </Text>
+              <Text style={{ color: "#ffd700", fontSize: 12, fontWeight: "900" }}>
+                {isCycling ? speedStr : isSwimming ? swimPaceStr : isStrength ? "3.850 kg" : paceStr}
+              </Text>
             </View>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ color: "#a0a0a8", fontSize: 9, fontWeight: "800" }}>TEMPO TOTAL</Text>
               <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "900" }}>{formattedDuration}</Text>
             </View>
-            {workout.avgHeartRate ? (
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: "#a0a0a8", fontSize: 9, fontWeight: "800" }}>FREQ. CARDÍACA MÉDIA</Text>
-                <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "900" }}>{workout.avgHeartRate} bpm</Text>
-              </View>
-            ) : null}
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ color: "#a0a0a8", fontSize: 9, fontWeight: "800" }}>ENERGIA GASTA</Text>
+              <Text style={{ color: "#ffd700", fontSize: 12, fontWeight: "900" }}>{calories} kcal ({getShortCalorieBadge(calories)})</Text>
+            </View>
           </View>
 
           {/* Verified Athlete Quote */}
@@ -499,7 +706,7 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
               SELO DE AUTENTICIDADE SIDEKICK
             </Text>
             <Text style={{ color: "#cccccc", fontSize: 9, fontStyle: "italic", lineHeight: 13 }} numberOfLines={2}>
-              "{workout.aiNarrative || "Superação técnica comprovada em sessão de treino de alta intensidade."}"
+              "{punchyQuote}"
             </Text>
           </View>
 

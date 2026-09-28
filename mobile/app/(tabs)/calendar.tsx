@@ -707,10 +707,10 @@ export default function CalendarScreen() {
                       </View>
 
                       {/* IA Analysis Narrative Section */}
-                      <View style={styles.workoutModalIaSection}>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                          <Text style={[styles.workoutModalIaTitle, { marginBottom: 0 }]}>🧠 Análise do Sidekick (IA)</Text>
-                          {selectedWorkoutDetail.aiNarrative && (
+                      {selectedWorkoutDetail.aiNarrative ? (
+                        <View style={styles.workoutModalIaSection}>
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                            <Text style={[styles.workoutModalIaTitle, { marginBottom: 0 }]}>🧠 Análise do Sidekick (IA)</Text>
                             <TouchableOpacity
                               style={{
                                 flexDirection: "row",
@@ -728,37 +728,26 @@ export default function CalendarScreen() {
                                 {isSpeaking ? "⏹️ Parar" : "🔊 Ouvir"}
                               </Text>
                             </TouchableOpacity>
-                          )}
-                        </View>
-                        
-                        {selectedWorkoutDetail.aiNarrative ? (
+                          </View>
                           <View style={styles.workoutModalNarrativeContainer}>
                             <Text style={styles.workoutModalNarrativeText}>
                               {selectedWorkoutDetail.aiNarrative}
                             </Text>
                           </View>
-                        ) : (
-                          <View style={styles.workoutModalIaEmpty}>
-                            <Text style={styles.workoutModalIaEmptyText}>
-                              Nenhuma análise gerada para esta atividade física ainda.
-                            </Text>
-                          </View>
-                        )}
-
-                        {!selectedWorkoutDetail.aiNarrative && (
-                          <TouchableOpacity
-                            style={[styles.workoutModalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.workoutModalAnalyzeButtonDisabled]}
-                            onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
-                            disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
-                          >
-                            {analyzingWorkoutId === selectedWorkoutDetail.id ? (
-                              <ActivityIndicator color="#ffffff" size="small" />
-                            ) : (
-                              <Text style={styles.workoutModalAnalyzeButtonText}>🧠 Analisar com IA</Text>
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.workoutModalAnalyzeButton, analyzingWorkoutId === selectedWorkoutDetail.id && styles.workoutModalAnalyzeButtonDisabled, { marginTop: 16 }]}
+                          onPress={() => handleOpenAnalyzeModal(selectedWorkoutDetail)}
+                          disabled={analyzingWorkoutId === selectedWorkoutDetail.id}
+                        >
+                          {analyzingWorkoutId === selectedWorkoutDetail.id ? (
+                            <ActivityIndicator color="#ffffff" size="small" />
+                          ) : (
+                            <Text style={styles.workoutModalAnalyzeButtonText}>🧠 Analisar com IA</Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </>
                   )}
                 </ScrollView>
