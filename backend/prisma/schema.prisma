@@ -18,6 +18,8 @@ model User {
   name                 String?
   avatar               String?   // URL da foto de perfil
   planType             String    @default("free")
+  premiumUntil         DateTime?
+  isAdmin              Boolean   @default(false)
   stravaId             String?   @unique // ID do atleta no Strava
   stravaAccessToken    String?
   stravaRefreshToken   String?
@@ -187,4 +189,35 @@ model CalendarEvent {
   @@index([userId])
   @@index([date])
 }
+
+// ===== VIP CODE MODEL =====
+model VipCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  durationDays    Int       // 7, 30, 90, 365, 99999 (lifetime)
+  isUsed          Boolean   @default(false)
+  usedByUserId    String?
+  usedAt          DateTime?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+
+  @@map("vip_codes")
+  @@index([code])
+}
+
+// ===== PASSWORD RESET TOKEN MODEL =====
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("password_reset_tokens")
+  @@index([email, code])
+}
+
+
 

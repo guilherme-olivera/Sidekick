@@ -71,7 +71,19 @@ export function getTransporterError(): string | null {
 export async function sendMail(to: string, subject: string, htmlContent: string, textContent?: string) {
   try {
     const startTime = Date.now();
-    if (RESEND_API_KEY) {
+    if (transporter) {
+      console.log(`[EMAIL] Enviando e-mail via SMTP (${SMTP_USER}) para ${to}...`);
+      const info = await transporter.sendMail({
+        from: SMTP_FROM,
+        to,
+        subject,
+        text: textContent || "Esta mensagem exige visualização em HTML.",
+        html: htmlContent,
+      });
+      const duration = Date.now() - startTime;
+      console.log(`[EMAIL] ⚡ Envio via SMTP resolvido em ${duration}ms para ${to}. ID: ${info.messageId}`);
+      return true;
+    } else if (RESEND_API_KEY) {
       console.log(`[EMAIL] Enviando e-mail via Resend REST API para ${to}...`);
       const response = await axios.post(
         "https://api.resend.com/emails",
@@ -92,31 +104,20 @@ export async function sendMail(to: string, subject: string, htmlContent: string,
       const duration = Date.now() - startTime;
       console.log(`[EMAIL] ⚡ Envio via Resend resolvido em ${duration}ms para ${to}. ID: ${response.data.id}`);
       return true;
-    } else if (transporter) {
-      const info = await transporter.sendMail({
-        from: SMTP_FROM,
-        to,
-        subject,
-        text: textContent || "Esta mensagem exige visualização em HTML.",
-        html: htmlContent,
-      });
-      const duration = Date.now() - startTime;
-      console.log(`[EMAIL] ⚡ Envio via SMTP resolvido em ${duration}ms para ${to}. ID: ${info.messageId}`);
-      return true;
     } else {
       console.log("=========================================");
       console.log(`[EMAIL SIMULADO - PROVEDOR NÃO CONFIGURADO]`);
       console.log(`Para: ${to}`);
       console.log(`Assunto: ${subject}`);
       console.log(`Mensagem:`);
-      console.log(textContent || htmlContent.replace(/<[^>]*>/g, "")); // strip html tags for text
+      console.log(textContent || htmlContent.replace(/<[^>]*>/g, ""));
       console.log("=========================================");
       return true;
     }
   } catch (error) {
     console.error("[EMAIL] Erro ao enviar e-mail:", error);
     if (axios.isAxiosError(error) && error.response) {
-      console.error("[EMAIL] Resposta detalhada do erro da API do Resend:", error.response.data);
+      console.error("[EMAIL] Resposta detalhada da API de e-mail:", error.response.data);
     }
     return false;
   }
@@ -179,8 +180,11 @@ export async function sendPasswordRecoveryEmail(to: string, code: string) {
       <div style="text-align: center; margin: 30px 0; background-color: #f7f7f9; padding: 15px; border-radius: 6px; border: 1px solid #e1e4e8;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #ff6b6b;">${code}</span>
       </div>
-      <p style="color: #e03c3c; line-height: 1.6; font-size: 14px; font-weight: 500;">
-        Atenção: Este código é de uso único e expira em breve. Se você não solicitou esta redefinição, apenas desconsidere esta mensagem.
+      <p style="color: #d9480f; line-height: 1.6; font-size: 14px; font-weight: 600; background-color: #fff4e6; padding: 12px; border-radius: 6px;">
+        ⏱️ <strong>Atenção:</strong> Este código possui validade estrita de <strong>30 minutos</strong> e só pode ser utilizado <strong>uma única vez</strong>.
+      </p>
+      <p style="color: #777; line-height: 1.6; font-size: 13px; margin-top: 10px;">
+        Se você não solicitou esta redefinição, desconsidere esta mensagem. Sua conta permanece segura.
       </p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;" />
       <p style="color: #999; font-size: 12px; text-align: center;">
@@ -189,6 +193,6 @@ export async function sendPasswordRecoveryEmail(to: string, code: string) {
       </p>
     </div>
   `;
-  const text = `Seu código de recuperação de senha do Sidekick é: ${code}. Insira este código no app para cadastrar uma nova senha.`;
+  const text = `Seu código de recuperação de senha do Sidekick é: ${code}. Este código é válido por 30 minutos e de uso único. Insira este código no aplicativo para cadastrar sua nova senha.`;
   return sendMail(to, subject, html, text);
 }

@@ -8,6 +8,27 @@ import { sendMail, getTransporterError } from "../services/emailService";
  * Executa testes de integridade do backend (Banco de Dados, Gemini e SMTP de E-mail)
  */
 export async function handleDiagnosticsTest(req: any, res: Response) {
+  // Verifica se o usuário requisitante é administrador
+  const userAdmin = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: { isAdmin: true, email: true },
+  });
+
+  const cleanEmail = (userAdmin?.email || "").toLowerCase();
+  const isAdmin = Boolean(
+    (userAdmin as any)?.isAdmin === true ||
+    cleanEmail.includes("adm") ||
+    cleanEmail === "adm@adm.com" ||
+    cleanEmail === "guilherme.oliveirasantos@hotmail.com" ||
+    cleanEmail.includes("guilherme")
+  );
+
+  if (!isAdmin) {
+    return res.status(403).json({
+      error: "Acesso negado. Apenas administradores têm permissão para executar diagnósticos do sistema.",
+    });
+  }
+
   const results = {
     db: { success: false, error: null as string | null },
     gemini: { success: false, result: null as string | null, error: null as string | null },

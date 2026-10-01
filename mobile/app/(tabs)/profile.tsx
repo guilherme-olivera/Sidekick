@@ -16,10 +16,12 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   RefreshControl,
+  Share,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import ViewShot, { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
@@ -162,6 +164,182 @@ export default function ProfileScreen() {
   const [broadcastFilter, setBroadcastFilter] = useState<"all" | "free" | "premium">("all");
   const [sendLocalCopy, setSendLocalCopy] = useState(true);
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
+  // Estados para Gestão Premium Admin & Resgate VIP
+  const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
+  const [adminTab, setAdminTab] = useState<"grant" | "vip" | "overview">("grant");
+
+  // Concessão Direta por E-mail
+  const [grantEmail, setGrantEmail] = useState("");
+  const [grantDurationDays, setGrantDurationDays] = useState<number>(30);
+  const [isSubmittingGrant, setIsSubmittingGrant] = useState(false);
+
+  // Gerador de Código VIP
+  const [vipDurationDays, setVipDurationDays] = useState<number>(30);
+  const [vipCustomCode, setVipCustomCode] = useState("");
+  const [generatedVipCode, setGeneratedVipCode] = useState<string | null>(null);
+  const [isGeneratingVip, setIsGeneratingVip] = useState(false);
+  const [copiedCodeSuccess, setCopiedCodeSuccess] = useState(false);
+
+  // Overview Admin Data
+  const [adminOverview, setAdminOverview] = useState<{ vipCodes: any[]; premiumUsers: any[] } | null>(null);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+
+  // Resgate VIP (Qualquer Usuário)
+  const [isRedeemModalVisible, setIsRedeemModalVisible] = useState(false);
+  const [redeemCodeInput, setRedeemCodeInput] = useState("");
+  const [isRedeemingCode, setIsRedeemingCode] = useState(false);
+
+  const loadAdminOverview = async () => {
+    try {
+      setIsLoadingOverview(true);
+      const res = await apiService.get("/admin/vip-overview");
+      if (res && res.success) {
+        setAdminOverview({
+          vipCodes: res.vipCodes || [],
+          premiumUsers: res.premiumUsers || [],
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load admin overview:", err);
+    } finally {
+      setIsLoadingOverview(false);
+    }
+  };
+
+  const handleShareVipMessage = async (code: string) => {
+    try {
+      const message = `Parabéns, seu premium chegou, utilize o token ${code} e aproveite o máximo`;
+      await Share.share({
+        message,
+        title: "Seu Premium Sidekick Chegou! 👑",
+      });
+    } catch (err) {
+      console.error("Failed to share VIP code message:", err);
+    }
+  };
+
+  const handleGrantPremium = async () => {
+    if (!grantEmail.trim()) {
+      Alert.alert("Atenção", "Por favor, digite o e-mail do usuário.");
+      return;
+    }
+    setIsSubmittingGrant(true);
+    try {
+      const res = await apiService.post("/admin/user/premium", {
+        email: grantEmail.trim(),
+        durationDays: grantDurationDays,
+      });
+      if (res && res.success) {
+        const tokenCode = res.vipCode || "SIDEKICK-VIP-8A2F";
+        setGeneratedVipCode(tokenCode);
+        setGrantEmail("");
+        loadAdminOverview();
+        refreshUser();
+
+        const customShareMsg = `Parabéns, seu premium chegou, utilize o token ${tokenCode} e aproveite o máximo`;
+
+        Alert.alert(
+          "👑 Premium Processado!",
+          `${res.message}\n\n[MENSAGEM DE COMPARTILHAMENTO]:\n"${customShareMsg}"`,
+          [
+            {
+              text: "📲 Compartilhar Mensagem",
+              onPress: () => handleShareVipMessage(tokenCode),
+            },
+            {
+              text: "📋 Copiar Código",
+              onPress: () => handleCopyVipCode(tokenCode),
+            },
+            { text: "OK" },
+          ]
+        );
+      } else {
+        Alert.alert("Erro", res.error || "Falha ao alterar status.");
+      }
+    } catch (err: any) {
+      Alert.alert("Erro", err.message || "Erro ao conectar com o servidor.");
+    } finally {
+      setIsSubmittingGrant(false);
+    }
+  };
+
+  const handleGenerateVipCode = async () => {
+    setIsGeneratingVip(true);
+    setCopiedCodeSuccess(false);
+    try {
+      const res = await apiService.post("/admin/vip-code/generate", {
+        durationDays: vipDurationDays,
+        customCode: vipCustomCode.trim() ? vipCustomCode.trim() : undefined,
+      });
+      if (res && res.success && res.vipCode) {
+        const code = res.vipCode.code;
+        setGeneratedVipCode(code);
+        setVipCustomCode("");
+        loadAdminOverview();
+
+        const customShareMsg = `Parabéns, seu premium chegou, utilize o token ${code} e aproveite o máximo`;
+
+        Alert.alert(
+          "⚡ Token VIP Gerado!",
+          `Token criado com sucesso!\n\n[MENSAGEM DE COMPARTILHAMENTO]:\n"${customShareMsg}"`,
+          [
+            {
+              text: "📲 Compartilhar Mensagem",
+              onPress: () => handleShareVipMessage(code),
+            },
+            {
+              text: "📋 Copiar Código",
+              onPress: () => handleCopyVipCode(code),
+            },
+            { text: "OK" },
+          ]
+        );
+      } else {
+        Alert.alert("Erro", res.error || "Falha ao gerar código VIP.");
+      }
+    } catch (err: any) {
+      Alert.alert("Erro", err.message || "Erro ao conectar com o servidor.");
+    } finally {
+      setIsGeneratingVip(false);
+    }
+  };
+
+  const handleCopyVipCode = async (code: string) => {
+    try {
+      await Clipboard.setStringAsync(code);
+      setCopiedCodeSuccess(true);
+      Alert.alert("Copiado! 📋", `Código ${code} copiado para a área de transferência.`);
+      setTimeout(() => setCopiedCodeSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleRedeemVipCode = async () => {
+    if (!redeemCodeInput.trim()) {
+      Alert.alert("Atenção", "Por favor, insira o seu código VIP.");
+      return;
+    }
+    setIsRedeemingCode(true);
+    try {
+      const res = await apiService.post("/user/redeem-vip", {
+        code: redeemCodeInput.trim(),
+      });
+      if (res && res.success) {
+        Alert.alert("Parabéns! 👑", res.message);
+        setRedeemCodeInput("");
+        setIsRedeemModalVisible(false);
+        await refreshUser();
+      } else {
+        Alert.alert("Erro", res.error || "Não foi possível resgatar o código.");
+      }
+    } catch (err: any) {
+      Alert.alert("Erro", err.message || "Falha na comunicação com o servidor.");
+    } finally {
+      setIsRedeemingCode(false);
+    }
+  };
 
   const handleSendBroadcastNotification = async () => {
     if (!broadcastTitle.trim() || !broadcastBody.trim()) {
@@ -1025,13 +1203,26 @@ export default function ProfileScreen() {
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               {isAdmin && (
-                <TouchableOpacity
-                  style={styles.settingsGearBtn}
-                  onPress={() => setIsBroadcastModalVisible(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.settingsGearIcon}>📢</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    style={[styles.settingsGearBtn, { backgroundColor: "rgba(255, 215, 0, 0.15)", borderColor: Colors.gold }]}
+                    onPress={() => {
+                      loadAdminOverview();
+                      setIsAdminModalVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.settingsGearIcon}>👑</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.settingsGearBtn}
+                    onPress={() => setIsBroadcastModalVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.settingsGearIcon}>📢</Text>
+                  </TouchableOpacity>
+                </>
               )}
 
               <TouchableOpacity
@@ -1735,6 +1926,17 @@ export default function ProfileScreen() {
                         <Text style={styles.settingsOptionIcon}>🦖</Text>
                         <Text style={styles.settingsOptionText}>Personalizar Sidekick</Text>
                       </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.settingsOptionItem}
+                        onPress={() => {
+                          setIsSettingsModalVisible(false);
+                          setIsRedeemModalVisible(true);
+                        }}
+                      >
+                        <Text style={styles.settingsOptionIcon}>🎟️</Text>
+                        <Text style={styles.settingsOptionText}>Resgatar Código VIP</Text>
+                      </TouchableOpacity>
                     </View>
 
                     {/* Section: Strava */}
@@ -1978,6 +2180,507 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </Modal>
 
+        {/* Modal: Resgatar Código VIP */}
+        <Modal
+          visible={isRedeemModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsRedeemModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { padding: 20 }]}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <Text style={styles.modalTitle}>🎟️ Resgatar Código VIP</Text>
+                  <TouchableOpacity onPress={() => setIsRedeemModalVisible(false)}>
+                    <Text style={{ color: Colors.textSecondary, fontSize: 20, fontWeight: "bold" }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 18, marginBottom: 16 }}>
+                  Digite seu código ou token VIP para ativar permissões ilimitadas de IA e funcionalidades Premium no Sidekick.
+                </Text>
+
+                <Text style={styles.broadcastInputLabel}>Código VIP / Voucher:</Text>
+                <TextInput
+                  style={[styles.textInput, { fontSize: 16, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" }]}
+                  value={redeemCodeInput}
+                  onChangeText={setRedeemCodeInput}
+                  placeholder="Ex: SIDEKICK-VIP-8A2F"
+                  placeholderTextColor="#666"
+                  autoCapitalize="characters"
+                />
+
+                <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+                  <TouchableOpacity
+                    style={[styles.modalBtnCancel, { flex: 1 }]}
+                    onPress={() => setIsRedeemModalVisible(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalBtnConfirm, { flex: 1.6, backgroundColor: Colors.gold }]}
+                    onPress={handleRedeemVipCode}
+                    disabled={isRedeemingCode}
+                    activeOpacity={0.8}
+                  >
+                    {isRedeemingCode ? (
+                      <ActivityIndicator color="#000" />
+                    ) : (
+                      <Text style={[styles.modalBtnConfirmText, { color: "#000" }]}>⚡ Ativar VIP</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        {/* Modal: Painel de Gestão Admin Premium */}
+        <Modal
+          visible={isAdminModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsAdminModalVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { maxHeight: "90%", padding: 20 }]}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <Text style={styles.modalTitle}>👑 Painel Gestão Premium</Text>
+                    <TouchableOpacity onPress={() => setIsAdminModalVisible(false)}>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 20, fontWeight: "bold" }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Admin Subtabs Selector */}
+                  <View style={{ flexDirection: "row", backgroundColor: "#111", borderRadius: 12, padding: 4, marginBottom: 16 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: adminTab === "grant" ? Colors.gold : "transparent",
+                        alignItems: "center",
+                      }}
+                      onPress={() => setAdminTab("grant")}
+                    >
+                      <Text style={{ color: adminTab === "grant" ? "#000" : Colors.textSecondary, fontWeight: "800", fontSize: 11 }}>
+                        ✉️ E-mail Direto
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: adminTab === "vip" ? Colors.gold : "transparent",
+                        alignItems: "center",
+                      }}
+                      onPress={() => setAdminTab("vip")}
+                    >
+                      <Text style={{ color: adminTab === "vip" ? "#000" : Colors.textSecondary, fontWeight: "800", fontSize: 11 }}>
+                        ⚡ Gerar Código VIP
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: adminTab === "overview" ? Colors.gold : "transparent",
+                        alignItems: "center",
+                      }}
+                      onPress={() => {
+                        setAdminTab("overview");
+                        loadAdminOverview();
+                      }}
+                    >
+                      <Text style={{ color: adminTab === "overview" ? "#000" : Colors.textSecondary, fontWeight: "800", fontSize: 11 }}>
+                        📊 Visão Geral
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* TAB 1: Concessão Direta por E-mail */}
+                  {adminTab === "grant" && (
+                    <View>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 12 }}>
+                        Conceda ou revogue o acesso Premium diretamente para qualquer usuário cadastrado informando o e-mail.
+                      </Text>
+
+                      <Text style={styles.broadcastInputLabel}>E-mail do Usuário:</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={grantEmail}
+                        onChangeText={setGrantEmail}
+                        placeholder="Ex: atleta@email.com"
+                        placeholderTextColor="#666"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+
+                      <Text style={styles.broadcastInputLabel}>Período de Validade:</Text>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+                        {[
+                          { label: "7 Dias", days: 7 },
+                          { label: "30 Dias", days: 30 },
+                          { label: "90 Dias", days: 90 },
+                          { label: "1 Ano", days: 365 },
+                          { label: "Vitalício ♾️", days: 99999 },
+                          { label: "🚫 Revogar (Free)", days: 0 },
+                        ].map((item) => (
+                          <TouchableOpacity
+                            key={item.days}
+                            style={{
+                              backgroundColor: grantDurationDays === item.days ? "rgba(255,215,0,0.2)" : "#1a1a1a",
+                              borderWidth: 1,
+                              borderColor: grantDurationDays === item.days ? Colors.gold : Colors.darkBorder,
+                              borderRadius: 8,
+                              paddingHorizontal: 12,
+                              paddingVertical: 8,
+                            }}
+                            onPress={() => setGrantDurationDays(item.days)}
+                          >
+                            <Text style={{
+                              color: grantDurationDays === item.days ? Colors.gold : Colors.text,
+                              fontSize: 12,
+                              fontWeight: grantDurationDays === item.days ? "800" : "500",
+                            }}>
+                              {item.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+
+                      <TouchableOpacity
+                        style={[styles.modalBtnConfirm, { backgroundColor: Colors.gold, width: "100%", marginTop: 8 }]}
+                        onPress={handleGrantPremium}
+                        disabled={isSubmittingGrant}
+                        activeOpacity={0.8}
+                      >
+                        {isSubmittingGrant ? (
+                          <ActivityIndicator color="#000" />
+                        ) : (
+                          <Text style={[styles.modalBtnConfirmText, { color: "#000" }]}>
+                            {grantDurationDays === 0 ? "🚫 Revogar Plano Premium" : "👑 Conceder Plano Premium"}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Exibição do Código Gerado no E-mail Direto */}
+                      {generatedVipCode && (
+                        <View style={{
+                          backgroundColor: "rgba(255, 215, 0, 0.12)",
+                          borderWidth: 1.5,
+                          borderColor: Colors.gold,
+                          borderRadius: 12,
+                          padding: 14,
+                          alignItems: "center",
+                          marginTop: 14,
+                        }}>
+                          <Text style={{ color: Colors.gold, fontSize: 12, fontWeight: "800", textTransform: "uppercase" }}>
+                            ⚡ TOKEN VIP PARA COMPARTILHAR:
+                          </Text>
+                          <Text style={{ color: Colors.gold, fontSize: 22, fontWeight: "900", letterSpacing: 2, marginVertical: 6 }}>
+                            {generatedVipCode}
+                          </Text>
+
+                          <View style={{
+                            backgroundColor: "#00000066",
+                            padding: 8,
+                            borderRadius: 8,
+                            width: "100%",
+                            marginBottom: 10,
+                            borderWidth: 1,
+                            borderColor: "#333",
+                          }}>
+                            <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>
+                              MENSAGEM PRONTA:
+                            </Text>
+                            <Text style={{ color: Colors.text, fontSize: 11, fontStyle: "italic" }}>
+                              "Parabéns, seu premium chegou, utilize o token {generatedVipCode} e aproveite o máximo"
+                            </Text>
+                          </View>
+
+                          <View style={{ flexDirection: "row", gap: 8, width: "100%" }}>
+                            <TouchableOpacity
+                              style={{
+                                flex: 1.4,
+                                backgroundColor: Colors.gold,
+                                paddingVertical: 9,
+                                borderRadius: 8,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                              onPress={() => handleShareVipMessage(generatedVipCode)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ color: "#000", fontWeight: "800", fontSize: 12 }}>
+                                📲 Compartilhar Mensagem
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={{
+                                flex: 1,
+                                backgroundColor: copiedCodeSuccess ? Colors.success : "#222",
+                                borderWidth: 1,
+                                borderColor: copiedCodeSuccess ? Colors.success : Colors.gold,
+                                paddingVertical: 9,
+                                borderRadius: 8,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                              onPress={() => handleCopyVipCode(generatedVipCode)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ color: copiedCodeSuccess ? "#000" : Colors.gold, fontWeight: "700", fontSize: 12 }}>
+                                {copiedCodeSuccess ? "✓ Copiado" : "📋 Copiar"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* TAB 2: Gerador de Códigos VIP */}
+                  {adminTab === "vip" && (
+                    <View>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 12 }}>
+                        Gere cupons/tokens no formato <Text style={{ color: Colors.gold }}>SIDEKICK-VIP-XXXX</Text> para compartilhar no WhatsApp, Instagram ou eventos.
+                      </Text>
+
+                      <Text style={styles.broadcastInputLabel}>Duração do Voucher VIP:</Text>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                        {[
+                          { label: "7 Dias", days: 7 },
+                          { label: "30 Dias", days: 30 },
+                          { label: "90 Dias", days: 90 },
+                          { label: "1 Ano", days: 365 },
+                          { label: "Vitalício ♾️", days: 99999 },
+                        ].map((item) => (
+                          <TouchableOpacity
+                            key={item.days}
+                            style={{
+                              backgroundColor: vipDurationDays === item.days ? "rgba(255,215,0,0.2)" : "#1a1a1a",
+                              borderWidth: 1,
+                              borderColor: vipDurationDays === item.days ? Colors.gold : Colors.darkBorder,
+                              borderRadius: 8,
+                              paddingHorizontal: 12,
+                              paddingVertical: 8,
+                            }}
+                            onPress={() => setVipDurationDays(item.days)}
+                          >
+                            <Text style={{
+                              color: vipDurationDays === item.days ? Colors.gold : Colors.text,
+                              fontSize: 12,
+                              fontWeight: vipDurationDays === item.days ? "800" : "500",
+                            }}>
+                              {item.label}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+
+                      <Text style={styles.broadcastInputLabel}>Código Customizado (Opcional):</Text>
+                      <TextInput
+                        style={[styles.textInput, { textTransform: "uppercase" }]}
+                        value={vipCustomCode}
+                        onChangeText={setVipCustomCode}
+                        placeholder="Ex: CORRIDA2026 (Deixe em branco para aleatório)"
+                        placeholderTextColor="#666"
+                        autoCapitalize="characters"
+                      />
+
+                      <TouchableOpacity
+                        style={[styles.modalBtnConfirm, { backgroundColor: Colors.gold, width: "100%", marginBottom: 16 }]}
+                        onPress={handleGenerateVipCode}
+                        disabled={isGeneratingVip}
+                        activeOpacity={0.8}
+                      >
+                        {isGeneratingVip ? (
+                          <ActivityIndicator color="#000" />
+                        ) : (
+                          <Text style={[styles.modalBtnConfirmText, { color: "#000" }]}>⚡ Criar Novo Token VIP</Text>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Exibição do Código Gerado no Gerador VIP */}
+                      {generatedVipCode && (
+                        <View style={{
+                          backgroundColor: "rgba(255, 215, 0, 0.12)",
+                          borderWidth: 1.5,
+                          borderColor: Colors.gold,
+                          borderRadius: 12,
+                          padding: 14,
+                          alignItems: "center",
+                        }}>
+                          <Text style={{ color: Colors.gold, fontSize: 12, fontWeight: "800", textTransform: "uppercase" }}>
+                            ⚡ TOKEN VIP GERADO COM SUCESSO:
+                          </Text>
+                          <Text style={{ color: Colors.gold, fontSize: 22, fontWeight: "900", letterSpacing: 2, marginVertical: 6 }}>
+                            {generatedVipCode}
+                          </Text>
+
+                          <View style={{
+                            backgroundColor: "#00000066",
+                            padding: 8,
+                            borderRadius: 8,
+                            width: "100%",
+                            marginBottom: 10,
+                            borderWidth: 1,
+                            borderColor: "#333",
+                          }}>
+                            <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>
+                              MENSAGEM DE COMPARTILHAMENTO:
+                            </Text>
+                            <Text style={{ color: Colors.text, fontSize: 11, fontStyle: "italic" }}>
+                              "Parabéns, seu premium chegou, utilize o token {generatedVipCode} e aproveite o máximo"
+                            </Text>
+                          </View>
+
+                          <View style={{ flexDirection: "row", gap: 8, width: "100%" }}>
+                            <TouchableOpacity
+                              style={{
+                                flex: 1.4,
+                                backgroundColor: Colors.gold,
+                                paddingVertical: 9,
+                                borderRadius: 8,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                              onPress={() => handleShareVipMessage(generatedVipCode)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ color: "#000", fontWeight: "800", fontSize: 12 }}>
+                                📲 Compartilhar Mensagem
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={{
+                                flex: 1,
+                                backgroundColor: copiedCodeSuccess ? Colors.success : "#222",
+                                borderWidth: 1,
+                                borderColor: copiedCodeSuccess ? Colors.success : Colors.gold,
+                                paddingVertical: 9,
+                                borderRadius: 8,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                              onPress={() => handleCopyVipCode(generatedVipCode)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ color: copiedCodeSuccess ? "#000" : Colors.gold, fontWeight: "700", fontSize: 12 }}>
+                                {copiedCodeSuccess ? "✓ Copiado" : "📋 Copiar"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* TAB 3: Overview Admin */}
+                  {adminTab === "overview" && (
+                    <View>
+                      {isLoadingOverview ? (
+                        <ActivityIndicator color={Colors.gold} style={{ marginVertical: 20 }} />
+                      ) : (
+                        <>
+                          <Text style={{ color: Colors.gold, fontWeight: "800", fontSize: 13, marginBottom: 8 }}>
+                            👑 Usuários Premium Ativos ({adminOverview?.premiumUsers?.length || 0}):
+                          </Text>
+                          {adminOverview?.premiumUsers && adminOverview.premiumUsers.length > 0 ? (
+                            adminOverview.premiumUsers.map((u: any) => (
+                              <View key={u.id} style={{
+                                backgroundColor: "#161616",
+                                borderWidth: 1,
+                                borderColor: Colors.darkBorder,
+                                borderRadius: 8,
+                                padding: 10,
+                                marginBottom: 6,
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: Colors.text, fontSize: 12, fontWeight: "700" }}>{u.email}</Text>
+                                  <Text style={{ color: Colors.textSecondary, fontSize: 10 }}>
+                                    {u.premiumUntil ? (new Date(u.premiumUntil).getFullYear() >= 2090 ? "Vitalício ♾️" : `Até ${new Date(u.premiumUntil).toLocaleDateString("pt-BR")}`) : "Ativo"}
+                                  </Text>
+                                </View>
+                              </View>
+                            ))
+                          ) : (
+                            <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 12 }}>Nenhum usuário premium ativo.</Text>
+                          )}
+
+                          <Text style={{ color: Colors.gold, fontWeight: "800", fontSize: 13, marginTop: 14, marginBottom: 8 }}>
+                            🎟️ Vouchers VIP Gerados ({adminOverview?.vipCodes?.length || 0}):
+                          </Text>
+                          {adminOverview?.vipCodes && adminOverview.vipCodes.length > 0 ? (
+                            adminOverview.vipCodes.map((v: any) => (
+                              <View key={v.id} style={{
+                                backgroundColor: "#161616",
+                                borderWidth: 1,
+                                borderColor: v.isUsed ? "#444" : Colors.gold,
+                                borderRadius: 8,
+                                padding: 10,
+                                marginBottom: 6,
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}>
+                                <View>
+                                  <Text style={{ color: v.isUsed ? Colors.textSecondary : Colors.gold, fontSize: 13, fontWeight: "800" }}>
+                                    {v.code}
+                                  </Text>
+                                  <Text style={{ color: Colors.textSecondary, fontSize: 10 }}>
+                                    Validade: {v.durationDays >= 99999 ? "Vitalício" : `${v.durationDays} dias`}
+                                  </Text>
+                                </View>
+                                <TouchableOpacity
+                                  style={{
+                                    backgroundColor: v.isUsed ? "#333" : Colors.gold,
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 4,
+                                    borderRadius: 6,
+                                  }}
+                                  onPress={() => handleCopyVipCode(v.code)}
+                                >
+                                  <Text style={{ color: "#000", fontWeight: "700", fontSize: 10 }}>
+                                    {v.isUsed ? "USADO" : "COPIAR"}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            ))
+                          ) : (
+                            <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>Nenhum voucher VIP gerado ainda.</Text>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+
         {/* Diagnostic Modal */}
         <Modal
           visible={isDiagnosticModalVisible}
@@ -2104,7 +2807,7 @@ export default function ProfileScreen() {
 
                   <Text style={styles.inputLabel}>Escolha o Avatar:</Text>
                   <View style={styles.avatarSelectionGrid}>
-                    {["🤖", "🦖", "👨", "👩", "🦁", "🦊", "🦅", "🧔", "👩‍🦰", "⏱️", "⚡"].map((av) => (
+                    {["🤖", "🦖", "🦘", "🐊", "🐼", "🐢", "🦜", "👨", "👩", "🦁", "🦊", "🦅", "🧔", "👩‍🦰"].map((av) => (
                       <TouchableOpacity
                         key={av}
                         style={[

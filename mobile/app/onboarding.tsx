@@ -427,11 +427,16 @@ export default function OnboardingScreen() {
                   {[
                     { id: "🤖", label: "🤖 Robô" },
                     { id: "🦖", label: "🦖 Dino" },
+                    { id: "🦘", label: "🦘 Canguru" },
+                    { id: "🐊", label: "🐊 Jacaré" },
+                    { id: "🐼", label: "🐼 Panda" },
+                    { id: "🐢", label: "🐢 Tartaruga" },
+                    { id: "🦜", label: "🦜 Arara" },
                     { id: "👨", label: "👨 Homem" },
                     { id: "👩", label: "👩 Mulher" },
-                    { id: "🐶", label: "🐶 Cão" },
                     { id: "🦁", label: "🦁 Leão" },
                     { id: "🦊", label: "🦊 Raposa" },
+                    { id: "🦅", label: "🦅 Águia" },
                     { id: "🧔", label: "🧔 Barbudo" },
                     { id: "👩‍🦰", label: "👩‍🦰 Ruiva" },
                   ].map(item => (

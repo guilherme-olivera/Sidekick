@@ -133,20 +133,30 @@ export default function CalendarScreen() {
     setEffortModalVisible(true);
   };
 
+  const [isSubmittingEffort, setIsSubmittingEffort] = useState(false);
+
   const submitAnalysis = async () => {
-    if (!targetWorkoutId) return;
-    setEffortModalVisible(false);
+    if (!targetWorkoutId || isSubmittingEffort) return;
     
     try {
+      setIsSubmittingEffort(true);
       setAnalyzingWorkoutId(targetWorkoutId);
       await analyzeWorkout(targetWorkoutId, effortRating, userNotes);
+      // Close modal and reset state ONLY on success
+      setEffortModalVisible(false);
+      setUserNotes("");
+      setTargetWorkoutId(null);
       Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
     } catch (error: any) {
       console.error("Error analyzing workout:", error);
-      Alert.alert("Aviso", error.message || "Não foi possível gerar a análise. Tente novamente.");
+      Alert.alert(
+        "Aviso de Conexão",
+        error.message || "Não foi possível gerar a análise no momento. Suas observações foram salvas na tela para você tentar novamente!"
+      );
+      // Modal remains OPEN and userNotes/effortRating are preserved!
     } finally {
+      setIsSubmittingEffort(false);
       setAnalyzingWorkoutId(null);
-      setTargetWorkoutId(null);
     }
   };
 
@@ -581,10 +591,15 @@ export default function CalendarScreen() {
                           <Text style={styles.effortModalButtonTextCancel}>Cancelar</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[styles.effortModalButton, styles.effortModalButtonConfirm, { flex: 1 }]}
+                          style={[styles.effortModalButton, styles.effortModalButtonConfirm, { flex: 1, opacity: isSubmittingEffort ? 0.7 : 1 }]}
                           onPress={submitAnalysis}
+                          disabled={isSubmittingEffort}
                         >
-                          <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                          {isSubmittingEffort ? (
+                            <ActivityIndicator size="small" color="#000" />
+                          ) : (
+                            <Text style={styles.effortModalButtonTextConfirm}>Analisar com IA</Text>
+                          )}
                         </TouchableOpacity>
                       </View>
                     </View>

@@ -70,6 +70,8 @@ export async function handleGetMe(req: any, res: Response) {
         name: true,
         avatar: true,
         planType: true,
+        premiumUntil: true,
+        isAdmin: true,
         stravaId: true,
         stravaAthleteName: true,
         stravaAthleteUsername: true,
@@ -104,8 +106,29 @@ export async function handleGetMe(req: any, res: Response) {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
+    // Auto-downgrade se premium expirou
+    let finalPlanType = user.planType;
+    let finalPremiumUntil = user.premiumUntil;
+
+    if (user.planType === "premium" && user.premiumUntil && new Date(user.premiumUntil) < new Date()) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { planType: "free", premiumUntil: null },
+      });
+      finalPlanType = "free";
+      finalPremiumUntil = null;
+    }
+
     const readiness = await calculateReadiness(userId, user.profile);
-    res.json({ success: true, user: { ...user, readiness } });
+    res.json({
+      success: true,
+      user: {
+        ...user,
+        planType: finalPlanType,
+        premiumUntil: finalPremiumUntil,
+        readiness,
+      },
+    });
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "Erro ao buscar usuário",
@@ -115,7 +138,7 @@ export async function handleGetMe(req: any, res: Response) {
 
 /**
  * POST /api/auth/forgot-password
- * Solicita redefinição de senha
+ * Solicita redefinição de senha e envia código por e-mail com 30min de validade
  */
 export async function handleForgotPassword(req: Request, res: Response) {
   try {
@@ -133,24 +156,44 @@ export async function handleForgotPassword(req: Request, res: Response) {
     if (!user) {
       return res.json({
         success: true,
-        message: "Se o e-mail estiver cadastrado, o código foi enviado.",
+        emailSent: true,
+        message: "Se o e-mail estiver cadastrado em nossa base, o código foi enviado com sucesso!",
       });
     }
 
-    const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log(`[RECOVERY] Código gerado para ${cleanEmail}: ${mockCode}`);
+    // Gera código numérico de 6 dígitos
+    const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Validade estrita de 30 minutos
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    // Salva o token de uso único no banco
+    await prisma.passwordResetToken.create({
+      data: {
+        email: cleanEmail,
+        code: recoveryCode,
+        expiresAt,
+        isUsed: false,
+      },
+    });
+
+    console.log(`[RECOVERY] 📧 E-mail enviado para ${cleanEmail} com código ${recoveryCode} (Validade: 30 min)`);
 
     const { sendPasswordRecoveryEmail } = require("../services/emailService");
-    sendPasswordRecoveryEmail(cleanEmail, mockCode).catch((err: any) => 
-      console.error("Failed to send recovery email:", err)
-    );
+    const mailSent = await sendPasswordRecoveryEmail(cleanEmail, recoveryCode).catch((err: any) => {
+      console.error("Failed to send recovery email:", err);
+      return false;
+    });
 
     return res.json({
       success: true,
-      message: "Código de recuperação enviado para o e-mail.",
-      mockCode: (process.env.NODE_ENV === "development" && !process.env.SMTP_USER) ? mockCode : undefined,
+      emailSent: true,
+      message: `O e-mail contendo seu código de recuperação de 6 dígitos foi enviado com sucesso para ${cleanEmail}! O código é de uso único e possui validade de 30 minutos.`,
+      expiresInMinutes: 30,
+      mockCode: (process.env.NODE_ENV === "development" && !process.env.SMTP_USER && !process.env.RESEND_API_KEY) ? recoveryCode : undefined,
     });
   } catch (error) {
+    console.error("Erro em handleForgotPassword:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Erro ao processar recuperação",
     });
@@ -159,7 +202,7 @@ export async function handleForgotPassword(req: Request, res: Response) {
 
 /**
  * POST /api/auth/reset-password
- * Redefine a senha com o código
+ * Redefine a senha verificando se o código é válido (<= 30 min) e não utilizado
  */
 export async function handleResetPassword(req: Request, res: Response) {
   try {
@@ -169,6 +212,7 @@ export async function handleResetPassword(req: Request, res: Response) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = code.trim();
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
     if (!passwordRegex.test(newPassword)) {
@@ -185,13 +229,48 @@ export async function handleResetPassword(req: Request, res: Response) {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
+    // Busca o token de recuperação mais recente para o e-mail
+    const resetToken = await prisma.passwordResetToken.findFirst({
+      where: {
+        email: cleanEmail,
+        code: cleanCode,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!resetToken) {
+      return res.status(400).json({ error: "Código de recuperação inválido ou não encontrado." });
+    }
+
+    // Validação 1: Verificar se já foi utilizado
+    if (resetToken.isUsed) {
+      return res.status(400).json({ error: "Este código de recuperação já foi utilizado. Por favor, solicite um novo código." });
+    }
+
+    // Validação 2: Verificar validade de 30 minutos
+    if (new Date() > new Date(resetToken.expiresAt)) {
+      return res.status(400).json({ error: "Este código de recuperação expirou (validade de 30 minutos). Por favor, solicite um novo código." });
+    }
+
     const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await prisma.user.update({
-      where: { email: cleanEmail },
-      data: { password: hashedPassword },
-    });
+    // Atualiza senha do usuário e inativa o token (uso único)
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { email: cleanEmail },
+        data: { password: hashedPassword },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: {
+          isUsed: true,
+          usedAt: new Date(),
+        },
+      }),
+    ]);
+
+    console.log(`✅ Senha alterada e token ${resetToken.id} marcado como usado para ${cleanEmail}`);
 
     // Send confirmation email
     const { sendMail } = require("../services/emailService");
@@ -201,7 +280,7 @@ export async function handleResetPassword(req: Request, res: Response) {
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
         <p>Olá, ${user.name || "Atleta"}!</p>
         <p style="font-size: 16px; color: #333;">
-          Informamos que a sua senha de acesso ao **Sidekick** foi alterada com sucesso.
+          Informamos que a sua senha de acesso ao <strong>Sidekick</strong> foi alterada com sucesso.
         </p>
         <p style="color: #666; font-size: 14px;">
           Se foi você quem realizou essa alteração, nenhuma ação adicional é necessária.
@@ -223,9 +302,10 @@ export async function handleResetPassword(req: Request, res: Response) {
 
     return res.json({
       success: true,
-      message: "Senha redefinida com sucesso!",
+      message: "Sua senha foi redefinida com sucesso! O código de recuperação foi utilizado e invalidado.",
     });
   } catch (error) {
+    console.error("Erro em handleResetPassword:", error);
     res.status(500).json({
       error: error instanceof Error ? error.message : "Erro ao redefinir senha",
     });

@@ -66,12 +66,15 @@ export default function LoginScreen({ navigation }: any) {
         setShowResetForm(true);
         if (data.mockCode) {
           Alert.alert(
-            "Código Enviado",
-            `Enviamos um código de 6 dígitos.\n\n[CÓDIGO MOCK PARA TESTES: ${data.mockCode}]`,
-            [{ text: "Copiar Código", onPress: () => setRecoveryCode(data.mockCode) }]
+            "📧 E-mail Enviado com Sucesso!",
+            `O e-mail contendo o código de recuperação foi enviado!\n\n⏱️ Validade: 30 minutos (Uso Único)\n\n[CÓDIGO MOCK DE TESTE: ${data.mockCode}]`,
+            [{ text: "Inserir Código", onPress: () => setRecoveryCode(data.mockCode) }]
           );
         } else {
-          Alert.alert("Sucesso", "Se o e-mail estiver cadastrado, você receberá o código.");
+          Alert.alert(
+            "📧 E-mail Enviado com Sucesso!",
+            data.message || "Enviamos um código de 6 dígitos para o seu e-mail. Ele tem validade de 30 minutos e só pode ser usado uma vez."
+          );
         }
       } else {
         Alert.alert("Erro", data.error || "Erro ao solicitar recuperação.");

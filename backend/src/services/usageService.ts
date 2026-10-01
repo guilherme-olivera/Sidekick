@@ -44,7 +44,27 @@ export async function getAiUsageStatus(userId: string) {
 }
 
 export async function consumeAiAnalysisQuota(userId: string, planType = "free") {
-  if (planType === "premium") {
+  // Verifica se o usuário tem premium com data de validade expirada
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { planType: true, premiumUntil: true },
+  });
+
+  let currentPlan = user?.planType || planType;
+
+  if (currentPlan === "premium" && user?.premiumUntil) {
+    if (new Date(user.premiumUntil) < new Date()) {
+      // Expirou! Atualiza para free
+      await prisma.user.update({
+        where: { id: userId },
+        data: { planType: "free", premiumUntil: null },
+      });
+      currentPlan = "free";
+      console.log(`⏰ Assinatura Premium expirada para o usuário ${userId}. Downgrade para Free.`);
+    }
+  }
+
+  if (currentPlan === "premium") {
     return {
       feature: FEATURE_AI_ANALYSIS,
       limit: Infinity,

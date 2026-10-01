@@ -3,6 +3,7 @@ import {
   getStravaAuthUrl,
   exchangeCodeForTokens,
   fetchStravaActivities,
+  fetchStravaActivityDetail,
   convertStravaActivityToWorkout,
   refreshStravaToken,
   verifyStravaState,
@@ -203,10 +204,20 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
 
     const existingWorkoutMap = new Map(existingWorkouts.map((w: any) => [w.stravaId, w]));
 
-    // Converte e salva atividades
+    // Converte e salva atividades (buscando detalhes completos dos splits para as mais recentes)
     const workouts = [];
+    let detailFetchCount = 0;
     for (const activity of activities) {
-      const workoutData = convertStravaActivityToWorkout(activity);
+      let targetActivity = activity;
+      if (!activity.splits_metric && detailFetchCount < 15) {
+        detailFetchCount++;
+        const detail = await fetchStravaActivityDetail(accessToken, activity.id);
+        if (detail) {
+          targetActivity = detail;
+        }
+      }
+
+      const workoutData = convertStravaActivityToWorkout(targetActivity);
 
       const existing = existingWorkoutMap.get(workoutData.stravaId);
       if (existing) {
@@ -214,12 +225,14 @@ export const syncStravaActivitiesHandler = async (req: Request, res: Response) =
         const needsUpdate =
           (workoutData.averageCadence !== undefined && existing.averageCadence === null) ||
           (workoutData.elevationGain !== undefined && existing.elevationGain === null) ||
-          (workoutData.averageWatts !== undefined && existing.averageWatts === null);
+          (workoutData.averageWatts !== undefined && existing.averageWatts === null) ||
+          (workoutData.splits !== undefined && existing.splits === null);
 
         if (needsUpdate || force) {
           const updatedWorkout = await prisma.workout.update({
             where: { stravaId: workoutData.stravaId },
             data: {
+              pace: workoutData.pace,
               averageCadence: workoutData.averageCadence,
               elevationGain: workoutData.elevationGain,
               averageWatts: workoutData.averageWatts,

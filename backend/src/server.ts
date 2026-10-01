@@ -55,6 +55,12 @@ import {
   getNewAchievementsHandler,
   clearNewAchievementsHandler,
 } from "./controllers/achievementController";
+import {
+  grantRevokePremiumHandler,
+  generateVipCodeHandler,
+  getAdminOverviewHandler,
+  redeemVipCodeHandler,
+} from "./controllers/adminController";
 import { authMiddleware } from "./services/authService";
 import { chatHandler } from "./controllers/chatController";
 import { uploadAvatar } from "./middleware/uploadMiddleware";
@@ -124,6 +130,13 @@ app.get("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisCach
 app.get("/api/user/analytics", authMiddleware, getUserAnalyticsHandler);
 app.post("/api/user/push-token", authMiddleware, savePushTokenHandler);
 app.post("/api/admin/broadcast-notification", broadcastNotificationHandler);
+
+// ===== ADMIN & VIP PREMIUM ROUTES =====
+app.post("/api/admin/user/premium", authMiddleware, grantRevokePremiumHandler);
+app.post("/api/admin/vip-code/generate", authMiddleware, generateVipCodeHandler);
+app.get("/api/admin/vip-overview", authMiddleware, getAdminOverviewHandler);
+app.post("/api/user/redeem-vip", authMiddleware, redeemVipCodeHandler);
+
 app.post("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisHandler);
 app.get("/api/diagnostics/test", authMiddleware, handleDiagnosticsTest);
 
@@ -178,11 +191,29 @@ async function ensureAdminUser() {
     const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
     if (!existing) {
       const hashed = bcrypt.hashSync(adminPassword, 10);
-      await prisma.user.create({ data: { email: adminEmail, password: hashed, name: "Administrator" } });
+      await prisma.user.create({
+        data: {
+          email: adminEmail,
+          password: hashed,
+          name: "Administrator",
+          isAdmin: true,
+          planType: "premium",
+        },
+      });
       console.log(`🔐 Admin user created: ${adminEmail}`);
-    } else {
-      console.log(`🔐 Admin user exists: ${adminEmail}`);
     }
+
+    // Garante que a conta adm e Guilherme tenham permissão de Admin
+    await prisma.user.updateMany({
+      where: {
+        OR: [
+          { email: { contains: "adm", mode: "insensitive" } },
+          { email: { contains: "guilherme", mode: "insensitive" } },
+        ],
+      },
+      data: { isAdmin: true, planType: "premium" },
+    });
+    console.log(`🔐 Permissões de Admin atualizadas no banco com sucesso.`);
   } catch (err) {
     console.error("Error ensuring admin user:", err);
   }

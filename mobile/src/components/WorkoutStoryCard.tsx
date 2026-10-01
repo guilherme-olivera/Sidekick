@@ -77,9 +77,17 @@ function getPunchyMotivationalQuote(workout: any): string {
 // -----------------------------------------------------------------------------
 function formatPace(pace: number | null | undefined): string {
   if (!pace || pace <= 0) return "--:--";
-  const mins = Math.floor(pace);
-  const secs = Math.round((pace - mins) * 60);
-  return `${mins}'${secs < 10 ? "0" : ""}${secs}"/km`;
+  let minKm = pace;
+  // If pace is stored as km/h speed (e.g. 7.5 to 35 km/h)
+  if (pace >= 7.5 && pace <= 35) {
+    minKm = 60 / pace;
+  } else if (pace < 2.5) { // speed in m/s
+    minKm = (1000 / pace) / 60;
+  }
+  const mins = Math.floor(minKm);
+  const secs = Math.round((minKm - mins) * 60);
+  const padSecs = secs < 10 ? `0${secs}` : `${secs}`;
+  return `${mins}'${padSecs}"/km`;
 }
 
 function formatSpeed(speedKmH: number | null | undefined, pace: number | null | undefined): string {
@@ -200,23 +208,23 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
   const swimPaceStr = formatSwimPace(workout.pace);
   const punchyQuote = getPunchyMotivationalQuote(workout);
 
-  // Generate 4 synthetic splits formatted for modality
-  let splitsList: Array<{ label: string; valStr: string }> = [];
+  // Generate splits dynamically formatted for modality and total distance
+  let allSplitsList: Array<{ label: string; valStr: string; valNum: number }> = [];
   if (workout.splits) {
     try {
       const parsed = typeof workout.splits === "string" ? JSON.parse(workout.splits) : workout.splits;
-      if (Array.isArray(parsed)) {
-        splitsList = parsed.slice(0, 4).map((item: any, idx: number) => {
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        allSplitsList = parsed.map((item: any, idx: number) => {
           const speedMs = item.average_speed || 0;
           const pace = speedMs > 0 ? (1000 / speedMs) / 60 : (workout.pace || 5);
           const speedKmH = speedMs > 0 ? speedMs * 3.6 : (workout.pace ? 60 / workout.pace : 25);
           
           if (isCycling) {
-            return { label: `KM ${idx + 1}`, valStr: `${speedKmH.toFixed(1)} km/h` };
+            return { label: `KM ${idx + 1}`, valStr: `${speedKmH.toFixed(1)} km/h`, valNum: speedKmH };
           } else if (isSwimming) {
-            return { label: `${(idx + 1) * 100}m`, valStr: formatSwimPace(pace) };
+            return { label: `${(idx + 1) * 100}m`, valStr: formatSwimPace(pace), valNum: pace };
           } else {
-            return { label: `KM ${idx + 1}`, valStr: formatPace(pace) };
+            return { label: `KM ${idx + 1}`, valStr: formatPace(pace), valNum: pace };
           }
         });
       }
@@ -225,32 +233,41 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
     }
   }
 
-  if (splitsList.length === 0) {
-    const basePace = workout.pace || 5.2;
+  if (allSplitsList.length === 0) {
+    let basePace = workout.pace || 5.2;
+    if (basePace >= 7.5 && basePace <= 35) {
+      basePace = 60 / basePace;
+    } else if (basePace < 2.5) {
+      basePace = (1000 / basePace) / 60;
+    }
+    const distanceVal = parseFloat(distanceKm || "4") || 4;
+    const totalCount = Math.max(1, Math.min(42, Math.round(distanceVal)));
+
     if (isCycling) {
       const baseSpeed = rawSpeedKmH || 26.5;
-      splitsList = [
-        { label: "KM 1", valStr: `${(baseSpeed + 1.2).toFixed(1)} km/h` },
-        { label: "KM 2", valStr: `${(baseSpeed - 0.5).toFixed(1)} km/h` },
-        { label: "KM 3", valStr: `${(baseSpeed + 0.8).toFixed(1)} km/h` },
-        { label: "KM 4", valStr: `${(baseSpeed - 0.2).toFixed(1)} km/h` },
-      ];
+      for (let i = 0; i < totalCount; i++) {
+        const variation = (Math.sin(i * 1.7) * 1.2);
+        const speedKmH = Math.max(10, baseSpeed + variation);
+        allSplitsList.push({ label: `KM ${i + 1}`, valStr: `${speedKmH.toFixed(1)} km/h`, valNum: speedKmH });
+      }
     } else if (isSwimming) {
-      splitsList = [
-        { label: "100m", valStr: formatSwimPace(basePace - 0.2) },
-        { label: "200m", valStr: formatSwimPace(basePace) },
-        { label: "300m", valStr: formatSwimPace(basePace + 0.1) },
-        { label: "400m", valStr: formatSwimPace(basePace - 0.1) },
-      ];
+      const swimCount = Math.max(1, Math.min(20, Math.round((workout.distance || 0.4) * 10)));
+      for (let i = 0; i < swimCount; i++) {
+        const variation = (Math.sin(i * 1.3) * 0.15);
+        const pace = Math.max(1, basePace + variation);
+        allSplitsList.push({ label: `${(i + 1) * 100}m`, valStr: formatSwimPace(pace), valNum: pace });
+      }
     } else {
-      splitsList = [
-        { label: "KM 1", valStr: formatPace(basePace + 0.2) },
-        { label: "KM 2", valStr: formatPace(basePace - 0.1) },
-        { label: "KM 3", valStr: formatPace(basePace - 0.2) },
-        { label: "KM 4", valStr: formatPace(basePace + 0.05) },
-      ];
+      for (let i = 0; i < totalCount; i++) {
+        const variation = (Math.sin(i * 1.4) * 0.25) + (i === 0 ? 0.15 : i === totalCount - 1 ? -0.1 : 0);
+        const pace = Math.max(3, basePace + variation);
+        allSplitsList.push({ label: `KM ${i + 1}`, valStr: formatPace(pace), valNum: pace });
+      }
     }
   }
+
+  // Use all splits directly so no KM is skipped or truncated
+  const splitsList = allSplitsList;
 
   const sportEmoji = isStrength ? "🏋️‍♂️" : isCycling ? "🚴‍♂️" : isSwimming ? "🏊‍♂️" : "🏃‍♂️";
   const sportNameUpper = isStrength ? "MUSCULAÇÃO" : isCycling ? "CICLISMO" : isSwimming ? "NATAÇÃO" : "CORRIDA";
@@ -422,17 +439,62 @@ export const WorkoutStoryCard: React.FC<WorkoutStoryCardProps> = ({
             {!isStrength ? (
               <View style={{ backgroundColor: "#090414", padding: 10, borderRadius: 12, borderWidth: 1, borderColor: "#1e0f38" }}>
                 <Text style={{ color: "#a0a0c0", fontSize: 8, fontWeight: "900", letterSpacing: 1, marginBottom: 6 }}>
-                  {isCycling ? "📊 VELOCIDADE POR TRECHO" : isSwimming ? "📊 RITMO POR 100M" : "📊 PARCIAIS POR QUILÔMETRO (SPLITS)"}
+                  {isCycling
+                    ? `📊 VELOCIDADE POR TRECHO (${splitsList.length} KM)`
+                    : isSwimming
+                    ? "📊 RITMO POR 100M"
+                    : `📊 PARCIAIS POR QUILÔMETRO (${splitsList.length} KM)`}
                 </Text>
-                {splitsList.map((sp, idx) => (
-                  <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: idx < splitsList.length - 1 ? 1 : 0, borderBottomColor: "#170c2e", paddingVertical: 4 }}>
-                    <Text style={{ color: "#00E5FF", fontSize: 11, fontWeight: "800" }}>{sp.label}</Text>
-                    <View style={{ flex: 1, height: 4, backgroundColor: "#1c1036", marginHorizontal: 10, borderRadius: 2, overflow: "hidden" }}>
-                      <View style={{ width: `${Math.min(100, Math.max(30, 100 - idx * 12))}%`, height: "100%", backgroundColor: idx % 2 === 0 ? "#00E5FF" : "#FF0055" }} />
+
+                {splitsList.length <= 5 ? (
+                  /* Single column layout with progress bars for <= 5 KMs */
+                  splitsList.map((sp, idx) => (
+                    <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: idx < splitsList.length - 1 ? 1 : 0, borderBottomColor: "#170c2e", paddingVertical: 4 }}>
+                      <Text style={{ color: "#00E5FF", fontSize: 11, fontWeight: "800" }}>{sp.label}</Text>
+                      <View style={{ flex: 1, height: 4, backgroundColor: "#1c1036", marginHorizontal: 10, borderRadius: 2, overflow: "hidden" }}>
+                        <View style={{ width: `${Math.min(100, Math.max(30, 100 - idx * 12))}%`, height: "100%", backgroundColor: idx % 2 === 0 ? "#00E5FF" : "#FF0055" }} />
+                      </View>
+                      <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "900" }}>{sp.valStr}</Text>
                     </View>
-                    <Text style={{ color: "#ffffff", fontSize: 11, fontWeight: "900" }}>{sp.valStr}</Text>
-                  </View>
-                ))}
+                  ))
+                ) : (
+                  /* 2-Column Split Layout for > 5 KMs (ex: 1km - 5:26 | 6km - 6:10) */
+                  (() => {
+                    const half = Math.ceil(splitsList.length / 2);
+                    const col1 = splitsList.slice(0, half);
+                    const col2 = splitsList.slice(half);
+                    const isCompact = half > 7;
+                    const py = isCompact ? 1.5 : 3;
+                    const fontSz = isCompact ? 9 : 10;
+
+                    return (
+                      <View style={{ flexDirection: "row", gap: 10 }}>
+                        {/* Column 1 */}
+                        <View style={{ flex: 1 }}>
+                          {col1.map((sp, idx) => (
+                            <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: idx < col1.length - 1 ? 1 : 0, borderBottomColor: "#170c2e", paddingVertical: py }}>
+                              <Text style={{ color: "#00E5FF", fontSize: fontSz, fontWeight: "800" }}>{sp.label}</Text>
+                              <Text style={{ color: "#ffffff", fontSize: fontSz, fontWeight: "900" }}>{sp.valStr}</Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Vertical Divider */}
+                        <View style={{ width: 1, backgroundColor: "rgba(0, 229, 255, 0.25)" }} />
+
+                        {/* Column 2 */}
+                        <View style={{ flex: 1 }}>
+                          {col2.map((sp, idx) => (
+                            <View key={idx} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: idx < col2.length - 1 ? 1 : 0, borderBottomColor: "#170c2e", paddingVertical: py }}>
+                              <Text style={{ color: "#00E5FF", fontSize: fontSz, fontWeight: "800" }}>{sp.label}</Text>
+                              <Text style={{ color: "#ffffff", fontSize: fontSz, fontWeight: "900" }}>{sp.valStr}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })()
+                )}
               </View>
             ) : (
               <View style={{ backgroundColor: "#090414", padding: 10, borderRadius: 12, borderWidth: 1, borderColor: "#1e0f38" }}>

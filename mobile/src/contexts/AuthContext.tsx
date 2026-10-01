@@ -29,6 +29,8 @@ interface User {
   name: string;
   avatar?: string;
   planType?: string;
+  premiumUntil?: string | null;
+  isAdmin?: boolean;
   createdAt?: string | Date;
   stravaAthleteName?: string;
   stravaAthleteUsername?: string;

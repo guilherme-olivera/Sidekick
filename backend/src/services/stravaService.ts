@@ -167,6 +167,29 @@ export async function fetchStravaActivities(
 }
 
 /**
+ * Busca detalhes de uma atividade específica no Strava (incluindo splits_metric)
+ */
+export async function fetchStravaActivityDetail(
+  accessToken: string,
+  activityId: number | string
+): Promise<StravaActivity | null> {
+  try {
+    const response = await axios.get<StravaActivity>(
+      `${STRAVA_BASE_URL}/activities/${activityId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.warn(`[STRAVA] ⚠️ Could not fetch detail for activity ${activityId}`);
+    return null;
+  }
+}
+
+/**
  * Converte atividade do Strava para formato interno
  */
 export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
@@ -185,7 +208,7 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
   if (stravaActivity.type === "Run") {
     // For running, use pace (faster = higher intensity)
     const pace = stravaActivity.average_speed; // m/s
-    const paceMinKm = 16.666 / pace; // min/km
+    const paceMinKm = pace > 0 ? (1000 / pace) / 60 : 5; // min/km
 
     if (paceMinKm < 4.5) intensity = "high"; // Very fast
     else if (paceMinKm < 5.5) intensity = "moderate";
@@ -206,6 +229,12 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     averageCadence = averageCadence * 2;
   }
 
+  const speedMs = stravaActivity.average_speed || 0;
+  const paceMinKm = speedMs > 0 ? (1000 / speedMs) / 60 : 0;
+  const paceVal = mappedType === "run"
+    ? Math.round(paceMinKm * 100) / 100
+    : Math.round((speedMs * 3.6) * 100) / 100;
+
   return {
     stravaId: stravaActivity.id.toString(),
     title: stravaActivity.name,
@@ -213,7 +242,7 @@ export function convertStravaActivityToWorkout(stravaActivity: StravaActivity) {
     date: new Date(stravaActivity.start_date),
     duration: stravaActivity.elapsed_time,
     distance: Math.round((stravaActivity.distance / 1000) * 100) / 100, // km with 2 decimals
-    pace: Math.round((stravaActivity.average_speed * 3.6) * 100) / 100, // km/h with 2 decimals
+    pace: paceVal,
     avgHeartRate: stravaActivity.average_heartrate ? Math.round(stravaActivity.average_heartrate) : undefined,
     maxHeartRate: stravaActivity.max_heartrate ? Math.round(stravaActivity.max_heartrate) : undefined,
     intensity,
