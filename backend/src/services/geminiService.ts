@@ -2,8 +2,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+const CANDIDATE_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-flash-latest",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+];
+
 // Helper to wrap API calls with automatic retry on Google 503 Service Unavailable / 429 Rate Limit
-async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 2, delay = 600): Promise<T> {
   const startTime = Date.now();
   try {
     const result = await fn();
@@ -32,6 +39,23 @@ async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 3, delay =
   }
 }
 
+// Executes an API call across candidate models if one experiences 503 high demand or 404
+async function executeWithModelFallback<T>(
+  fn: (modelName: string) => Promise<T>
+): Promise<T> {
+  let lastErr: any = null;
+  for (const modelName of CANDIDATE_MODELS) {
+    try {
+      return await callGeminiWithRetry(() => fn(modelName), 1, 500);
+    } catch (err: any) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[GEMINI] Model '${modelName}' failed (${msg}). Attempting fallback model...`);
+    }
+  }
+  throw lastErr;
+}
+
 function calculateAge(birthdayStr?: string | null): number | null {
   if (!birthdayStr) return null;
   const parts = birthdayStr.split("/");
@@ -51,11 +75,6 @@ function calculateAge(birthdayStr?: string | null): number | null {
 
 /**
  * Analyzes a workout and generates an AI-powered narrative using Gemini
- * @param workout - Workout data with metrics (distance, pace, HR, etc)
- * @param mood - Optional mood check for context
- * @param userProfile - User goals, age, experience and companion configuration
- * @param recentWorkouts - History of recent workouts
- * @returns Generated narrative from Gemini
  */
 export async function analyzeWorkoutWithGemini(
   workout: any,
@@ -69,8 +88,6 @@ export async function analyzeWorkoutWithGemini(
         "GEMINI_API_KEY is not configured in environment variables"
       );
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     // Build context about the workout
     const workoutContext = `
@@ -178,13 +195,13 @@ export async function analyzeWorkoutWithGemini(
     Escreva a narrativa em português:
     `;
 
-    const text = await callGeminiWithRetry(async () => {
+    const text = await executeWithModelFallback(async (modelName) => {
+      const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
-    const narrative = text || "Não foi possível gerar a análise. Tente novamente.";
-    return narrative;
+    return text || "Não foi possível gerar a análise. Tente novamente.";
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;
@@ -205,9 +222,6 @@ export async function analyzeHistoryWithGemini(
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-
-    // Agregações de apoio
     const totalWorkouts = workouts.length;
     const runWorkouts = workouts.filter((w) => w.type === "run");
     const cycleWorkouts = workouts.filter((w) => w.type === "cycling");
@@ -227,7 +241,6 @@ export async function analyzeHistoryWithGemini(
     - Tempo Total Acumulado: ${totalHours} horas
     `;
 
-    // Companion rules (Personality, Tone, Gender)
     const p = userProfile?.aiPersonality || "calm";
     const t = userProfile?.aiTone || "motivational";
     const g = userProfile?.aiGender || "neutral";
@@ -299,13 +312,13 @@ export async function analyzeHistoryWithGemini(
     Escreva o relatório em português:
     `;
 
-    const text = await callGeminiWithRetry(async () => {
+    const text = await executeWithModelFallback(async (modelName) => {
+      const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
       return result.response.text();
     });
 
-    const narrative = text || "Não foi possível gerar o relatório de progresso do histórico.";
-    return narrative;
+    return text || "Não foi possível gerar o relatório de progresso do histórico.";
   } catch (error) {
     console.error("Gemini API History Error:", error);
     throw error;
@@ -370,29 +383,29 @@ Instruções cruciais:
 - Se o usuário tentar falar sobre outros assuntos não relacionados a esportes, corrida, ciclismo, hábitos saudáveis, motivação ou nutrição esportiva, recuse gentilmente na sua personalidade e traga o assunto de volta para os treinos.
 `;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.6-flash',
-      systemInstruction: systemInstruction,
-    });
-
     // Ensure the chat history starts with a 'user' message as required by Gemini
     let cleanHistory = [...chatHistory];
     while (cleanHistory.length > 0 && cleanHistory[0].role !== "user") {
       cleanHistory.shift();
     }
 
-    const chat = model.startChat({
-      history: cleanHistory.map(h => ({
-        role: h.role,
-        parts: [{ text: h.parts }]
-      })),
-      generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-      },
-    });
+    const text = await executeWithModelFallback(async (modelName) => {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemInstruction,
+      });
 
-    const text = await callGeminiWithRetry(async () => {
+      const chat = model.startChat({
+        history: cleanHistory.map(h => ({
+          role: h.role,
+          parts: [{ text: h.parts }]
+        })),
+        generationConfig: {
+          maxOutputTokens: 2048,
+          temperature: 0.7,
+        },
+      });
+
       const result = await chat.sendMessage(message);
       return result.response.text();
     });
@@ -411,10 +424,12 @@ export async function testGeminiConnection(): Promise<string> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured in environment variables");
   }
-  const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
-  const text = await callGeminiWithRetry(async () => {
+
+  const text = await executeWithModelFallback(async (modelName) => {
+    const model = genAI.getGenerativeModel({ model: modelName });
     const result = await model.generateContent("Responder apenas: 'Gemini Ok!'");
     return result.response.text();
   });
+
   return text.trim();
 }

@@ -6,28 +6,14 @@ dotenv.config({ path: envPath });
 
 async function testGemini() {
   try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { testGeminiConnection } = require('../dist/src/services/geminiService.js');
+    console.log('🔄 Testando Gemini API com fallback automático de modelos...\n');
 
-    if (!apiKey) {
-      console.error('❌ Erro: GEMINI_API_KEY não está definida no backend/.env');
-      process.exit(1);
-    }
+    const result = await testGeminiConnection();
 
-    const client = new GoogleGenerativeAI(apiKey);
-    // Altere para gemini-1.5-flash
-    const model = client.getGenerativeModel({ model: 'gemini-flash-latest' });
-
-    console.log('🔄 Testando Gemini API (gemini-flash-latest) com prompt simples...\n');
-
-    const result = await model.generateContent(
-      'Você é um assistente de treinamento de atletismo. Responda brevemente: qual é a importância do aquecimento? responda essa pergunta com 3 tipos de humor "Sarcastico", "humorístico" e "como um treinador motivacional".'
-    );
-
-    const text = result.response.text();
-    console.log('✅ Gemini API funcionando corretamente!\n');
+    console.log('✅ Gemini API funcionando perfeitamente!\n');
     console.log('📝 Resposta do Gemini:\n');
-    console.log(text);
+    console.log(result);
     return;
   } catch (error) {
     console.error('❌ Falha ao testar Gemini API:');
