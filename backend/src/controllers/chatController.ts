@@ -45,7 +45,7 @@ export const chatHandler = async (req: any, res: Response) => {
         type: true,
         distance: true,
         duration: true,
-        averageSpeed: true,
+        pace: true,
         sufferScore: true,
         date: true,
       },
