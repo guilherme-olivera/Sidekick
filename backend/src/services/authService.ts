@@ -108,7 +108,7 @@ export async function loginUser(
         email: user.email,
       },
       JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "365d" }
     );
 
     console.log(`✅ Login bem-sucedido: ${email}`);
@@ -178,9 +178,13 @@ export function authMiddleware(req: any, res: any, next: any) {
       name: "",
     };
     next();
-  } catch (error) {
+  } catch (error: any) {
+    const errorMsg = error instanceof Error ? error.message : "Erro de autenticação";
+    const userFriendlyError = errorMsg.includes("jwt expired")
+      ? "Sua sessão expirou. Por favor, faça login novamente."
+      : errorMsg;
     res.status(401).json({
-      error: error instanceof Error ? error.message : "Erro de autenticação",
+      error: userFriendlyError,
     });
   }
 }
