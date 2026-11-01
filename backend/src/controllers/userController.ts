@@ -2,8 +2,15 @@ import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
 import { getAiUsageStatus } from "../services/usageService";
 import { calculateReadiness } from "../utils/readiness";
-import { calculateRacePredictions, calculateACWR } from "../services/analyticsService";
-import { saveUserPushToken, broadcastNotification } from "../services/pushNotificationService";
+import {
+  calculateRacePredictions,
+  calculateACWR,
+} from "../services/analyticsService";
+import {
+  saveUserPushToken,
+  broadcastNotification,
+} from "../services/pushNotificationService";
+import { checkIsAdminUser, isExplicitAdminEmail } from "../utils/adminAuth";
 
 export const getUserProfileHandler = async (req: any, res: Response) => {
   try {
@@ -20,6 +27,8 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
         name: true,
         avatar: true,
         planType: true,
+        premiumUntil: true,
+        isAdmin: true,
         stravaAthleteName: true,
         stravaAthleteUsername: true,
         stravaAthleteProfile: true,
@@ -53,10 +62,18 @@ export const getUserProfileHandler = async (req: any, res: Response) => {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
-    const usage = await getAiUsageStatus(userId);
+    const usage = await getAiUsageStatus(userId, user.planType);
     const readiness = await calculateReadiness(userId, user.profile);
 
-    res.json({ success: true, user: { ...user, readiness }, usage });
+    res.json({
+      success: true,
+      user: {
+        ...user,
+        isAdmin: user.isAdmin || isExplicitAdminEmail(user.email),
+        readiness,
+      },
+      usage,
+    });
   } catch (error) {
     console.error("Error fetching user profile:", error);
     res.status(500).json({ error: "Falha ao buscar perfil do usuário" });
@@ -92,7 +109,10 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
       return res.status(401).json({ error: "Usuário não autenticado" });
     }
 
-    const freq = weeklyFrequency !== undefined && weeklyFrequency !== null ? Number(weeklyFrequency) : null;
+    const freq =
+      weeklyFrequency !== undefined && weeklyFrequency !== null
+        ? Number(weeklyFrequency)
+        : null;
 
     const profile = await prisma.userProfile.upsert({
       where: { userId },
@@ -112,6 +132,7 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         goalTargetTime,
         experienceLevel,
         weeklyFrequency: freq,
+        isConfigured: isConfigured ?? false,
         companionName: companionName !== undefined ? companionName : null,
         companionAvatar: companionAvatar !== undefined ? companionAvatar : null,
         phoneNumber: phoneNumber !== undefined ? phoneNumber : null,
@@ -132,9 +153,10 @@ export const updateUserProfileHandler = async (req: any, res: Response) => {
         goalTargetTime,
         experienceLevel,
         weeklyFrequency: freq,
-        isConfigured: isConfigured ?? false,
+        isConfigured: isConfigured ?? undefined,
         companionName: companionName !== undefined ? companionName : undefined,
-        companionAvatar: companionAvatar !== undefined ? companionAvatar : undefined,
+        companionAvatar:
+          companionAvatar !== undefined ? companionAvatar : undefined,
         phoneNumber: phoneNumber !== undefined ? phoneNumber : undefined,
         gender: gender !== undefined ? gender : undefined,
       },
@@ -295,18 +317,140 @@ export const savePushTokenHandler = async (req: any, res: Response) => {
   }
 };
 
-export const broadcastNotificationHandler = async (req: any, res: Response) => {
+export const broadcastNotificationHandler = async (
+  req: any,
+  res: Response
+) => {
   try {
+    const isAdmin = await checkIsAdminUser(req.userId);
+    if (!isAdmin) {
+      return res.status(403).json({
+        error: "Acesso negado. Apenas administradores podem enviar avisos.",
+      });
+    }
+
     const { title, body, filter, extraData } = req.body;
 
     if (!title || !body) {
-      return res.status(400).json({ error: "Título e mensagem são obrigatórios" });
+      return res
+        .status(400)
+        .json({ error: "Título e mensagem são obrigatórios" });
     }
 
     const result = await broadcastNotification(title, body, filter, extraData);
     res.json({ success: true, result });
   } catch (error) {
     console.error("Error sending broadcast notification:", error);
-    res.status(500).json({ error: "Falha ao enviar notificação de transmissão" });
+    res
+      .status(500)
+      .json({ error: "Falha ao enviar notificação de transmissão" });
+  }
+};
+
+/**
+ * GET /api/user/notifications
+ * Busca notificações In-App do usuário (pessoais + avisos gerais do Admin)
+ */
+export const getNotificationsHandler = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { planType: true, createdAt: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const notifications = await prisma.appNotification.findMany({
+      where: {
+        OR: [
+          { userId },
+          {
+            userId: null,
+            targetPlan: { in: ["all", user.planType || "free"] },
+            createdAt: { gte: thirtyDaysAgo },
+          },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 25,
+    });
+
+    res.json({ success: true, notifications });
+  } catch (error) {
+    console.error("Error fetching user notifications:", error);
+    res.status(500).json({ error: "Falha ao buscar notificações" });
+  }
+};
+
+/**
+ * POST /api/user/notifications/read
+ * Marca as notificações pessoais do usuário como lidas
+ */
+export const markNotificationsReadHandler = async (
+  req: any,
+  res: Response
+) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    await prisma.appNotification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error marking notifications read:", error);
+    res.status(500).json({ error: "Falha ao atualizar notificações" });
+  }
+};
+
+/**
+ * DELETE /api/user/account
+ * Exclui permanentemente a conta do usuário e todos os seus dados (LGPD / Lojas / Strava)
+ */
+export const deleteAccountHandler = async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Usuário não autenticado" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    // Exclusão em cascata (User tem onDelete: Cascade nos relacionamentos e limpamos tokens de reset por email)
+    await prisma.$transaction([
+      prisma.passwordResetToken.deleteMany({ where: { email: user.email } }),
+      prisma.user.delete({ where: { id: userId } }),
+    ]);
+
+    console.log(`🗑️ Conta excluída permanentemente pelo titular: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: "Sua conta e todos os dados associados foram excluídos permanentemente.",
+    });
+  } catch (error) {
+    console.error("Error deleting user account:", error);
+    res.status(500).json({ error: "Falha ao excluir conta do usuário" });
   }
 };

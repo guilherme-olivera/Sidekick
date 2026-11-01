@@ -45,6 +45,9 @@ import {
   getUserAnalyticsHandler,
   savePushTokenHandler,
   broadcastNotificationHandler,
+  getNotificationsHandler,
+  markNotificationsReadHandler,
+  deleteAccountHandler,
 } from "./controllers/userController";
 import {
   handleUploadAvatar,
@@ -65,17 +68,45 @@ import { authMiddleware } from "./services/authService";
 import { chatHandler } from "./controllers/chatController";
 import { uploadAvatar } from "./middleware/uploadMiddleware";
 import { handleDiagnosticsTest } from "./controllers/diagnosticsController";
+import { createRateLimiter } from "./middleware/rateLimitMiddleware";
+import { checkIsAdminUser, EXPLICIT_ADMIN_EMAILS } from "./utils/adminAuth";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";
-const PUBLIC_URL = process.env.SERVER_URL || `http://${process.env.HOST || 'localhost'}:${PORT}`;
+const PUBLIC_URL =
+  process.env.SERVER_URL || `http://${process.env.HOST || "localhost"}:${PORT}`;
+
+// Rate Limiters para proteção contra força bruta
+const authLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  keyPrefix: "auth",
+  message:
+    "Muitas tentativas de autenticação. Por favor, aguarde alguns minutos e tente novamente.",
+});
+
+const recoveryLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  keyPrefix: "recovery",
+  message:
+    "Muitas solicitações de recuperação de senha. Aguarde 15 minutos antes de tentar novamente.",
+});
+
+const vipRedeemLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyPrefix: "vip_redeem",
+  message:
+    "Muitas tentativas de resgate de código VIP. Aguarde alguns minutos.",
+});
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(cors());
 
-// Servir arquivos estáticos (avatares, etc)
+// Servir arquivos estáticos (avatares legados, etc)
 app.use("/public", express.static(path.join(process.cwd(), "public")));
 
 // Health check endpoint
@@ -84,11 +115,11 @@ app.get("/health", (req, res) => {
 });
 
 // ===== AUTHENTICATION ROUTES =====
-app.post("/api/auth/register", handleRegister);
-app.post("/api/auth/login", handleLogin);
+app.post("/api/auth/register", authLimiter, handleRegister);
+app.post("/api/auth/login", authLimiter, handleLogin);
 app.get("/api/auth/me", authMiddleware, handleGetMe);
-app.post("/api/auth/forgot-password", handleForgotPassword);
-app.post("/api/auth/reset-password", handleResetPassword);
+app.post("/api/auth/forgot-password", recoveryLimiter, handleForgotPassword);
+app.post("/api/auth/reset-password", recoveryLimiter, handleResetPassword);
 
 // ===== STRAVA INTEGRATION ROUTES =====
 app.get("/api/strava/auth-url", authMiddleware, getStravaAuthUrlHandler);
@@ -118,32 +149,73 @@ app.post("/api/events", authMiddleware, createEventHandler);
 app.put("/api/events/:id", authMiddleware, updateEventHandler);
 app.delete("/api/events/:id", authMiddleware, deleteEventHandler);
 
-// ===== USER PROFILE ROUTES =====
+// ===== USER PROFILE & ACCOUNT ROUTES =====
 app.get("/api/user/profile", authMiddleware, getUserProfileHandler);
 app.put("/api/user/profile", authMiddleware, updateUserProfileHandler);
-app.post("/api/user/avatar", authMiddleware, uploadAvatar.single("avatar"), handleUploadAvatar);
+app.post(
+  "/api/user/avatar",
+  authMiddleware,
+  uploadAvatar.single("avatar"),
+  handleUploadAvatar
+);
 app.delete("/api/user/avatar", authMiddleware, handleDeleteAvatar);
 app.get("/api/user/usage", authMiddleware, getUserUsageHandler);
 app.post("/api/user/mood", authMiddleware, handleSaveMood);
 app.get("/api/user/mood/today", authMiddleware, handleGetTodayMood);
-app.get("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisCachedHandler);
+app.get(
+  "/api/user/history-analysis",
+  authMiddleware,
+  getUserHistoryAnalysisCachedHandler
+);
 app.get("/api/user/analytics", authMiddleware, getUserAnalyticsHandler);
 app.post("/api/user/push-token", authMiddleware, savePushTokenHandler);
-app.post("/api/admin/broadcast-notification", broadcastNotificationHandler);
+app.get("/api/user/notifications", authMiddleware, getNotificationsHandler);
+app.post(
+  "/api/user/notifications/read",
+  authMiddleware,
+  markNotificationsReadHandler
+);
+app.delete("/api/user/account", authMiddleware, deleteAccountHandler);
 
 // ===== ADMIN & VIP PREMIUM ROUTES =====
+app.post(
+  "/api/admin/broadcast-notification",
+  authMiddleware,
+  broadcastNotificationHandler
+);
 app.post("/api/admin/user/premium", authMiddleware, grantRevokePremiumHandler);
-app.post("/api/admin/vip-code/generate", authMiddleware, generateVipCodeHandler);
+app.post(
+  "/api/admin/vip-code/generate",
+  authMiddleware,
+  generateVipCodeHandler
+);
 app.get("/api/admin/vip-overview", authMiddleware, getAdminOverviewHandler);
-app.post("/api/user/redeem-vip", authMiddleware, redeemVipCodeHandler);
+app.post(
+  "/api/user/redeem-vip",
+  authMiddleware,
+  vipRedeemLimiter,
+  redeemVipCodeHandler
+);
 
-app.post("/api/user/history-analysis", authMiddleware, getUserHistoryAnalysisHandler);
+app.post(
+  "/api/user/history-analysis",
+  authMiddleware,
+  getUserHistoryAnalysisHandler
+);
 app.get("/api/diagnostics/test", authMiddleware, handleDiagnosticsTest);
 
 // ===== ACHIEVEMENTS ROUTES =====
 app.get("/api/user/achievements", authMiddleware, getUserAchievementsHandler);
-app.get("/api/user/achievements/new", authMiddleware, getNewAchievementsHandler);
-app.post("/api/user/achievements/clear-new", authMiddleware, clearNewAchievementsHandler);
+app.get(
+  "/api/user/achievements/new",
+  authMiddleware,
+  getNewAchievementsHandler
+);
+app.post(
+  "/api/user/achievements/clear-new",
+  authMiddleware,
+  clearNewAchievementsHandler
+);
 
 // ===== WORKOUT ROUTES =====
 app.get("/api/workouts", authMiddleware, getWorkoutsHandler);
@@ -153,16 +225,20 @@ app.post("/api/workouts", authMiddleware, createWorkoutHandler);
 app.put("/api/workouts/:id", authMiddleware, updateWorkoutHandler);
 app.delete("/api/workouts/:id", authMiddleware, deleteWorkoutHandler);
 
-// AI Test endpoint - simulates receiving a workout and returning IA narrative
-app.post("/api/test/ai-analysis", async (req, res) => {
+// AI Test endpoint - protegido para administradores
+app.post("/api/test/ai-analysis", authMiddleware, async (req: any, res) => {
   try {
+    const isAdmin = await checkIsAdminUser(req.userId);
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Acesso restrito a administradores." });
+    }
+
     const { workout } = req.body;
 
     if (!workout) {
       return res.status(400).json({ error: "Workout data is required" });
     }
 
-    // Call Gemini service
     const { analyzeWorkoutWithGemini } = await import(
       "./services/geminiService"
     );
@@ -182,13 +258,53 @@ app.post("/api/test/ai-analysis", async (req, res) => {
   }
 });
 
-// Start server (bind to HOST so devices on LAN can reach it)
+// Garante que novas tabelas e índices de performance existam automaticamente no PostgreSQL em produção
+async function ensureDatabaseSchema() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "app_notifications" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT,
+        "targetPlan" TEXT NOT NULL DEFAULT 'all',
+        "title" TEXT NOT NULL,
+        "body" TEXT NOT NULL,
+        "icon" TEXT NOT NULL DEFAULT '🔔',
+        "type" TEXT NOT NULL DEFAULT 'broadcast',
+        "isRead" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "app_notifications_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "app_notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "app_notifications_userId_createdAt_idx" ON "app_notifications"("userId", "createdAt" DESC);
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "app_notifications_targetPlan_createdAt_idx" ON "app_notifications"("targetPlan", "createdAt" DESC);
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "workouts_userId_date_idx" ON "workouts"("userId", "date" DESC);
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "calendar_events_userId_date_idx" ON "calendar_events"("userId", "date" DESC);
+    `);
+    console.log("💾 Schema incremental (app_notifications + índices) verificado com sucesso.");
+  } catch (err) {
+    console.warn("Schema auto-sync warning:", err);
+  }
+}
+
+// Garante apenas as contas explícitas de administrador no startup (sem correspondência parcial de substring)
 async function ensureAdminUser() {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || "adm@adm.com";
-    const adminPassword = process.env.ADMIN_PASSWORD || "adm123";
+    const adminEmail = (process.env.ADMIN_EMAIL || "adm@adm.com")
+      .trim()
+      .toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || "Adm@2026";
 
-    const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+    const existing = await prisma.user.findUnique({
+      where: { email: adminEmail },
+    });
     if (!existing) {
       const hashed = bcrypt.hashSync(adminPassword, 10);
       await prisma.user.create({
@@ -203,30 +319,27 @@ async function ensureAdminUser() {
       console.log(`🔐 Admin user created: ${adminEmail}`);
     }
 
-    // Garante que a conta adm e Guilherme tenham permissão de Admin
     await prisma.user.updateMany({
       where: {
-        OR: [
-          { email: { contains: "adm", mode: "insensitive" } },
-          { email: { contains: "guilherme", mode: "insensitive" } },
-        ],
+        email: { in: EXPLICIT_ADMIN_EMAILS },
       },
       data: { isAdmin: true, planType: "premium" },
     });
-    console.log(`🔐 Permissões de Admin atualizadas no banco com sucesso.`);
+    console.log(`🔐 Permissões explícitas de Admin verificadas com sucesso.`);
   } catch (err) {
     console.error("Error ensuring admin user:", err);
   }
 }
 
 async function start() {
+  await ensureDatabaseSchema();
   await ensureAdminUser();
 
   app.listen(PORT, HOST as any, () => {
     console.log(`🚀 Sidekick Backend running on ${PUBLIC_URL}`);
     console.log(`🧠 IA powered by Gemini`);
     console.log(`💾 Database: PostgreSQL`);
-    console.log(`🔐 Auth: JWT (Mock mode)`);
+    console.log(`🔐 Auth: JWT & Rate Limiting Active`);
   });
 }
 

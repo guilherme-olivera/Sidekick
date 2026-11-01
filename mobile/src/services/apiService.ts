@@ -6,7 +6,8 @@ import Constants from 'expo-constants';
 
 const rawApiBase =
   process.env.EXPO_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  (typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:3000'
     : ((Constants.expoConfig?.extra as any)?.API_URL as string) ||
       ((Constants.manifest?.extra as any)?.API_URL as string) ||
@@ -22,6 +23,35 @@ API_BASE_URL = API_BASE_URL.replace(/\/$/, '');
 
 console.log('[apiService] API_BASE_URL =', API_BASE_URL);
 
+const DEFAULT_TIMEOUT_MS = 28000;
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error(
+        'O servidor demorou para responder (pode estar acordando). Tente novamente em alguns segundos.'
+      );
+    }
+    throw new Error(
+      'Não foi possível conectar ao servidor Sidekick. Verifique sua internet e tente novamente.'
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 interface LoginPayload {
   email: string;
   password: string;
@@ -36,33 +66,29 @@ interface RegisterPayload {
 interface AuthResponse {
   success: boolean;
   token?: string;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-  };
+  user?: any;
   error?: string;
 }
 
 /**
- * Faz login
+ * Faz login e já recebe o perfil completo em uma única requisição
  */
 export async function apiLogin(credentials: LoginPayload): Promise<AuthResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: "POST",
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || "Erro ao fazer login",
+        error: data.error || 'E-mail ou senha inválidos',
       };
     }
 
@@ -70,30 +96,30 @@ export async function apiLogin(credentials: LoginPayload): Promise<AuthResponse>
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erro de conexão",
+      error: error instanceof Error ? error.message : 'Erro de conexão',
     };
   }
 }
 
 /**
- * Registra novo usuário
+ * Registra novo usuário e já retorna token + perfil inicial
  */
 export async function apiRegister(payload: RegisterPayload): Promise<AuthResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: "POST",
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || "Erro ao registrar",
+        error: data.error || 'Erro ao registrar conta',
       };
     }
 
@@ -101,7 +127,7 @@ export async function apiRegister(payload: RegisterPayload): Promise<AuthRespons
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erro de conexão",
+      error: error instanceof Error ? error.message : 'Erro de conexão',
     };
   }
 }
@@ -113,12 +139,12 @@ export function setAuthToken(token: string | null) {
 }
 
 /**
- * Valida o token
+ * Monta headers autenticados
  */
 async function buildHeaders(additionalHeaders: Record<string, string> = {}) {
-  const token = activeToken || await AsyncStorage.getItem('authToken');
+  const token = activeToken || (await AsyncStorage.getItem('authToken'));
   return {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...additionalHeaders,
   };
@@ -137,19 +163,20 @@ function normalizeApiPath(url: string) {
 async function safeFetch(url: string, options: RequestInit = {}) {
   const normalizedPath = normalizeApiPath(url);
   const fullUrl = `${API_BASE_URL}${normalizedPath}`;
-  console.log('[apiService] fetch', fullUrl, options.method, options.headers ? 'headers set' : 'no headers');
   try {
-    const response = await fetch(fullUrl, options);
+    const response = await fetchWithTimeout(fullUrl, options);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.error('[apiService] response error', fullUrl, response.status, data);
-      const error = new Error(data.error || response.statusText || 'Request failed') as any;
+      const error = new Error(
+        data.error || response.statusText || 'Falha na requisição'
+      ) as any;
       error.status = response.status;
+      error.code = data.code;
       throw error;
     }
     return data;
   } catch (error) {
-    console.error('[apiService] network error', fullUrl, error);
+    console.error('[apiService] request error', fullUrl, error);
     throw error;
   }
 }
@@ -208,7 +235,7 @@ export const apiService = {
 
 export async function apiVerifyToken(token: string): Promise<{ valid: boolean }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/auth/me`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,

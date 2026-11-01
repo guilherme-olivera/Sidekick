@@ -32,11 +32,12 @@ model User {
   updatedAt            DateTime  @updatedAt
 
   // Relações
-  workouts       Workout[]
-  moodChecks     MoodCheck[]
-  profile        UserProfile?
-  usageQuotas    UsageQuota[]
-  calendarEvents CalendarEvent[]
+  workouts          Workout[]
+  moodChecks        MoodCheck[]
+  profile           UserProfile?
+  usageQuotas       UsageQuota[]
+  calendarEvents    CalendarEvent[]
+  appNotifications  AppNotification[]
 
   @@map("users")
 }
@@ -89,6 +90,7 @@ model Workout {
   @@map("workouts")
   @@index([userId])
   @@index([date])
+  @@index([userId, date(sort: Desc)])
 }
 
 // ===== MOOD CHECK MODEL =====
@@ -188,6 +190,7 @@ model CalendarEvent {
   @@map("calendar_events")
   @@index([userId])
   @@index([date])
+  @@index([userId, date(sort: Desc)])
 }
 
 // ===== VIP CODE MODEL =====
@@ -217,6 +220,25 @@ model PasswordResetToken {
 
   @@map("password_reset_tokens")
   @@index([email, code])
+}
+
+// ===== IN-APP NOTIFICATION MODEL =====
+model AppNotification {
+  id        String   @id @default(cuid())
+  userId    String?  // null = broadcast para todos (ou filtrado por targetPlan)
+  targetPlan String? // "all" | "free" | "premium" (quando userId é null)
+  title     String
+  body      String
+  icon      String   @default("🔔")
+  type      String   @default("broadcast") // "broadcast" | "premium" | "system" | "workout"
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("app_notifications")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
 }
 
 

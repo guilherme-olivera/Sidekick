@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
-import { loginUser, registerUser } from "../services/authService";
+import crypto from "crypto";
+import {
+  loginUser,
+  registerUser,
+  getFullAuthenticatedUser,
+} from "../services/authService";
 import { prisma } from "../utils/prisma";
-import { calculateReadiness } from "../utils/readiness";
 
 /**
  * POST /api/auth/register
- * Registra novo usuário
+ * Registra novo usuário e já retorna token + usuário completo (login atômico)
  */
 export async function handleRegister(req: Request, res: Response) {
   try {
@@ -21,6 +25,8 @@ export async function handleRegister(req: Request, res: Response) {
       success: true,
       message: "Usuário registrado com sucesso",
       userId: result.userId,
+      token: result.token,
+      user: result.user,
     });
   } catch (error) {
     res.status(500).json({
@@ -31,7 +37,7 @@ export async function handleRegister(req: Request, res: Response) {
 
 /**
  * POST /api/auth/login
- * Faz login do usuário
+ * Faz login do usuário e retorna perfil completo em uma única viagem
  */
 export async function handleLogin(req: Request, res: Response) {
   try {
@@ -62,72 +68,15 @@ export async function handleLogin(req: Request, res: Response) {
 export async function handleGetMe(req: any, res: Response) {
   try {
     const userId = req.userId;
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        avatar: true,
-        planType: true,
-        premiumUntil: true,
-        isAdmin: true,
-        stravaId: true,
-        stravaAthleteName: true,
-        stravaAthleteUsername: true,
-        stravaAthleteProfile: true,
-        profile: {
-          select: {
-            trainingGoal: true,
-            focusArea: true,
-            injuryNote: true,
-            availableTime: true,
-            trainingMood: true,
-            aiGender: true,
-            aiPersonality: true,
-            aiTone: true,
-            birthday: true,
-            goalType: true,
-            goalDistance: true,
-            goalTargetTime: true,
-            experienceLevel: true,
-            weeklyFrequency: true,
-            isConfigured: true,
-            companionName: true,
-            companionAvatar: true,
-            phoneNumber: true,
-            gender: true,
-          },
-        },
-      },
-    });
+    const fullUser = await getFullAuthenticatedUser(userId);
 
-    if (!user) {
+    if (!fullUser) {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
-    // Auto-downgrade se premium expirou
-    let finalPlanType = user.planType;
-    let finalPremiumUntil = user.premiumUntil;
-
-    if (user.planType === "premium" && user.premiumUntil && new Date(user.premiumUntil) < new Date()) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { planType: "free", premiumUntil: null },
-      });
-      finalPlanType = "free";
-      finalPremiumUntil = null;
-    }
-
-    const readiness = await calculateReadiness(userId, user.profile);
     res.json({
       success: true,
-      user: {
-        ...user,
-        planType: finalPlanType,
-        premiumUntil: finalPremiumUntil,
-        readiness,
-      },
+      user: fullUser,
     });
   } catch (error) {
     res.status(500).json({
@@ -157,13 +106,14 @@ export async function handleForgotPassword(req: Request, res: Response) {
       return res.json({
         success: true,
         emailSent: true,
-        message: "Se o e-mail estiver cadastrado em nossa base, o código foi enviado com sucesso!",
+        message:
+          "Se o e-mail estiver cadastrado em nossa base, o código foi enviado com sucesso!",
       });
     }
 
-    // Gera código numérico de 6 dígitos
-    const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
+    // Gera código numérico de 6 dígitos com CSPRNG (crypto.randomInt)
+    const recoveryCode = crypto.randomInt(100000, 1000000).toString();
+
     // Validade estrita de 30 minutos
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
@@ -177,25 +127,35 @@ export async function handleForgotPassword(req: Request, res: Response) {
       },
     });
 
-    console.log(`[RECOVERY] 📧 E-mail enviado para ${cleanEmail} com código ${recoveryCode} (Validade: 30 min)`);
+    console.log(
+      `[RECOVERY] 📧 Solicitação de recuperação gerada para ${cleanEmail} (Validade: 30 min)`
+    );
 
     const { sendPasswordRecoveryEmail } = require("../services/emailService");
-    const mailSent = await sendPasswordRecoveryEmail(cleanEmail, recoveryCode).catch((err: any) => {
-      console.error("Failed to send recovery email:", err);
-      return false;
-    });
+    await sendPasswordRecoveryEmail(cleanEmail, recoveryCode).catch(
+      (err: any) => {
+        console.error("Failed to send recovery email:", err);
+        return false;
+      }
+    );
 
     return res.json({
       success: true,
       emailSent: true,
       message: `O e-mail contendo seu código de recuperação de 6 dígitos foi enviado com sucesso para ${cleanEmail}! O código é de uso único e possui validade de 30 minutos.`,
       expiresInMinutes: 30,
-      mockCode: (process.env.NODE_ENV === "development" && !process.env.SMTP_USER && !process.env.RESEND_API_KEY) ? recoveryCode : undefined,
+      mockCode:
+        process.env.NODE_ENV === "development" &&
+        !process.env.SMTP_USER &&
+        !process.env.RESEND_API_KEY
+          ? recoveryCode
+          : undefined,
     });
   } catch (error) {
     console.error("Erro em handleForgotPassword:", error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Erro ao processar recuperação",
+      error:
+        error instanceof Error ? error.message : "Erro ao processar recuperação",
     });
   }
 }
@@ -208,7 +168,9 @@ export async function handleResetPassword(req: Request, res: Response) {
   try {
     const { email, code, newPassword } = req.body;
     if (!email || !code || !newPassword) {
-      return res.status(400).json({ error: "E-mail, código e nova senha são obrigatórios" });
+      return res
+        .status(400)
+        .json({ error: "E-mail, código e nova senha são obrigatórios" });
     }
 
     const cleanEmail = email.trim().toLowerCase();
@@ -217,7 +179,8 @@ export async function handleResetPassword(req: Request, res: Response) {
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        error: "A nova senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.",
+        error:
+          "A nova senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.",
       });
     }
 
@@ -239,17 +202,25 @@ export async function handleResetPassword(req: Request, res: Response) {
     });
 
     if (!resetToken) {
-      return res.status(400).json({ error: "Código de recuperação inválido ou não encontrado." });
+      return res
+        .status(400)
+        .json({ error: "Código de recuperação inválido ou não encontrado." });
     }
 
     // Validação 1: Verificar se já foi utilizado
     if (resetToken.isUsed) {
-      return res.status(400).json({ error: "Este código de recuperação já foi utilizado. Por favor, solicite um novo código." });
+      return res.status(400).json({
+        error:
+          "Este código de recuperação já foi utilizado. Por favor, solicite um novo código.",
+      });
     }
 
     // Validação 2: Verificar validade de 30 minutos
     if (new Date() > new Date(resetToken.expiresAt)) {
-      return res.status(400).json({ error: "Este código de recuperação expirou (validade de 30 minutos). Por favor, solicite um novo código." });
+      return res.status(400).json({
+        error:
+          "Este código de recuperação expirou (validade de 30 minutos). Por favor, solicite um novo código.",
+      });
     }
 
     const bcrypt = require("bcryptjs");
@@ -270,7 +241,9 @@ export async function handleResetPassword(req: Request, res: Response) {
       }),
     ]);
 
-    console.log(`✅ Senha alterada e token ${resetToken.id} marcado como usado para ${cleanEmail}`);
+    console.log(
+      `✅ Senha alterada e token ${resetToken.id} marcado como usado para ${cleanEmail}`
+    );
 
     // Send confirmation email
     const { sendMail } = require("../services/emailService");
@@ -292,17 +265,20 @@ export async function handleResetPassword(req: Request, res: Response) {
         <p style="color: #999; font-size: 12px; text-align: center;">© 2026 Sidekick. Todos os direitos reservados.</p>
       </div>
     `;
-    
+
     sendMail(
       cleanEmail,
       "Sua senha foi alterada com sucesso! 🔑",
       emailHtml,
       "Sua senha do Sidekick foi alterada com sucesso. Se não foi você, entre em contato com o suporte."
-    ).catch((err: any) => console.error("Failed to send password change confirmation email:", err));
+    ).catch((err: any) =>
+      console.error("Failed to send password change confirmation email:", err)
+    );
 
     return res.json({
       success: true,
-      message: "Sua senha foi redefinida com sucesso! O código de recuperação foi utilizado e invalidado.",
+      message:
+        "Sua senha foi redefinida com sucesso! O código de recuperação foi utilizado e invalidado.",
     });
   } catch (error) {
     console.error("Erro em handleResetPassword:", error);

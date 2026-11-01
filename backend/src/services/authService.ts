@@ -1,17 +1,105 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { prisma } from "../utils/prisma";
+import { calculateReadiness } from "../utils/readiness";
+import { isExplicitAdminEmail } from "../utils/adminAuth";
+import { getAiUsageStatus } from "./usageService";
 
 const JWT_SECRET = process.env.JWT_SECRET || "sidekick-dev-secret-key-2026";
 
 /**
- * Registra novo usuário
+ * Busca objeto completo do usuário autenticado (com profile, readiness, plano normalizado e uso de IA)
+ */
+export async function getFullAuthenticatedUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      avatar: true,
+      planType: true,
+      premiumUntil: true,
+      isAdmin: true,
+      stravaId: true,
+      stravaAthleteName: true,
+      stravaAthleteUsername: true,
+      stravaAthleteProfile: true,
+      profile: {
+        select: {
+          trainingGoal: true,
+          focusArea: true,
+          injuryNote: true,
+          availableTime: true,
+          trainingMood: true,
+          aiGender: true,
+          aiPersonality: true,
+          aiTone: true,
+          birthday: true,
+          goalType: true,
+          goalDistance: true,
+          goalTargetTime: true,
+          experienceLevel: true,
+          weeklyFrequency: true,
+          isConfigured: true,
+          companionName: true,
+          companionAvatar: true,
+          phoneNumber: true,
+          gender: true,
+        },
+      },
+    },
+  });
+
+  if (!user) return null;
+
+  let finalPlanType = user.planType;
+  let finalPremiumUntil = user.premiumUntil;
+  let finalIsAdmin = user.isAdmin || isExplicitAdminEmail(user.email);
+
+  // Auto-downgrade se premium expirou (exceto admin explícito sem data de expiração)
+  if (
+    user.planType === "premium" &&
+    user.premiumUntil &&
+    new Date(user.premiumUntil) < new Date()
+  ) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { planType: "free", premiumUntil: null },
+    });
+    finalPlanType = "free";
+    finalPremiumUntil = null;
+  }
+
+  const [readiness, aiUsage] = await Promise.all([
+    calculateReadiness(userId, user.profile),
+    getAiUsageStatus(userId, finalPlanType),
+  ]);
+
+  return {
+    ...user,
+    isAdmin: finalIsAdmin,
+    planType: finalPlanType,
+    premiumUntil: finalPremiumUntil,
+    readiness,
+    aiUsage,
+  };
+}
+
+/**
+ * Registra novo usuário e já retorna token + usuário completo para login atômico
  */
 export async function registerUser(
   email: string,
   password: string,
   name: string
-): Promise<{ success: boolean; userId?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  userId?: string;
+  token?: string;
+  user?: any;
+  error?: string;
+}> {
   try {
     if (!email || !password || !name) {
       return { success: false, error: "Email, senha e nome são obrigatórios" };
@@ -28,7 +116,8 @@ export async function registerUser(
     if (!passwordRegex.test(password)) {
       return {
         success: false,
-        error: "A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.",
+        error:
+          "A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.",
       };
     }
 
@@ -41,24 +130,43 @@ export async function registerUser(
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
+    const isOwner = isExplicitAdminEmail(cleanEmail);
 
     const newUser = await prisma.user.create({
       data: {
         email: cleanEmail,
         password: hashedPassword,
-        name,
+        name: name.trim(),
+        isAdmin: isOwner,
+        planType: isOwner ? "premium" : "free",
       },
     });
 
+    const token = jwt.sign(
+      {
+        userId: newUser.id,
+        email: newUser.email,
+      },
+      JWT_SECRET,
+      { expiresIn: "365d" }
+    );
+
     console.log(`✅ Usuário registrado: ${cleanEmail}`);
-    
+
     // Import dynamically to avoid circular dependencies
     const { sendWelcomeEmail } = require("./emailService");
-    sendWelcomeEmail(cleanEmail, name).catch((err: any) => 
+    sendWelcomeEmail(cleanEmail, name).catch((err: any) =>
       console.error("Failed to send welcome email:", err)
     );
 
-    return { success: true, userId: newUser.id };
+    const fullUser = await getFullAuthenticatedUser(newUser.id);
+
+    return {
+      success: true,
+      userId: newUser.id,
+      token,
+      user: fullUser,
+    };
   } catch (error) {
     return {
       success: false,
@@ -68,7 +176,7 @@ export async function registerUser(
 }
 
 /**
- * Faz login de usuário e retorna JWT
+ * Faz login de usuário e retorna JWT + perfil completo em uma única chamada
  */
 export async function loginUser(
   email: string,
@@ -76,7 +184,7 @@ export async function loginUser(
 ): Promise<{
   success: boolean;
   token?: string;
-  user?: { id: string; email: string; name: string };
+  user?: any;
   error?: string;
 }> {
   try {
@@ -111,12 +219,14 @@ export async function loginUser(
       { expiresIn: "365d" }
     );
 
-    console.log(`✅ Login bem-sucedido: ${email}`);
+    console.log(`✅ Login bem-sucedido: ${cleanEmail}`);
+
+    const fullUser = await getFullAuthenticatedUser(user.id);
 
     return {
       success: true,
       token,
-      user: {
+      user: fullUser || {
         id: user.id,
         email: user.email,
         name: user.name || "",
@@ -135,13 +245,13 @@ export async function loginUser(
  */
 export function verifyToken(
   token: string
-): { valid: boolean; userId?: string; error?: string } {
+): { valid: boolean; userId?: string; email?: string; error?: string } {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as {
       userId: string;
       email: string;
     };
-    return { valid: true, userId: decoded.userId };
+    return { valid: true, userId: decoded.userId, email: decoded.email };
   } catch (error) {
     return {
       valid: false,
@@ -160,26 +270,27 @@ export function authMiddleware(req: any, res: any, next: any) {
       return res.status(401).json({ error: "Token não fornecido" });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
-      email: string;
-    };
-    const { valid, userId, error } = verifyToken(token);
+    const token = authHeader.replace("Bearer ", "").trim();
+    const { valid, userId, email, error } = verifyToken(token);
 
-    if (!valid) {
-      return res.status(401).json({ error: error || "Token inválido" });
+    if (!valid || !userId) {
+      const userFriendlyError =
+        error && error.includes("jwt expired")
+          ? "Sua sessão expirou. Por favor, faça login novamente."
+          : error || "Token inválido";
+      return res.status(401).json({ error: userFriendlyError });
     }
 
     req.userId = userId;
     req.user = {
       id: userId,
-      email: decoded?.email || "",
+      email: email || "",
       name: "",
     };
     next();
   } catch (error: any) {
-    const errorMsg = error instanceof Error ? error.message : "Erro de autenticação";
+    const errorMsg =
+      error instanceof Error ? error.message : "Erro de autenticação";
     const userFriendlyError = errorMsg.includes("jwt expired")
       ? "Sua sessão expirou. Por favor, faça login novamente."
       : errorMsg;

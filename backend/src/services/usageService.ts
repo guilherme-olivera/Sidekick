@@ -11,20 +11,61 @@ function getTodayPeriod() {
   return { start, end };
 }
 
-export async function getAiUsageStatus(userId: string) {
+export async function checkAndNormalizeUserPlan(userId: string, fallbackPlan = "free"): Promise<{
+  planType: string;
+  premiumUntil: Date | null;
+}> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { planType: true, premiumUntil: true },
+  });
+
+  let currentPlan = user?.planType || fallbackPlan;
+  let currentUntil = user?.premiumUntil || null;
+
+  if (currentPlan === "premium" && currentUntil) {
+    if (new Date(currentUntil) < new Date()) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { planType: "free", premiumUntil: null },
+      });
+      currentPlan = "free";
+      currentUntil = null;
+      console.log(`⏰ Assinatura Premium expirada para o usuário ${userId}. Downgrade para Free.`);
+    }
+  }
+
+  return { planType: currentPlan, premiumUntil: currentUntil };
+}
+
+export async function getAiUsageStatus(userId: string, fallbackPlan = "free") {
   const { start, end } = getTodayPeriod();
+  const { planType } = await checkAndNormalizeUserPlan(userId, fallbackPlan);
+
+  if (planType === "premium") {
+    return {
+      feature: FEATURE_AI_ANALYSIS,
+      isPremium: true,
+      limit: 999999,
+      used: 0,
+      remaining: 999999,
+      periodStart: start,
+      periodEnd: end,
+    };
+  }
 
   const quota = await prisma.usageQuota.findFirst({
     where: {
       userId,
       feature: FEATURE_AI_ANALYSIS,
-      periodStart: start,
+      periodStart: { gte: start },
     },
   });
 
   if (!quota) {
     return {
       feature: FEATURE_AI_ANALYSIS,
+      isPremium: false,
       limit: FREE_DAILY_LIMIT,
       used: 0,
       remaining: FREE_DAILY_LIMIT,
@@ -35,6 +76,7 @@ export async function getAiUsageStatus(userId: string) {
 
   return {
     feature: FEATURE_AI_ANALYSIS,
+    isPremium: false,
     limit: quota.limit,
     used: quota.used,
     remaining: Math.max(0, quota.limit - quota.used),
@@ -43,34 +85,15 @@ export async function getAiUsageStatus(userId: string) {
   };
 }
 
-export async function consumeAiAnalysisQuota(userId: string, planType = "free") {
-  // Verifica se o usuário tem premium com data de validade expirada
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { planType: true, premiumUntil: true },
-  });
-
-  let currentPlan = user?.planType || planType;
-
-  if (currentPlan === "premium" && user?.premiumUntil) {
-    if (new Date(user.premiumUntil) < new Date()) {
-      // Expirou! Atualiza para free
-      await prisma.user.update({
-        where: { id: userId },
-        data: { planType: "free", premiumUntil: null },
-      });
-      currentPlan = "free";
-      console.log(`⏰ Assinatura Premium expirada para o usuário ${userId}. Downgrade para Free.`);
-    }
-  }
+/**
+ * Apenas verifica se o usuário possui cota disponível antes de chamar o Gemini,
+ * sem descontar ainda (evita perder cota se a API externa falhar).
+ */
+export async function assertAiAnalysisQuotaAvailable(userId: string, planType = "free") {
+  const { planType: currentPlan } = await checkAndNormalizeUserPlan(userId, planType);
 
   if (currentPlan === "premium") {
-    return {
-      feature: FEATURE_AI_ANALYSIS,
-      limit: Infinity,
-      used: 0,
-      remaining: Infinity,
-    };
+    return { isPremium: true, quotaId: null as string | null };
   }
 
   const { start, end } = getTodayPeriod();
@@ -80,9 +103,7 @@ export async function consumeAiAnalysisQuota(userId: string, planType = "free") 
     where: {
       userId,
       feature: FEATURE_AI_ANALYSIS,
-      periodStart: {
-        gte: start
-      }
+      periodStart: { gte: start },
     },
   });
 
@@ -100,26 +121,52 @@ export async function consumeAiAnalysisQuota(userId: string, planType = "free") 
   }
 
   if (quota.used >= quota.limit) {
-    throw new Error(
-      "Você atingiu o limite diário de IA. Atualize para o plano premium para continuar."
-    );
+    const err = new Error(
+      "Você atingiu o limite gratuito de 5 interações de IA hoje. Ative o Sidekick Premium para liberar análises e conversas ilimitadas! 👑"
+    ) as any;
+    err.code = "QUOTA_EXCEEDED";
+    err.status = 429;
+    throw err;
+  }
+
+  return { isPremium: false, quotaId: quota.id };
+}
+
+/**
+ * Efetiva o desconto de 1 unidade da cota diária após sucesso do Gemini.
+ */
+export async function commitAiAnalysisQuota(userId: string, planType = "free") {
+  const check = await assertAiAnalysisQuotaAvailable(userId, planType);
+
+  if (check.isPremium || !check.quotaId) {
+    return {
+      feature: FEATURE_AI_ANALYSIS,
+      isPremium: true,
+      limit: 999999,
+      used: 0,
+      remaining: 999999,
+    };
   }
 
   const updatedQuota = await prisma.usageQuota.update({
-    where: { id: quota.id },
+    where: { id: check.quotaId },
     data: {
-      used: {
-        increment: 1,
-      },
+      used: { increment: 1 },
     },
   });
 
   return {
     feature: FEATURE_AI_ANALYSIS,
+    isPremium: false,
     limit: updatedQuota.limit,
     used: updatedQuota.used,
     remaining: Math.max(0, updatedQuota.limit - updatedQuota.used),
     periodStart: updatedQuota.periodStart,
     periodEnd: updatedQuota.periodEnd,
   };
+}
+
+// Mantém compatibilidade com chamadas antigas
+export async function consumeAiAnalysisQuota(userId: string, planType = "free") {
+  return commitAiAnalysisQuota(userId, planType);
 }

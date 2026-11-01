@@ -13,23 +13,23 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  Linking,
 } from "react-native";
 import { useAuth } from "../src/contexts/AuthContext";
 import { API_BASE_URL } from "../src/services/apiService";
-// O certo é subir um nível (..) e entrar em components
 import { AuthInput, AuthButton, ErrorMessage, Colors } from "../components/AuthComponents";
-// import { AuthInput, AuthButton, ErrorMessage, Colors } from "./AuthComponents";
 
-export default function LoginScreen({ navigation }: any) {
+export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [slowServerHint, setSlowServerHint] = useState(false);
 
-  const { login, register, isLoading} = useAuth();
-  
+  const { login, register } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   // Estados de recuperação de senha
@@ -46,13 +46,13 @@ export default function LoginScreen({ navigation }: any) {
       Alert.alert("Erro", "Por favor, digite o e-mail.");
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(forgotEmail.trim())) {
       Alert.alert("Erro", "Formato de e-mail inválido. Ex: nome@provedor.com");
       return;
     }
-    
+
     setIsForgotPasswordLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
@@ -61,7 +61,7 @@ export default function LoginScreen({ navigation }: any) {
         body: JSON.stringify({ email: forgotEmail }),
       });
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         setShowResetForm(true);
         if (data.mockCode) {
@@ -73,7 +73,8 @@ export default function LoginScreen({ navigation }: any) {
         } else {
           Alert.alert(
             "📧 E-mail Enviado com Sucesso!",
-            data.message || "Enviamos um código de 6 dígitos para o seu e-mail. Ele tem validade de 30 minutos e só pode ser usado uma vez."
+            data.message ||
+              "Enviamos um código de 6 dígitos para o seu e-mail. Ele tem validade de 30 minutos e só pode ser usado uma vez."
           );
         }
       } else {
@@ -95,7 +96,10 @@ export default function LoginScreen({ navigation }: any) {
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
     if (!passwordRegex.test(newPasswordForReset)) {
-      Alert.alert("Erro", "A nova senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.");
+      Alert.alert(
+        "Erro",
+        "A nova senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial."
+      );
       return;
     }
 
@@ -103,7 +107,7 @@ export default function LoginScreen({ navigation }: any) {
       Alert.alert("Erro", "As senhas não coincidem.");
       return;
     }
-    
+
     setIsForgotPasswordLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
@@ -116,10 +120,10 @@ export default function LoginScreen({ navigation }: any) {
         }),
       });
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         Alert.alert(
-          "Sucesso", 
+          "Sucesso",
           "Sua senha foi alterada com sucesso! Um e-mail de confirmação foi enviado para a sua caixa de entrada."
         );
         setForgotPasswordModalVisible(false);
@@ -128,7 +132,7 @@ export default function LoginScreen({ navigation }: any) {
         setNewPasswordForReset("");
         setConfirmNewPassword("");
         setShowResetForm(false);
-        setPassword(newPasswordForReset); // auto-fill password
+        setPassword(newPasswordForReset);
       } else {
         Alert.alert("Erro", data.error || "Erro ao alterar a senha.");
       }
@@ -141,6 +145,9 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const handleAuth = async () => {
+    if (isSubmitting) return;
+    setError(null);
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       setError("Formato de e-mail inválido. Ex: nome@provedor.com");
@@ -150,7 +157,9 @@ export default function LoginScreen({ navigation }: any) {
     if (!isLogin) {
       const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
       if (!passwordRegex.test(password)) {
-        setError("A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial.");
+        setError(
+          "A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial."
+        );
         return;
       }
       if (password !== confirmPassword) {
@@ -159,166 +168,228 @@ export default function LoginScreen({ navigation }: any) {
       }
     }
 
+    setIsSubmitting(true);
+    setSlowServerHint(false);
+    const slowTimer = setTimeout(() => {
+      setSlowServerHint(true);
+    }, 3500);
+
     try {
       const cleanEmail = email.trim().toLowerCase();
       if (isLogin) {
         await login(cleanEmail, password);
       } else {
-        await register(cleanEmail, password, name);
+        await register(cleanEmail, password, name.trim());
       }
-      // Navigation será feito automaticamente pelo App.tsx quando token existir
     } catch (err) {
       console.warn("Auth error:", err);
-      const errMsg = err instanceof Error ? err.message : "Erro ao realizar autenticação. Por favor, tente novamente.";
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : "Erro ao realizar autenticação. Por favor, tente novamente.";
       setError(errMsg);
+    } finally {
+      clearTimeout(slowTimer);
+      setSlowServerHint(false);
+      setIsSubmitting(false);
     }
   };
 
   const isFormValid = isLogin
-    ? email && password
-    : email && password && confirmPassword && name;
+    ? Boolean(email && password)
+    : Boolean(email && password && confirmPassword && name.trim());
 
   return (
     <>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            {/* Logo/Header */}
-            <View style={styles.header}>            
-              <Image
-                  source={require('../assets/images/sidekick-logo.png')}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Logo/Header */}
+              <View style={styles.header}>
+                <Image
+                  source={require("../assets/images/sidekick-logo.png")}
                   style={styles.logoImage}
                   resizeMode="contain"
-              />
-              <Text style={styles.title}>Sidekick</Text>
-              <Text style={styles.subtitle}>Seu companheiro de jornada</Text>
-            </View>
-
-            {/* Form Container */}
-            <View style={styles.formContainer}>
-              {/* Name Input (only for register) */}
-              {!isLogin && (
-                <AuthInput
-                  placeholder="Seu nome"
-                  value={name}
-                  onChangeText={setName}
                 />
-              )}
-
-              {/* Email Input */}
-              <AuthInput
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-              />
-
-              {/* Password Input */}
-              <View style={{ position: 'relative', width: '100%' }}>
-                <AuthInput
-                  placeholder="Senha"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  style={{
-                    position: 'absolute',
-                    right: 16,
-                    height: 50,
-                    justifyContent: 'center',
-                    top: 10,
-                  }}
-                  onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ color: Colors.textSecondary, fontSize: 14, fontWeight: "600" }}>
-                    {showPassword ? "Ocultar" : "Mostrar"}
-                  </Text>
-                </TouchableOpacity>
+                <Text style={styles.title}>Sidekick</Text>
+                <Text style={styles.subtitle}>Seu companheiro de jornada</Text>
               </View>
 
-              {!isLogin && (
-                <View style={{ position: 'relative', width: '100%' }}>
+              {/* Form Container */}
+              <View style={styles.formContainer}>
+                {!isLogin && (
                   <AuthInput
-                    placeholder="Confirme a senha"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
+                    placeholder="Seu nome"
+                    value={name}
+                    onChangeText={setName}
+                  />
+                )}
+
+                <AuthInput
+                  placeholder="E-mail"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <View style={{ position: "relative", width: "100%" }}>
+                  <AuthInput
+                    placeholder="Senha"
+                    value={password}
+                    onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                   />
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      right: 16,
+                      height: 50,
+                      justifyContent: "center",
+                      top: 10,
+                    }}
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.textSecondary,
+                        fontSize: 14,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {showPassword ? "Ocultar" : "Mostrar"}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              )}
 
-              {!isLogin && (
-                <Text style={styles.passwordHint}>
-                  * A senha deve conter no mínimo 6 caracteres, uma letra maiúscula e um caractere especial (ex: !, @, #, $, %).
-                </Text>
-              )}
+                {!isLogin && (
+                  <View style={{ position: "relative", width: "100%" }}>
+                    <AuthInput
+                      placeholder="Confirme a senha"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showPassword}
+                    />
+                  </View>
+                )}
 
-              {isLogin && (
-                <TouchableOpacity
-                  style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 12, marginRight: 4 }}
-                  onPress={() => {
-                    setForgotEmail(email); // pre-fill with email typed so far
-                    setForgotPasswordModalVisible(true);
-                  }}
-                >
-                  <Text style={{ color: Colors.primary, fontSize: 13, textDecorationLine: 'underline' }}>
-                    Esqueci minha senha
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Error Message */}
-              <ErrorMessage message={error || undefined} />
-
-              {/* Submit Button */}
-              <AuthButton
-                title={isLogin ? "Entrar" : "Criar Conta"}
-                onPress={handleAuth}
-                loading={isLoading}
-                disabled={!isFormValid}
-              />
-
-              {/* Toggle Auth Mode with inline link */}
-              <View style={styles.toggleContainer}>
-                {isLogin ? (
-                  <Text style={styles.toggleText}>
-                    Não tem conta?{' '}
-                    <Text
-                      style={styles.linkText}
-                      onPress={() => {
-                        setIsLogin(false);
-                        setError(null);
-                        setName("");
-                      }}
-                    >
-                      clique aqui
-                    </Text>
-                  </Text>
-                ) : (
-                  <Text style={styles.toggleText}>
-                    Já tem conta?{' '}
-                    <Text
-                      style={styles.linkText}
-                      onPress={() => {
-                        setIsLogin(true);
-                        setError(null);
-                      }}
-                    >
-                      clique aqui
-                    </Text>
+                {!isLogin && (
+                  <Text style={styles.passwordHint}>
+                    * A senha deve conter no mínimo 6 caracteres, uma letra
+                    maiúscula e um caractere especial (ex: !, @, #, $, %).
                   </Text>
                 )}
+
+                {isLogin && (
+                  <TouchableOpacity
+                    style={{
+                      alignSelf: "flex-end",
+                      marginTop: 4,
+                      marginBottom: 12,
+                      marginRight: 4,
+                    }}
+                    onPress={() => {
+                      setForgotEmail(email);
+                      setForgotPasswordModalVisible(true);
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: Colors.primary,
+                        fontSize: 13,
+                        textDecorationLine: "underline",
+                      }}
+                    >
+                      Esqueci minha senha
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {slowServerHint && (
+                  <View style={styles.slowServerBanner}>
+                    <Text style={styles.slowServerText}>
+                      ⏳ Conectando ao servidor Sidekick, aguarde alguns
+                      segundos...
+                    </Text>
+                  </View>
+                )}
+
+                <ErrorMessage message={error || undefined} />
+
+                <AuthButton
+                  title={isLogin ? "Entrar" : "Criar Conta"}
+                  onPress={handleAuth}
+                  loading={isSubmitting}
+                  disabled={!isFormValid || isSubmitting}
+                />
+
+                {!isLogin && (
+                  <Text style={styles.legalFooterText}>
+                    Ao criar sua conta, você concorda com nossos{" "}
+                    <Text
+                      style={styles.legalLink}
+                      onPress={() =>
+                        Linking.openURL(`${API_BASE_URL}/terms.html`)
+                      }
+                    >
+                      Termos de Uso
+                    </Text>{" "}
+                    e{" "}
+                    <Text
+                      style={styles.legalLink}
+                      onPress={() =>
+                        Linking.openURL(`${API_BASE_URL}/privacy.html`)
+                      }
+                    >
+                      Política de Privacidade
+                    </Text>
+                    .
+                  </Text>
+                )}
+
+                <View style={styles.toggleContainer}>
+                  {isLogin ? (
+                    <Text style={styles.toggleText}>
+                      Não tem conta?{" "}
+                      <Text
+                        style={styles.linkText}
+                        onPress={() => {
+                          setIsLogin(false);
+                          setError(null);
+                          setName("");
+                        }}
+                      >
+                        Criar agora
+                      </Text>
+                    </Text>
+                  ) : (
+                    <Text style={styles.toggleText}>
+                      Já tem conta?{" "}
+                      <Text
+                        style={styles.linkText}
+                        onPress={() => {
+                          setIsLogin(true);
+                          setError(null);
+                        }}
+                      >
+                        Entrar na conta
+                      </Text>
+                    </Text>
+                  )}
+                </View>
               </View>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
 
       {/* Forgot Password Modal */}
       <Modal
@@ -335,11 +406,12 @@ export default function LoginScreen({ navigation }: any) {
             <View style={styles.modalOverlay}>
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Recuperar Senha 🔑</Text>
-                
+
                 {!showResetForm ? (
                   <>
                     <Text style={styles.modalSubtitle}>
-                      Digite seu e-mail para receber o código de verificação e redefinir sua senha.
+                      Digite seu e-mail para receber o código de verificação e
+                      redefinir sua senha.
                     </Text>
                     <AuthInput
                       placeholder="E-mail cadastrado"
@@ -361,7 +433,9 @@ export default function LoginScreen({ navigation }: any) {
                         disabled={isForgotPasswordLoading}
                       >
                         <Text style={styles.modalBtnConfirmText}>
-                          {isForgotPasswordLoading ? "Enviando..." : "Enviar Código"}
+                          {isForgotPasswordLoading
+                            ? "Enviando..."
+                            : "Enviar Código"}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -369,7 +443,8 @@ export default function LoginScreen({ navigation }: any) {
                 ) : (
                   <>
                     <Text style={styles.modalSubtitle}>
-                      Digite o código de 6 dígitos que você recebeu e crie sua nova senha de acesso.
+                      Digite o código de 6 dígitos que você recebeu e crie sua
+                      nova senha de acesso.
                     </Text>
                     <AuthInput
                       placeholder="Código de verificação"
@@ -423,68 +498,6 @@ export default function LoginScreen({ navigation }: any) {
   );
 }
 
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: Colors.dark,
-//   },
-//   scrollContent: {
-//     flexGrow: 1,
-//     justifyContent: "space-between",
-//     paddingHorizontal: 20,
-//     paddingVertical: 20,
-//   },
-//   header: {
-//     alignItems: "center",
-//     marginTop: 40,
-//     marginBottom: 60,
-//   },
-//   logo: {
-//     fontSize: 64,
-//     marginBottom: 16,
-//   },
-//   title: {
-//     fontSize: 32,
-//     fontWeight: "700",
-//     color: Colors.text,
-//     marginBottom: 8,
-//   },
-//   subtitle: {
-//     fontSize: 16,
-//     color: Colors.textSecondary,
-//   },
-//   formContainer: {
-//     marginBottom: 40,
-//   },
-//   toggleContainer: {
-//     marginTop: 30,
-//     alignItems: "center",
-//   },
-//   toggleText: {
-//     color: Colors.textSecondary,
-//     fontSize: 14,
-//     marginBottom: 12,
-//   },
-//   demoContainer: {
-//     marginTop: 30,
-//     padding: 16,
-//     backgroundColor: Colors.darkCard,
-//     borderRadius: 12,
-//     borderLeftWidth: 4,
-//     borderLeftColor: Colors.primary,
-//   },
-//   demoTitle: {
-//     color: Colors.primary,
-//     fontSize: 14,
-//     fontWeight: "600",
-//     marginBottom: 8,
-//   },
-//   demoText: {
-//     color: Colors.textSecondary,
-//     fontSize: 12,
-//     marginBottom: 4,
-//   },
-// });
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -496,33 +509,59 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-    header: {
-    alignItems: 'center',
-    marginTop: 80,       // Aumentei para o logo não ficar colado no topo do iPhone
-    marginBottom: 40,
+  header: {
+    alignItems: "center",
+    marginTop: 60,
+    marginBottom: 32,
   },
-  // Mudamos de 'logo' para 'logoImage'
-    logoImage: {
-    width: 300,          // Quase o triplo do tamanho atual na imagem
-    height: 100,
-    marginBottom: 5,    // Mais espaço para o título respirar
-    alignSelf: 'center',
+  logoImage: {
+    width: 280,
+    height: 95,
+    marginBottom: 5,
+    alignSelf: "center",
   },
   title: {
     fontSize: 32,
     fontWeight: "700",
     color: Colors.text,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: Colors.textSecondary,
   },
   formContainer: {
     marginBottom: 40,
   },
+  slowServerBanner: {
+    backgroundColor: "rgba(255, 169, 77, 0.12)",
+    borderColor: "rgba(255, 169, 77, 0.35)",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  slowServerText: {
+    color: "#ffa94d",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  legalFooterText: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 16,
+  },
+  legalLink: {
+    color: Colors.primary,
+    textDecorationLine: "underline",
+    fontWeight: "600",
+  },
   toggleContainer: {
-    marginTop: 30,
+    marginTop: 24,
     alignItems: "center",
   },
   toggleText: {
@@ -533,26 +572,8 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     color: Colors.primary,
-    textDecorationLine: 'underline',
-  },
-  demoContainer: {
-    marginTop: 30,
-    padding: 16,
-    backgroundColor: Colors.darkCard,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-  },
-  demoTitle: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  demoText: {
-    color: Colors.textSecondary,
-    fontSize: 12,
-    marginBottom: 4,
+    fontWeight: "700",
+    textDecorationLine: "underline",
   },
   modalOverlay: {
     flex: 1,

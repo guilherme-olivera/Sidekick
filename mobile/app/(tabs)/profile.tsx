@@ -17,6 +17,7 @@ import {
   Keyboard,
   RefreshControl,
   Share,
+  Linking,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import ViewShot, { captureRef } from "react-native-view-shot";
@@ -89,7 +90,7 @@ const PRMedal = ({ active = false }) => (
 type SportTab = "run" | "strength" | "cycling" | "walk";
 
 export default function ProfileScreen() {
-  const { user, logout, isLoading, refreshUser } = useAuth();
+  const { user, logout, deleteAccount, isLoading, refreshUser } = useAuth();
   const { isConnected, athlete, connect, disconnect, syncActivities } = useStrava();
   const [allWorkouts, setAllWorkouts] = useState<any[]>([]);
   const [isLoadingAllWorkouts, setIsLoadingAllWorkouts] = useState(false);
@@ -231,29 +232,37 @@ export default function ProfileScreen() {
         durationDays: grantDurationDays,
       });
       if (res && res.success) {
-        const tokenCode = res.vipCode || "SIDEKICK-VIP-8A2F";
-        setGeneratedVipCode(tokenCode);
         setGrantEmail("");
         loadAdminOverview();
         refreshUser();
 
-        const customShareMsg = `Parabéns, seu premium chegou, utilize o token ${tokenCode} e aproveite o máximo`;
+        if (res.vipCode) {
+          const tokenCode = res.vipCode;
+          setGeneratedVipCode(tokenCode);
+          const customShareMsg = res.shareMessage || `Parabéns, seu premium chegou, utilize o token ${tokenCode} e aproveite o máximo`;
 
-        Alert.alert(
-          "👑 Premium Processado!",
-          `${res.message}\n\n[MENSAGEM DE COMPARTILHAMENTO]:\n"${customShareMsg}"`,
-          [
-            {
-              text: "📲 Compartilhar Mensagem",
-              onPress: () => handleShareVipMessage(tokenCode),
-            },
-            {
-              text: "📋 Copiar Código",
-              onPress: () => handleCopyVipCode(tokenCode),
-            },
-            { text: "OK" },
-          ]
-        );
+          Alert.alert(
+            "🎟️ Voucher VIP Gerado!",
+            `${res.message}\n\n[MENSAGEM DE COMPARTILHAMENTO]:\n"${customShareMsg}"`,
+            [
+              {
+                text: "📲 Compartilhar Mensagem",
+                onPress: () => handleShareVipMessage(tokenCode),
+              },
+              {
+                text: "📋 Copiar Código",
+                onPress: () => handleCopyVipCode(tokenCode),
+              },
+              { text: "OK" },
+            ]
+          );
+        } else {
+          setGeneratedVipCode(null);
+          Alert.alert(
+            grantDurationDays === 0 ? "ℹ️ Plano Atualizado" : "👑 Premium Ativado na Conta!",
+            res.message || "O plano do usuário foi atualizado diretamente na conta!"
+          );
+        }
       } else {
         Alert.alert("Erro", res.error || "Falha ao alterar status.");
       }
@@ -367,9 +376,10 @@ export default function ProfileScreen() {
       setIsBroadcastModalVisible(false);
 
       const sentCount = response?.result?.sent ?? 0;
+      const totalTargetUsers = response?.result?.totalTargetUsers ?? sentCount;
       Alert.alert(
-        "🚀 Notificação Disparada!",
-        `Sua notificação foi enviada com sucesso ao servidor de transmissão!\n\nDispositivos alcançados: ${sentCount}${sendLocalCopy ? "\n\n💡 Pop-up de teste agendado no seu dispositivo em 2 segundos." : ""}`
+        "🚀 Aviso Transmitido!",
+        `Sua mensagem foi entregue na Central de Notificações (🔔) de ${totalTargetUsers} atleta(s) e disparada via Push para ${sentCount} aparelho(s)!${sendLocalCopy ? "\n\n💡 Pop-up de teste agendado no seu aparelho em 2 segundos." : ""}`
       );
     } catch (err: any) {
       console.error("Erro ao enviar notificação broadcast:", err);
@@ -381,9 +391,7 @@ export default function ProfileScreen() {
 
   const isAdmin = Boolean(
     user?.email && (
-      (user as any).role === "admin" ||
-      (user as any).isAdmin === true ||
-      user.email.toLowerCase().includes("adm") ||
+      user.isAdmin === true ||
       user.email.toLowerCase() === "adm@adm.com" ||
       user.email.toLowerCase() === "guilherme.oliveirasantos@hotmail.com"
     )
@@ -685,7 +693,11 @@ export default function ProfileScreen() {
 
   const getAvatarUri = (avatarPath?: string | null): string | undefined => {
     if (!avatarPath) return undefined;
-    if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://")) {
+    if (
+      avatarPath.startsWith("data:image/") ||
+      avatarPath.startsWith("http://") ||
+      avatarPath.startsWith("https://")
+    ) {
       return avatarPath;
     }
     return `${API_BASE_URL}${avatarPath.startsWith("/") ? "" : "/"}${avatarPath}`;
@@ -1185,7 +1197,56 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             <View style={styles.headerInfoCol}>
-              <Text style={styles.profileNameNew}>{user?.name || "Atleta"}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
+                <Text style={styles.profileNameNew}>{user?.name || "Atleta"}</Text>
+                {user?.planType === "premium" ? (
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "rgba(255, 215, 0, 0.16)",
+                      borderColor: Colors.gold,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                    }}
+                    onPress={() => setIsRedeemModalVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: Colors.gold, fontSize: 10, fontWeight: "900" }}>
+                      👑 PREMIUM
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: "rgba(255, 107, 107, 0.14)",
+                      borderColor: Colors.primary,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                    }}
+                    onPress={() => setIsRedeemModalVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: "800" }}>
+                      FREE • ⚡ Upgrade
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {user?.planType === "premium" && user?.premiumUntil && (
+                <Text style={{ color: Colors.gold, fontSize: 10, fontWeight: "600", marginBottom: 4 }}>
+                  {new Date(user.premiumUntil).getFullYear() >= 2090
+                    ? "Acesso Vitalício ♾️"
+                    : `Ativo até ${new Date(user.premiumUntil).toLocaleDateString("pt-BR")}`}
+                </Text>
+              )}
+              {user?.planType !== "premium" && user?.aiUsage && (
+                <Text style={{ color: Colors.textSecondary, fontSize: 10, marginBottom: 4 }}>
+                  🤖 IA Hoje: {user.aiUsage.used}/{user.aiUsage.limit} análises usadas
+                </Text>
+              )}
               <TouchableOpacity
                 style={styles.customizeCompanionBtnNew}
                 onPress={() => {
@@ -1934,8 +1995,68 @@ export default function ProfileScreen() {
                           setIsRedeemModalVisible(true);
                         }}
                       >
-                        <Text style={styles.settingsOptionIcon}>🎟️</Text>
-                        <Text style={styles.settingsOptionText}>Resgatar Código VIP</Text>
+                        <Text style={styles.settingsOptionIcon}>👑</Text>
+                        <Text style={styles.settingsOptionText}>
+                          {user?.planType === "premium" ? "Meu Plano Premium & Código VIP" : "Upgrade Premium / Código VIP"}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.settingsOptionItem}
+                        onPress={async () => {
+                          const ok = await notificationService.sendTestNotification();
+                          if (ok) {
+                            Alert.alert(
+                              "🔔 Notificação Agendada!",
+                              "Você receberá uma notificação de teste no seu aparelho em 2 segundos."
+                            );
+                          } else {
+                            Alert.alert(
+                              "Permissão Necessária",
+                              "Ative as notificações do aplicativo Sidekick nas configurações do seu celular para receber alertas de treinos e provas."
+                            );
+                          }
+                        }}
+                      >
+                        <Text style={styles.settingsOptionIcon}>🔔</Text>
+                        <Text style={styles.settingsOptionText}>Testar Notificação no Aparelho</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.settingsOptionItem}
+                        onPress={() => Linking.openURL(`${API_BASE_URL}/privacy.html`)}
+                      >
+                        <Text style={styles.settingsOptionIcon}>📜</Text>
+                        <Text style={styles.settingsOptionText}>Política de Privacidade e Termos</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.settingsOptionItem, { borderColor: "rgba(255, 77, 77, 0.35)" }]}
+                        onPress={() => {
+                          Alert.alert(
+                            "⚠️ Excluir Minha Conta",
+                            "Tem certeza que deseja excluir permanentemente sua conta e todos os seus treinos, conquistas e histórico? Esta ação não pode ser desfeita.",
+                            [
+                              { text: "Cancelar", style: "cancel" },
+                              {
+                                text: "Sim, Excluir Conta",
+                                style: "destructive",
+                                onPress: async () => {
+                                  try {
+                                    setIsSettingsModalVisible(false);
+                                    await deleteAccount();
+                                    Alert.alert("Conta Excluída", "Sua conta e todos os seus dados foram removidos com sucesso.");
+                                  } catch (err: any) {
+                                    Alert.alert("Erro", err?.message || "Não foi possível excluir sua conta.");
+                                  }
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                      >
+                        <Text style={styles.settingsOptionIcon}>🗑️</Text>
+                        <Text style={[styles.settingsOptionText, { color: "#ff6b6b" }]}>Excluir Minha Conta</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -2180,7 +2301,7 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </Modal>
 
-        {/* Modal: Resgatar Código VIP */}
+        {/* Modal: Sidekick Premium & Resgatar Código VIP */}
         <Modal
           visible={isRedeemModalVisible}
           animationType="slide"
@@ -2194,17 +2315,34 @@ export default function ProfileScreen() {
             <View style={styles.modalOverlay}>
               <View style={[styles.modalContent, { padding: 20 }]}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <Text style={styles.modalTitle}>🎟️ Resgatar Código VIP</Text>
+                  <Text style={styles.modalTitle}>👑 Sidekick Premium</Text>
                   <TouchableOpacity onPress={() => setIsRedeemModalVisible(false)}>
                     <Text style={{ color: Colors.textSecondary, fontSize: 20, fontWeight: "bold" }}>✕</Text>
                   </TouchableOpacity>
                 </View>
 
-                <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 18, marginBottom: 16 }}>
-                  Digite seu código ou token VIP para ativar permissões ilimitadas de IA e funcionalidades Premium no Sidekick.
-                </Text>
+                <View
+                  style={{
+                    backgroundColor: "rgba(255, 215, 0, 0.08)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255, 215, 0, 0.35)",
+                    borderRadius: 12,
+                    padding: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <Text style={{ color: Colors.gold, fontWeight: "800", fontSize: 13, marginBottom: 6 }}>
+                    ⚡ Benefícios Exclusivos Premium:
+                  </Text>
+                  <Text style={{ color: Colors.text, fontSize: 12, lineHeight: 19 }}>
+                    • 🤖 Análises de treinos e chat com IA sem limite diário restrito{"\n"}
+                    • 📈 Relatório de evolução atualizado toda semana{"\n"}
+                    • 🏅 Previsões completas de ritmo (5K, 10K, 21K e Maratona){"\n"}
+                    • 🔔 Alertas inteligentes de prontidão e prevenção de lesões
+                  </Text>
+                </View>
 
-                <Text style={styles.broadcastInputLabel}>Código VIP / Voucher:</Text>
+                <Text style={styles.broadcastInputLabel}>Possui um Código VIP / Voucher?</Text>
                 <TextInput
                   style={[styles.textInput, { fontSize: 16, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" }]}
                   value={redeemCodeInput}
@@ -2220,7 +2358,7 @@ export default function ProfileScreen() {
                     onPress={() => setIsRedeemModalVisible(false)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                    <Text style={styles.modalBtnCancelText}>Fechar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -2232,7 +2370,7 @@ export default function ProfileScreen() {
                     {isRedeemingCode ? (
                       <ActivityIndicator color="#000" />
                     ) : (
-                      <Text style={[styles.modalBtnConfirmText, { color: "#000" }]}>⚡ Ativar VIP</Text>
+                      <Text style={[styles.modalBtnConfirmText, { color: "#000" }]}>⚡ Ativar Código VIP</Text>
                     )}
                   </TouchableOpacity>
                 </View>

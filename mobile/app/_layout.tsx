@@ -1,10 +1,10 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
-import { View, Text, ActivityIndicator, Animated, Image } from 'react-native';
+import { View, Animated } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -67,12 +67,14 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { token, user, isLoading } = useAuth();
   const router = useRouter();
+  const segments = useSegments();
 
   const logoScale = useRef(new Animated.Value(0.3)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textTranslateY = useRef(new Animated.Value(15)).current;
+  const pushRegisteredRef = useRef<string | null>(null);
 
   useEffect(() => {
     try {
@@ -131,33 +133,57 @@ function RootLayoutNav() {
 
   const animatedScale = Animated.multiply(logoScale, logoPulse);
 
+  // Registra Push Token apenas uma vez por usuário autenticado
+  useEffect(() => {
+    if (token && user?.id && pushRegisteredRef.current !== user.id) {
+      pushRegisteredRef.current = user.id;
+      registerForPushNotificationsAsync().catch(() => {});
+    }
+    if (!token) {
+      pushRegisteredRef.current = null;
+    }
+  }, [token, user?.id]);
+
+  // Roteamento determinístico sem flicker: só redireciona quando o usuário está fora do grupo esperado
+  const isConfigured = user?.profile?.isConfigured === true;
+  const currentSegment = segments[0] as string | undefined;
+
   useEffect(() => {
     if (isLoading) return;
 
-    const timer = setTimeout(() => {
-      try {
-        if (!token) {
-          router.replace("/login");
-        } else {
-          registerForPushNotificationsAsync().catch(() => {});
-          const isConfigured = user?.profile?.isConfigured === true;
-          if (isConfigured) {
-            router.replace("/(tabs)");
-          } else {
-            router.replace("/onboarding");
-          }
+    try {
+      if (!token) {
+        if (currentSegment !== 'login') {
+          router.replace('/login');
         }
-      } catch (err) {
-        console.warn('[RootLayoutNav] Navigation redirect error:', err);
+        return;
       }
-    }, 50);
 
-    return () => clearTimeout(timer);
-  }, [token, user, isLoading]);
+      if (isConfigured) {
+        if (currentSegment !== '(tabs)' && currentSegment !== 'modal') {
+          router.replace('/(tabs)');
+        }
+      } else {
+        // Permite navegar livremente entre /welcome (boas-vindas) e /onboarding (wizard)
+        if (currentSegment !== 'welcome' && currentSegment !== 'onboarding') {
+          router.replace('/welcome');
+        }
+      }
+    } catch (err) {
+      console.warn('[RootLayoutNav] Navigation redirect error:', err);
+    }
+  }, [token, isConfigured, isLoading, currentSegment]);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center' }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#0a0a0a',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
         <Animated.Image
           source={require('../assets/images/sidekick-logo.png')}
           style={{
@@ -169,15 +195,17 @@ function RootLayoutNav() {
           }}
           resizeMode="contain"
         />
-        <Animated.Text style={{ 
-          color: '#ff6b6b', 
-          fontSize: 12, 
-          fontWeight: '700', 
-          letterSpacing: 3, 
-          textTransform: 'uppercase', 
-          opacity: textOpacity,
-          transform: [{ translateY: textTranslateY }]
-        }}>
+        <Animated.Text
+          style={{
+            color: '#ff6b6b',
+            fontSize: 12,
+            fontWeight: '700',
+            letterSpacing: 3,
+            textTransform: 'uppercase',
+            opacity: textOpacity,
+            transform: [{ translateY: textTranslateY }],
+          }}
+        >
           seu companheiro de jornada
         </Animated.Text>
       </View>
@@ -186,7 +214,7 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="welcome" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />

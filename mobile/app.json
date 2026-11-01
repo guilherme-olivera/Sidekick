@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sidekick",
     "slug": "mobile",
-    "version": "2026-08-12-17-05",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/sidekick-logo.png",
     "scheme": "sidekick",
@@ -17,9 +17,12 @@
       "backgroundColor": "#0a0a0a"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "bundleIdentifier": "com.sidekick.app"
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/sidekick-logo.png",
         "backgroundColor": "#0a0a0a"
@@ -35,7 +38,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/sidekick-logo.png",
+          "color": "#ff6b6b"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

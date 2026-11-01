@@ -1,5 +1,3 @@
-import germiniMockEvents, { MockEvent } from "@/src/mocks/germiniMock";
-
 export interface CalendarEvent {
   id: string;
   date: string; // YYYY-MM-DD
@@ -7,20 +5,12 @@ export interface CalendarEvent {
   time: string; // HH:mm
   type: "run" | "cycling" | "strength" | "rest" | "other";
   description?: string;
-  source?: "Germini" | "Strava" | "Sidekick";
+  source?: "Gemini" | "Germini" | "Strava" | "Sidekick";
   isWorkout?: boolean;
   completed?: boolean;
 }
 
-let events: CalendarEvent[] = germiniMockEvents.map((e) => ({
-  id: e.id,
-  date: e.date,
-  title: e.title,
-  time: e.time || "08:00",
-  type: e.type || "other",
-  description: e.description,
-  source: e.source || "Germini",
-}));
+let events: CalendarEvent[] = [];
 
 export const calendarMockService = {
   listBetween: async (startISO: string, endISO: string) => {

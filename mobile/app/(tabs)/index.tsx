@@ -56,7 +56,11 @@ const formatDuration = (totalSeconds: number | null | undefined) => {
 
 const getAvatarUri = (avatarPath?: string | null): string | undefined => {
   if (!avatarPath) return undefined;
-  if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://")) {
+  if (
+    avatarPath.startsWith("data:image/") ||
+    avatarPath.startsWith("http://") ||
+    avatarPath.startsWith("https://")
+  ) {
     return avatarPath;
   }
   return `${API_BASE_URL}${avatarPath.startsWith("/") ? "" : "/"}${avatarPath}`;
@@ -113,11 +117,24 @@ export default function HomeScreen() {
   const viewShotRef4 = useRef<any>(null);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [serverNotifications, setServerNotifications] = useState<any[]>([]);
+
+  const loadServerNotifications = async () => {
+    try {
+      const res = await apiService.get("/user/notifications");
+      if (res && res.success && Array.isArray(res.notifications)) {
+        setServerNotifications(res.notifications);
+      }
+    } catch (e) {
+      console.log("[Notifications] fetch skipped:", e);
+    }
+  };
 
   useEffect(() => {
     if (refreshUser) {
       refreshUser();
     }
+    loadServerNotifications();
   }, []);
 
   const onRefresh = async () => {
@@ -126,6 +143,7 @@ export default function HomeScreen() {
       if (refreshUser) {
         await refreshUser();
       }
+      await loadServerNotifications();
       if (isStravaConnected) {
         try {
           await syncActivities();
@@ -298,16 +316,31 @@ export default function HomeScreen() {
       } else {
         throw new Error("Chat api failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat response error:", error);
-      setFailedChatText(userText);
-      const errorMsg = {
-        id: `err_${Date.now()}`,
-        sender: "bot" as const,
-        text: "Desculpe, tive um probleminha para me conectar. Você pode tentar reenviar a mensagem pelo botão abaixo! 🥹",
-        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      };
-      setChatMessages((prev) => [...prev, errorMsg]);
+      if (error?.code === "QUOTA_EXCEEDED" || error?.status === 429) {
+        const quotaMsg = {
+          id: `quota_${Date.now()}`,
+          sender: "bot" as const,
+          text:
+            error.message ||
+            "Você atingiu o limite diário gratuito de interações de IA hoje. Ative o Sidekick Premium na aba Perfil para conversar sem limites! 👑",
+          timestamp: new Date().toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        };
+        setChatMessages((prev) => [...prev, quotaMsg]);
+      } else {
+        setFailedChatText(userText);
+        const errorMsg = {
+          id: `err_${Date.now()}`,
+          sender: "bot" as const,
+          text: "Desculpe, tive um probleminha para me conectar. Você pode tentar reenviar a mensagem pelo botão abaixo! 🥹",
+          timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        };
+        setChatMessages((prev) => [...prev, errorMsg]);
+      }
     } finally {
       setChatIsTyping(false);
       // Scroll to bottom
@@ -383,7 +416,31 @@ export default function HomeScreen() {
   };
 
   const getNotifications = () => {
-    const list = [];
+    const list: Array<{
+      id: string;
+      icon: string;
+      title: string;
+      description: string;
+      time: string;
+    }> = [];
+
+    // 0. Notificações Reais do Servidor (Avisos Admin, Ativação Premium, Vouchers VIP)
+    for (const srv of serverNotifications) {
+      const createdDate = srv.createdAt ? new Date(srv.createdAt) : new Date();
+      list.push({
+        id: `srv_${srv.id}`,
+        icon: srv.icon || (srv.type === "premium" ? "👑" : "📢"),
+        title: srv.title,
+        description: srv.body,
+        time: createdDate.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+    }
+
     const p = user?.profile?.aiPersonality || "calm";
     const t = user?.profile?.aiTone || "motivational";
     
@@ -709,7 +766,22 @@ export default function HomeScreen() {
       Alert.alert("Análise concluída", "A análise Gemini foi gerada com sucesso.");
     } catch (error: any) {
       console.error("Error analyzing workout:", error);
-      Alert.alert("Aviso", error.message || "Não foi possível gerar a análise. Tente novamente.");
+      if (error?.code === "QUOTA_EXCEEDED" || error?.status === 429) {
+        Alert.alert(
+          "👑 Limite Diário Atingido",
+          error.message ||
+            "Você atingiu o limite diário do Plano Free. Ative o Sidekick Premium ou resgate um código VIP no seu Perfil!",
+          [
+            { text: "Agora não", style: "cancel" },
+            {
+              text: "👑 Ver Premium / VIP",
+              onPress: () => router.push("/(tabs)/profile"),
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Aviso", error.message || "Não foi possível gerar a análise. Tente novamente.");
+      }
     } finally {
       setAnalyzingWorkoutId(null);
       setTargetWorkoutId(null);
@@ -877,7 +949,11 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={styles.notificationButton}
-            onPress={() => setNotificationsModalVisible(true)}
+            onPress={() => {
+              setNotificationsModalVisible(true);
+              loadServerNotifications();
+              apiService.post("/user/notifications/read", {}).catch(() => {});
+            }}
             activeOpacity={0.7}
           >
             <Text style={{ fontSize: 24 }}>🔔</Text>

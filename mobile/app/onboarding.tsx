@@ -13,11 +13,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Linking,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/src/contexts/AuthContext";
 import { useStrava } from "@/src/contexts/StravaContext";
-import { apiService } from "@/src/services/apiService";
+import { apiService, API_BASE_URL } from "@/src/services/apiService";
 
 const Colors = {
   dark: "#0a0a0a",
@@ -45,7 +46,7 @@ export default function OnboardingScreen() {
 
   const [companionName, setCompanionName] = useState("Sidekick");
   const [companionAvatar, setCompanionAvatar] = useState("🦖");
-  const [isCommentModalVisible, setIsCommentModalVisible] = useState(true);
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [aiGender, setAiGender] = useState("neutral");
   const [aiPersonality, setAiPersonality] = useState("calm");
   const [aiTone, setAiTone] = useState("motivational");
@@ -316,12 +317,10 @@ export default function OnboardingScreen() {
       }
     }
     setStep(s => s + 1);
-    setIsCommentModalVisible(true);
   };
 
   const prevStep = () => {
     setStep(s => s - 1);
-    setIsCommentModalVisible(true);
   };
 
   const getCompanionComment = () => {
@@ -402,6 +401,44 @@ export default function OnboardingScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* Inline Companion Speech Banner (fluido, sem bloquear a tela com modal a cada passo) */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#16161a",
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "rgba(255, 107, 107, 0.28)",
+              padding: 12,
+              marginBottom: 20,
+              gap: 12,
+            }}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: "#24191c",
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: Colors.primary,
+              }}
+            >
+              <Text style={{ fontSize: 24 }}>{companionAvatar}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: "700", marginBottom: 2 }}>
+                {companionName || "Sidekick"}
+              </Text>
+              <Text style={{ color: "#e0e0e0", fontSize: 12, lineHeight: 17 }}>
+                {getCompanionComment()}
+              </Text>
+            </View>
+          </View>
+
           {/* STEP 1: IA COMPANION */}
           {step === 1 && (
             <View style={styles.stepContainer}>
@@ -899,7 +936,21 @@ export default function OnboardingScreen() {
                   {termsAccepted && <Text style={styles.checkboxCheckMark}>✓</Text>}
                 </View>
                 <Text style={styles.checkboxLabel}>
-                  Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico.
+                  Estou ciente de que o Sidekick é um companheiro digital de apoio moral e NÃO substitui treinadores físicos profissionais ou aconselhamento médico, e concordo com os{" "}
+                  <Text
+                    style={{ color: Colors.primary, textDecorationLine: "underline", fontWeight: "700" }}
+                    onPress={() => Linking.openURL(`${API_BASE_URL}/terms.html`)}
+                  >
+                    Termos de Uso
+                  </Text>{" "}
+                  e{" "}
+                  <Text
+                    style={{ color: Colors.primary, textDecorationLine: "underline", fontWeight: "700" }}
+                    onPress={() => Linking.openURL(`${API_BASE_URL}/privacy.html`)}
+                  >
+                    Política de Privacidade
+                  </Text>
+                  .
                 </Text>
               </TouchableOpacity>
 

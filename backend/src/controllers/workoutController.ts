@@ -1,12 +1,18 @@
 import { Request, Response } from "express";
 import { prisma } from "../utils/prisma";
-import { analyzeWorkoutWithGemini, analyzeHistoryWithGemini } from "../services/geminiService";
-import { consumeAiAnalysisQuota } from "../services/usageService";
+import {
+  analyzeWorkoutWithGemini,
+  analyzeHistoryWithGemini,
+} from "../services/geminiService";
+import {
+  assertAiAnalysisQuotaAvailable,
+  commitAiAnalysisQuota,
+} from "../services/usageService";
 
 /**
  * GET /api/workouts
  * Busca treinos do usuário com filtro opcional por data
- * Query params: 
+ * Query params:
  *   - date: YYYY-MM-DD (filtra por data específica)
  *   - startDate: YYYY-MM-DD (início do intervalo)
  *   - endDate: YYYY-MM-DD (fim do intervalo)
@@ -26,7 +32,7 @@ export const getWorkoutsHandler = async (req: Request, res: Response) => {
       const targetDate = new Date(date as string);
       const nextDay = new Date(targetDate);
       nextDay.setDate(nextDay.getDate() + 1);
-      
+
       whereClause.date = {
         gte: targetDate,
         lt: nextDay,
@@ -120,12 +126,20 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Workout not found" });
     }
 
+    // Valida disponibilidade de cota ANTES de chamar o Gemini
+    await assertAiAnalysisQuotaAvailable(userId, workout.user?.planType);
 
-
-    // Atualiza esforço e notas se fornecidos
+    // Atualiza esforço e notas se fornecidos (com sanitização de tamanho)
     let updatedWorkoutData: any = {};
-    if (effortRating !== undefined) updatedWorkoutData.effortRating = Number(effortRating);
-    if (userNotes !== undefined) updatedWorkoutData.userNotes = userNotes;
+    if (effortRating !== undefined) {
+      const ratingNum = Number(effortRating);
+      if (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 10) {
+        updatedWorkoutData.effortRating = ratingNum;
+      }
+    }
+    if (userNotes !== undefined && typeof userNotes === "string") {
+      updatedWorkoutData.userNotes = userNotes.trim().slice(0, 500);
+    }
 
     let workoutToAnalyze = workout;
     if (Object.keys(updatedWorkoutData).length > 0) {
@@ -153,16 +167,22 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       where: {
         userId,
         id: { not: String(id) },
-        date: { lt: workoutToAnalyze.date }, // apenas treinos anteriores chronologicamente
+        date: { lt: workoutToAnalyze.date },
       },
       orderBy: { date: "desc" },
       take: 5,
     });
 
-    await consumeAiAnalysisQuota(userId, workoutToAnalyze.user?.planType);
-
     // Gera análise com Gemini, passando perfil e histórico
-    const narrative = await analyzeWorkoutWithGemini(workoutToAnalyze, mood, userProfile, recentWorkouts);
+    const narrative = await analyzeWorkoutWithGemini(
+      workoutToAnalyze,
+      mood,
+      userProfile,
+      recentWorkouts
+    );
+
+    // Consome a cota SOMENTE após sucesso da geração
+    await commitAiAnalysisQuota(userId, workoutToAnalyze.user?.planType);
 
     // Atualiza o treino com a narrativa
     const updatedWorkout = await prisma.workout.update({
@@ -174,9 +194,18 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
       workout: updatedWorkout,
       narrative,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error analyzing workout:", error);
-    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to analyze workout" });
+    if (error?.code === "QUOTA_EXCEEDED" || error?.status === 429) {
+      return res.status(429).json({
+        error: error.message,
+        code: "QUOTA_EXCEEDED",
+      });
+    }
+    res.status(500).json({
+      error:
+        error instanceof Error ? error.message : "Failed to analyze workout",
+    });
   }
 };
 
@@ -184,7 +213,10 @@ export const analyzeWorkoutHandler = async (req: Request, res: Response) => {
  * POST /api/user/history-analysis
  * Gera ou atualiza relatório de progresso e gamificação histórica
  */
-export const getUserHistoryAnalysisHandler = async (req: Request, res: Response) => {
+export const getUserHistoryAnalysisHandler = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const userId = (req as any).userId;
 
@@ -207,20 +239,19 @@ export const getUserHistoryAnalysisHandler = async (req: Request, res: Response)
       return res.status(404).json({ error: "User profile not found" });
     }
 
-    // Busca todos os treinos do usuário
+    // Busca os últimos 250 treinos do usuário para análise histórica segura
     const allWorkouts = await prisma.workout.findMany({
       where: { userId },
       orderBy: { date: "desc" },
+      take: 250,
     });
 
     if (allWorkouts.length === 0) {
-      return res.status(400).json({ error: "Nenhum treino encontrado para analisar a evolução histórica." });
+      return res.status(400).json({
+        error: "Nenhum treino encontrado para analisar a evolução histórica.",
+      });
     }
 
-    // Validar agendamento dos relatórios históricos periódicos:
-    // Contas Free: apenas 1 por mês (dia 1º ou se for um mês diferente do último gerado).
-    // Contas Premium: apenas 1 por semana (domingo ou se for uma semana diferente da última gerada).
-    // Primeira análise (Baseline): se historyAnalysis for nulo, gera imediatamente.
     const lastUpdate = userProfile.historyAnalysisUpdatedAt;
     const hasExistingAnalysis = !!userProfile.historyAnalysis;
 
@@ -229,31 +260,43 @@ export const getUserHistoryAnalysisHandler = async (req: Request, res: Response)
       const plan = (userProfile.user?.planType || "free").toLowerCase();
 
       if (plan === "premium") {
-        // Premium: semanal (semanas diferentes)
         const getWeekNumber = (d: Date) => {
           const date = new Date(d.getTime());
           date.setHours(0, 0, 0, 0);
-          date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+          date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
           const week1 = new Date(date.getFullYear(), 0, 4);
-          return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+          return (
+            1 +
+            Math.round(
+              ((date.getTime() - week1.getTime()) / 86400000 -
+                3 +
+                ((week1.getDay() + 6) % 7)) /
+                7
+            )
+          );
         };
 
-        const isSameWeek = now.getFullYear() === lastUpdate.getFullYear() && getWeekNumber(now) === getWeekNumber(lastUpdate);
+        const isSameWeek =
+          now.getFullYear() === lastUpdate.getFullYear() &&
+          getWeekNumber(now) === getWeekNumber(lastUpdate);
 
         if (isSameWeek) {
           return res.status(403).json({
-            error: "Os relatórios semanais para usuários Premium são atualizados automaticamente todo domingo à noite.",
+            error:
+              "Os relatórios semanais para usuários Premium são atualizados automaticamente todo domingo à noite.",
             analysis: userProfile.historyAnalysis,
             updatedAt: lastUpdate,
           });
         }
       } else {
-        // Free: mensal (meses diferentes)
-        const isSameMonth = now.getFullYear() === lastUpdate.getFullYear() && now.getMonth() === lastUpdate.getMonth();
+        const isSameMonth =
+          now.getFullYear() === lastUpdate.getFullYear() &&
+          now.getMonth() === lastUpdate.getMonth();
 
         if (isSameMonth) {
           return res.status(403).json({
-            error: "Os relatórios mensais para contas Free são gerados automaticamente no dia 1º de cada mês.",
+            error:
+              "Os relatórios mensais para contas Free são gerados automaticamente no dia 1º de cada mês.",
             analysis: userProfile.historyAnalysis,
             updatedAt: lastUpdate,
           });
@@ -261,10 +304,12 @@ export const getUserHistoryAnalysisHandler = async (req: Request, res: Response)
       }
     }
 
-    await consumeAiAnalysisQuota(userId, userProfile.user?.planType);
+    await assertAiAnalysisQuotaAvailable(userId, userProfile.user?.planType);
 
     // Gera análise com Gemini
     const analysis = await analyzeHistoryWithGemini(userProfile, allWorkouts);
+
+    await commitAiAnalysisQuota(userId, userProfile.user?.planType);
 
     // Salva no banco de dados
     const updatedProfile = await prisma.userProfile.update({
@@ -280,9 +325,20 @@ export const getUserHistoryAnalysisHandler = async (req: Request, res: Response)
       analysis,
       updatedAt: updatedProfile.historyAnalysisUpdatedAt,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating history analysis:", error);
-    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to generate history analysis" });
+    if (error?.code === "QUOTA_EXCEEDED" || error?.status === 429) {
+      return res.status(429).json({
+        error: error.message,
+        code: "QUOTA_EXCEEDED",
+      });
+    }
+    res.status(500).json({
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to generate history analysis",
+    });
   }
 };
 
@@ -290,7 +346,10 @@ export const getUserHistoryAnalysisHandler = async (req: Request, res: Response)
  * GET /api/user/history-analysis
  * Busca o relatório de progresso cacheado do atleta
  */
-export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Response) => {
+export const getUserHistoryAnalysisCachedHandler = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const userId = (req as any).userId;
 
@@ -313,7 +372,6 @@ export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Res
       return res.status(404).json({ error: "User profile not found" });
     }
 
-    // Check if an automatic update is needed according to the schedule
     let needsUpdate = false;
     const lastUpdate = userProfile.historyAnalysisUpdatedAt;
     const hasExistingAnalysis = !!userProfile.historyAnalysis;
@@ -323,23 +381,33 @@ export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Res
       const plan = (userProfile.user?.planType || "free").toLowerCase();
 
       if (plan === "premium") {
-        // Premium: semanal (semanas diferentes)
         const getWeekNumber = (d: Date) => {
           const date = new Date(d.getTime());
           date.setHours(0, 0, 0, 0);
-          date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+          date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
           const week1 = new Date(date.getFullYear(), 0, 4);
-          return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+          return (
+            1 +
+            Math.round(
+              ((date.getTime() - week1.getTime()) / 86400000 -
+                3 +
+                ((week1.getDay() + 6) % 7)) /
+                7
+            )
+          );
         };
-        const isSameWeek = now.getFullYear() === lastUpdate.getFullYear() && getWeekNumber(now) === getWeekNumber(lastUpdate);
-        
+        const isSameWeek =
+          now.getFullYear() === lastUpdate.getFullYear() &&
+          getWeekNumber(now) === getWeekNumber(lastUpdate);
+
         if (!isSameWeek) {
           needsUpdate = true;
         }
       } else {
-        // Free: mensal (meses diferentes)
-        const isSameMonth = now.getFullYear() === lastUpdate.getFullYear() && now.getMonth() === lastUpdate.getMonth();
-        
+        const isSameMonth =
+          now.getFullYear() === lastUpdate.getFullYear() &&
+          now.getMonth() === lastUpdate.getMonth();
+
         if (!isSameMonth) {
           needsUpdate = true;
         }
@@ -347,17 +415,27 @@ export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Res
     }
 
     if (needsUpdate) {
-      console.log(`[Auto-Update History Analysis] Triggering update for user ${userId}`);
+      console.log(
+        `[Auto-Update History Analysis] Triggering update for user ${userId}`
+      );
       const allWorkouts = await prisma.workout.findMany({
         where: { userId },
         orderBy: { date: "desc" },
+        take: 250,
       });
 
       if (allWorkouts.length > 0) {
         try {
-          await consumeAiAnalysisQuota(userId, userProfile.user?.planType);
-          const analysis = await analyzeHistoryWithGemini(userProfile, allWorkouts);
-          
+          await assertAiAnalysisQuotaAvailable(
+            userId,
+            userProfile.user?.planType
+          );
+          const analysis = await analyzeHistoryWithGemini(
+            userProfile,
+            allWorkouts
+          );
+          await commitAiAnalysisQuota(userId, userProfile.user?.planType);
+
           const updatedProfile = await prisma.userProfile.update({
             where: { userId },
             data: {
@@ -395,10 +473,14 @@ export const getUserHistoryAnalysisCachedHandler = async (req: Request, res: Res
 export const createWorkoutHandler = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const workoutData = req.body;
+    const { id: _ignoreId, userId: _ignoreUserId, user: _ignoreUser, ...workoutData } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    if (typeof workoutData.userNotes === "string") {
+      workoutData.userNotes = workoutData.userNotes.trim().slice(0, 500);
     }
 
     const workout = await prisma.workout.create({
@@ -423,7 +505,7 @@ export const updateWorkoutHandler = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
-    const updateData = req.body;
+    const { id: _ignoreId, userId: _ignoreUserId, user: _ignoreUser, ...updateData } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
@@ -438,6 +520,10 @@ export const updateWorkoutHandler = async (req: Request, res: Response) => {
 
     if (!workout) {
       return res.status(404).json({ error: "Workout not found" });
+    }
+
+    if (typeof updateData.userNotes === "string") {
+      updateData.userNotes = updateData.userNotes.trim().slice(0, 500);
     }
 
     const updatedWorkout = await prisma.workout.update({
@@ -477,7 +563,7 @@ export const deleteWorkoutHandler = async (req: Request, res: Response) => {
     }
 
     await prisma.workout.delete({
-      where: { id:String(id) },
+      where: { id: String(id) },
     });
 
     res.json({ success: true });

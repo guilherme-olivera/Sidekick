@@ -36,6 +36,13 @@ interface User {
   stravaAthleteUsername?: string;
   stravaAthleteProfile?: string;
   profile?: UserProfile;
+  aiUsage?: {
+    feature: string;
+    isPremium?: boolean;
+    limit: number;
+    used: number;
+    remaining: number;
+  };
   readiness?: {
     score: number;
     label: string;
@@ -56,6 +63,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refreshUser: () => Promise<boolean>;
   error: string | null;
 }
@@ -98,8 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       console.error("Failed to refresh user:", err);
-      // Apenas desloga se o erro for explicitamente 401 (não autorizado/token inválido ou expirado)
-      // Evita deslogar o usuário por falhas de rede temporárias ou servidor dormindo na Render
+      // Apenas desloga se o erro for explicitamente 401 (token inválido ou expirado)
       if (err && err.status === 401) {
         await clearAuthState();
       }
@@ -124,8 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(JSON.parse(savedUser));
         }
 
-        // Tenta atualizar em segundo plano. Se falhar por token expirado, refreshUser já limpa o estado.
-        // Se falhar por conexão/rede, mantemos o token e usuário salvos localmente.
+        // Atualiza dados em segundo plano
         await refreshUser();
       }
     } catch (err) {
@@ -137,74 +143,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
     setError(null);
 
     try {
-      const { apiLogin } = await import("../services/apiService");
+      const { apiLogin, setAuthToken } = await import("../services/apiService");
       const response = await apiLogin({ email, password });
 
-      if (!response.success) {
-        throw new Error(response.error || "Login failed");
+      if (!response.success || !response.token || !response.user) {
+        throw new Error(response.error || "E-mail ou senha inválidos");
       }
 
-      if (response.token && response.user) {
-        try {
-          const { setAuthToken } = await import("../services/apiService");
-          setAuthToken(response.token);
-        } catch (e) {
-          console.warn("Failed to set auth token cache:", e);
-        }
-        setToken(response.token);
-        setUser(response.user);
-        await AsyncStorage.setItem("authToken", response.token);
-        await AsyncStorage.setItem("user", JSON.stringify(response.user));
+      setAuthToken(response.token);
+      await AsyncStorage.setItem("authToken", response.token);
+      await AsyncStorage.setItem("user", JSON.stringify(response.user));
 
-        const refreshed = await refreshUser();
-        if (!refreshed) {
-          throw new Error("Falha ao validar credenciais após login");
-        }
+      // Se o backend antigo não retornou profile no login, faz fallback com refreshUser antes de liberar
+      if (response.user.profile === undefined) {
+        setToken(response.token);
+        await refreshUser();
+      } else {
+        setUser(response.user);
+        setToken(response.token);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro ao fazer login";
       setError(errorMsg);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (email: string, password: string, name: string) => {
-    setIsLoading(true);
     setError(null);
 
     try {
-      const { apiRegister } = await import("../services/apiService");
+      const { apiRegister, setAuthToken } = await import("../services/apiService");
       const response = await apiRegister({ email, password, name });
 
       if (!response.success) {
-        throw new Error(response.error || "Registration failed");
+        throw new Error(response.error || "Erro ao registrar conta");
       }
 
-      // Auto-login after registration
-      await login(email, password);
+      // Se o endpoint já retornou token e user (novo fluxo atômico), autentica diretamente sem 2ª requisição
+      if (response.token && response.user) {
+        setAuthToken(response.token);
+        await AsyncStorage.setItem("authToken", response.token);
+        await AsyncStorage.setItem("user", JSON.stringify(response.user));
+        setUser(response.user);
+        setToken(response.token);
+      } else {
+        await login(email, password);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Erro ao registrar";
       setError(errorMsg);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
       await clearAuthState();
       setError(null);
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.error("Failed to logout:", err);
     }
+  };
+
+  const deleteAccount = async () => {
+    const { apiService } = await import("../services/apiService");
+    await apiService.delete("/user/account");
+    await clearAuthState();
+    setError(null);
   };
 
   return (
@@ -216,6 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        deleteAccount,
         refreshUser,
         error,
       }}

@@ -11,7 +11,7 @@ const STORAGE_KEY = '@sidekick:event_notifications';
 type StoredMap = Record<string, string[]>;
 
 /**
- * Configure default notification behavior
+ * Configure default notification behavior (SDK 54 compatible)
  */
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,73 +23,75 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export async function requestPermissions() {
-  if (!Device.isDevice) return false;
-  const { status } = await Notifications.getPermissionsAsync();
-  let finalStatus = status;
-  if (status !== 'granted') {
-    const res = await Notifications.requestPermissionsAsync();
-    finalStatus = res.status;
-  }
-  if (finalStatus !== 'granted') return false;
-
-  // Create high-importance channel for Android
+async function ensureAndroidChannel() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
+      name: 'Sidekick Lembretes e Treinos',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#ff6b6b',
+      sound: 'default',
+      enableVibrate: true,
+      showBadge: true,
     });
   }
-  return true;
+}
+
+export async function requestPermissions(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+
+  try {
+    await ensureAndroidChannel();
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const res = await Notifications.requestPermissionsAsync();
+      finalStatus = res.status;
+    }
+
+    return finalStatus === 'granted';
+  } catch (error) {
+    console.warn('[NotificationService] Permission check failed:', error);
+    return false;
+  }
 }
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (Platform.OS === 'web') {
-    console.log('[NotificationService] Web environment; push notifications skipped.');
     return null;
   }
 
   try {
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#ff6b6b',
-      });
-    }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('[NotificationService] Push notification permissions denied.');
+    const granted = await requestPermissions();
+    if (!granted) {
+      console.log('[NotificationService] Notification permissions not granted.');
       return null;
     }
 
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId || "3b69b29e-876f-4286-8c61-339dddd6a282";
+    if (!Device.isDevice) {
+      console.log('[NotificationService] Running on emulator; local notifications ready, remote push token skipped.');
+      return null;
+    }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId }).catch(err => {
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ||
+      Constants.easConfig?.projectId ||
+      '3b69b29e-876f-4286-8c61-339dddd6a282';
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId }).catch((err) => {
       console.log('[NotificationService] Push token fetch info:', err.message);
       return null;
     });
 
     if (!tokenData?.data) {
-      console.log('[NotificationService] tokenData is empty or null');
       return null;
     }
 
     const token = tokenData.data;
     console.log('[NotificationService] Obtained Push Token:', token);
 
-    await apiService.post('/api/user/push-token', { pushToken: token }).catch(err => {
+    await apiService.post('/user/push-token', { pushToken: token }).catch((err) => {
       console.log('[NotificationService] Error registering token on backend:', err.message);
     });
 
@@ -103,8 +105,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 function parseDateTime(dateStr: string, timeStr: string) {
   const cleanDateStr = dateStr.substring(0, 10);
   const [y, m, d] = cleanDateStr.split('-').map(Number);
-  const [hh, mm] = timeStr.split(':').map(Number);
-  return new Date(y, m - 1, d, hh || 8, mm || 0, 0);
+  const [hh, mm] = (timeStr || '08:00').split(':').map(Number);
+  return new Date(y, m - 1, d, isNaN(hh) ? 8 : hh, isNaN(mm) ? 0 : mm, 0);
 }
 
 async function loadStore(): Promise<StoredMap> {
@@ -125,57 +127,67 @@ export async function scheduleEventNotifications(event: CalendarEvent) {
   const ok = await requestPermissions();
   if (!ok) return;
 
+  // Cancela agendamentos antigos deste mesmo evento para evitar duplicidade
+  await cancelEventNotifications(event.id).catch(() => {});
+
   const eventDate = parseDateTime(event.date, event.time || '08:00');
-  const dayBefore = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
+  const now = new Date();
   const identifiers: string[] = [];
 
-  if (dayBefore > new Date()) {
+  // 1) Lembrete 24h antes
+  const dayBefore = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
+  if (dayBefore > now) {
     const id1 = await Notifications.scheduleNotificationAsync({
       content: {
-        title: `${event.title} — Amanhã`,
-        body: event.description || 'Lembrete do seu evento',
+        title: `📅 Amanhã: ${event.title}`,
+        body: event.description || `Seu compromisso está marcado para amanhã às ${event.time || '08:00'}. Prepare-se!`,
+        sound: true,
         data: { eventId: event.id },
       },
       trigger: {
-        type: 'date',
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: dayBefore,
         channelId: 'default',
-      } as any,
+      },
     });
     identifiers.push(id1);
   }
 
+  // 2) Lembrete 1h antes
   const oneHourBefore = new Date(eventDate.getTime() - 60 * 60 * 1000);
-  if (oneHourBefore > new Date()) {
-    const id3 = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `${event.title} — Daqui a 1 hora`,
-        body: event.description || 'Seu evento começa em 1 hora',
-        data: { eventId: event.id },
-      },
-      trigger: {
-        type: 'date',
-        date: oneHourBefore,
-        channelId: 'default',
-      } as any,
-    });
-    identifiers.push(id3);
-  }
-
-  if (eventDate > new Date()) {
+  if (oneHourBefore > now) {
     const id2 = await Notifications.scheduleNotificationAsync({
       content: {
-        title: `${event.title} — Hoje`,
-        body: event.description || 'Seu evento começa hoje',
+        title: `⏰ Daqui a 1 hora: ${event.title}`,
+        body: event.description || 'Falta 1 hora para o seu treino/compromisso começar!',
+        sound: true,
         data: { eventId: event.id },
       },
       trigger: {
-        type: 'date',
-        date: eventDate,
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: oneHourBefore,
         channelId: 'default',
-      } as any,
+      },
     });
     identifiers.push(id2);
+  }
+
+  // 3) No horário exato do evento
+  if (eventDate > now) {
+    const id3 = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `🚀 Hora do Treino: ${event.title}`,
+        body: event.description || 'Chegou a hora! Vamos colocar o plano em prática.',
+        sound: true,
+        data: { eventId: event.id },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: eventDate,
+        channelId: 'default',
+      },
+    });
+    identifiers.push(id3);
   }
 
   const map = await loadStore();
@@ -186,30 +198,37 @@ export async function scheduleEventNotifications(event: CalendarEvent) {
 export async function cancelEventNotifications(eventId: string) {
   const map = await loadStore();
   const ids = map[eventId] || [];
-  await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
+  await Promise.all(
+    ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {}))
+  );
   delete map[eventId];
   await saveStore(map);
 }
 
 export async function sendTestNotification(
-  title = '⚡ Sidekick — Notificação de Teste',
-  body = 'Sua notificação foi configurada e disparada com sucesso! 🚀'
-) {
+  title = '⚡ Sidekick — Notificação Ativa!',
+  body = 'Tudo certo! Os alertas de treinos, provas e avisos do seu companheiro estão funcionando no seu aparelho. 👟🚀'
+): Promise<boolean> {
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') {
         new Notification(title, { body });
+        return true;
       } else if (Notification.permission !== 'denied') {
         const perm = await Notification.requestPermission();
         if (perm === 'granted') {
           new Notification(title, { body });
+          return true;
         }
       }
     }
-    return;
+    return false;
   }
 
-  await requestPermissions();
+  const granted = await requestPermissions();
+  if (!granted) {
+    return false;
+  }
 
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -219,11 +238,14 @@ export async function sendTestNotification(
       data: { test: true },
     },
     trigger: {
-      type: 'timeInterval',
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: 2,
       repeats: false,
-    } as any,
+      channelId: 'default',
+    },
   });
+
+  return true;
 }
 
 const notificationService = {

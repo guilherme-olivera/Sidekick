@@ -2,36 +2,29 @@ import { Response } from "express";
 import { prisma } from "../utils/prisma";
 import { testGeminiConnection } from "../services/geminiService";
 import { sendMail, getTransporterError } from "../services/emailService";
+import { checkIsAdminUser } from "../utils/adminAuth";
 
 /**
  * GET /api/diagnostics/test
  * Executa testes de integridade do backend (Banco de Dados, Gemini e SMTP de E-mail)
  */
 export async function handleDiagnosticsTest(req: any, res: Response) {
-  // Verifica se o usuário requisitante é administrador
-  const userAdmin = await prisma.user.findUnique({
-    where: { id: req.userId },
-    select: { isAdmin: true, email: true },
-  });
-
-  const cleanEmail = (userAdmin?.email || "").toLowerCase();
-  const isAdmin = Boolean(
-    (userAdmin as any)?.isAdmin === true ||
-    cleanEmail.includes("adm") ||
-    cleanEmail === "adm@adm.com" ||
-    cleanEmail === "guilherme.oliveirasantos@hotmail.com" ||
-    cleanEmail.includes("guilherme")
-  );
+  const isAdmin = await checkIsAdminUser(req.userId);
 
   if (!isAdmin) {
     return res.status(403).json({
-      error: "Acesso negado. Apenas administradores têm permissão para executar diagnósticos do sistema.",
+      error:
+        "Acesso negado. Apenas administradores têm permissão para executar diagnósticos do sistema.",
     });
   }
 
   const results = {
     db: { success: false, error: null as string | null },
-    gemini: { success: false, result: null as string | null, error: null as string | null },
+    gemini: {
+      success: false,
+      result: null as string | null,
+      error: null as string | null,
+    },
     email: { success: false, error: null as string | null },
   };
 
@@ -78,7 +71,6 @@ export async function handleDiagnosticsTest(req: any, res: Response) {
       </div>
     `;
 
-    // Dispara o e-mail de forma síncrona para pegar o erro imediato se falhar
     const sent = await sendMail(
       user.email,
       "Teste de Diagnóstico Sidekick 👟",
@@ -90,7 +82,10 @@ export async function handleDiagnosticsTest(req: any, res: Response) {
       results.email.success = true;
     } else {
       const smtpError = getTransporterError();
-      throw new Error(smtpError || "O envio de e-mail falhou. Verifique os logs de erro ou API Key do Resend no servidor.");
+      throw new Error(
+        smtpError ||
+          "O envio de e-mail falhou. Verifique os logs de erro ou API Key do Resend no servidor."
+      );
     }
   } catch (err: any) {
     results.email.error = err instanceof Error ? err.message : String(err);
