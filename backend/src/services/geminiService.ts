@@ -4,9 +4,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const CANDIDATE_MODELS = [
   "gemini-3.8-flash",
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash-lite",
   "gemini-flash-latest",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
+  "gemini-flash-lite-latest",
 ];
 
 // Helper to wrap API calls with automatic retry on Google 503 Service Unavailable / 429 Rate Limit
@@ -383,10 +386,34 @@ Instruções cruciais:
 - Se o usuário tentar falar sobre outros assuntos não relacionados a esportes, corrida, ciclismo, hábitos saudáveis, motivação ou nutrição esportiva, recuse gentilmente na sua personalidade e traga o assunto de volta para os treinos.
 `;
 
-    // Ensure the chat history starts with a 'user' message as required by Gemini
-    let cleanHistory = [...chatHistory];
-    while (cleanHistory.length > 0 && cleanHistory[0].role !== "user") {
-      cleanHistory.shift();
+    // Ensure the chat history strictly alternates user -> model and starts with 'user' and ends with 'model'
+    const normalizedHistory: { role: "user" | "model"; parts: string }[] = [];
+    for (const item of chatHistory || []) {
+      if (!item || !item.parts || typeof item.parts !== "string" || !item.parts.trim()) {
+        continue;
+      }
+      const role: "user" | "model" = item.role === "user" ? "user" : "model";
+      const textPart = item.parts.trim();
+      if (normalizedHistory.length === 0) {
+        if (role === "user") {
+          normalizedHistory.push({ role, parts: textPart });
+        }
+      } else {
+        const prev = normalizedHistory[normalizedHistory.length - 1];
+        if (prev.role === role) {
+          // Replace consecutive identical role turn with the latest message
+          prev.parts = textPart;
+        } else {
+          normalizedHistory.push({ role, parts: textPart });
+        }
+      }
+    }
+    // Since chat.sendMessage(message) sends a 'user' turn, history must end with a 'model' turn
+    if (
+      normalizedHistory.length > 0 &&
+      normalizedHistory[normalizedHistory.length - 1].role === "user"
+    ) {
+      normalizedHistory.pop();
     }
 
     const text = await executeWithModelFallback(async (modelName) => {
@@ -396,7 +423,7 @@ Instruções cruciais:
       });
 
       const chat = model.startChat({
-        history: cleanHistory.map(h => ({
+        history: normalizedHistory.map(h => ({
           role: h.role,
           parts: [{ text: h.parts }]
         })),

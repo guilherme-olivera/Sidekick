@@ -286,16 +286,27 @@ export default function HomeScreen() {
       timestamp,
     };
 
-    const newHistory = [...chatMessages, userMsg];
+    const cleanedPrevMessages = chatMessages.filter(
+      (m) => !String(m.id).startsWith("err_")
+    );
+    const newHistory = [...cleanedPrevMessages, userMsg];
     setChatMessages(newHistory);
     saveChatHistory(newHistory);
     setChatIsTyping(true);
 
     try {
-      const apiHistory = chatMessages.slice(-6).map((m) => ({
-        role: (m.sender === "user" ? "user" : "model") as "user" | "model",
-        parts: m.text,
-      }));
+      const apiHistory = cleanedPrevMessages
+        .filter(
+          (m) =>
+            m.id !== "welcome" &&
+            !String(m.id).startsWith("err_") &&
+            !String(m.id).startsWith("quota_")
+        )
+        .slice(-6)
+        .map((m) => ({
+          role: (m.sender === "user" ? "user" : "model") as "user" | "model",
+          parts: m.text,
+        }));
 
       const res = await apiService.post("/chat", {
         message: userText,
