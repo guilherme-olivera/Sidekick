@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../utils/prisma";
+import { prisma, ensureDatabaseSchema } from "../utils/prisma";
 import { getAiUsageStatus } from "../services/usageService";
 import { calculateReadiness } from "../utils/readiness";
 import {
@@ -369,6 +369,8 @@ export const getNotificationsHandler = async (req: any, res: Response) => {
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+    await ensureDatabaseSchema();
+
     const notifications = await prisma.appNotification.findMany({
       where: {
         OR: [
@@ -404,6 +406,8 @@ export const markNotificationsReadHandler = async (
     if (!userId) {
       return res.status(401).json({ error: "Usuário não autenticado" });
     }
+
+    await ensureDatabaseSchema();
 
     await prisma.appNotification.updateMany({
       where: { userId, isRead: false },

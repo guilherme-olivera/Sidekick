@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
-import { prisma } from "../utils/prisma";
+import { prisma, ensureDatabaseSchema } from "../utils/prisma";
 import { checkIsAdminUser } from "../utils/adminAuth";
 import { sendExpoPushNotifications } from "../services/pushNotificationService";
 
@@ -80,6 +80,7 @@ export async function grantRevokePremiumHandler(req: any, res: Response) {
           : `${days} dias (até ${premiumUntil?.toLocaleDateString("pt-BR")})`;
 
       if (days > 0) {
+        await ensureDatabaseSchema();
         // Cria notificação In-App persistente no sininho do usuário
         await prisma.appNotification
           .create({

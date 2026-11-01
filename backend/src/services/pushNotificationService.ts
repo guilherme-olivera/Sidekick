@@ -1,4 +1,4 @@
-import { prisma } from "../utils/prisma";
+import { prisma, ensureDatabaseSchema } from "../utils/prisma";
 
 export interface PushMessagePayload {
   title: string;
@@ -98,6 +98,8 @@ export async function broadcastNotification(
     planTypeFilter === "free" || planTypeFilter === "premium"
       ? planTypeFilter
       : "all";
+
+  await ensureDatabaseSchema();
 
   // 1. Save persistent In-App Broadcast Notification in PostgreSQL
   const savedNotification = await prisma.appNotification.create({

@@ -377,13 +377,20 @@ export default function ProfileScreen() {
 
       const sentCount = response?.result?.sent ?? 0;
       const totalTargetUsers = response?.result?.totalTargetUsers ?? sentCount;
-      Alert.alert(
-        "🚀 Aviso Transmitido!",
-        `Sua mensagem foi entregue na Central de Notificações (🔔) de ${totalTargetUsers} atleta(s) e disparada via Push para ${sentCount} aparelho(s)!${sendLocalCopy ? "\n\n💡 Pop-up de teste agendado no seu aparelho em 2 segundos." : ""}`
-      );
+      const successMsg = `Sua mensagem foi entregue na Central de Notificações (🔔) de ${totalTargetUsers} atleta(s) e disparada via Push para ${sentCount} aparelho(s)!${sendLocalCopy ? "\n\n💡 Pop-up de teste agendado no seu aparelho em 2 segundos." : ""}`;
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.alert(`🚀 Aviso Transmitido!\n\n${successMsg}`);
+      } else {
+        Alert.alert("🚀 Aviso Transmitido!", successMsg);
+      }
     } catch (err: any) {
       console.error("Erro ao enviar notificação broadcast:", err);
-      Alert.alert("Erro", err.message || "Falha ao enviar notificação aos usuários.");
+      const errMsg = err.message || "Falha ao enviar notificação aos usuários.";
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.alert(`Erro: ${errMsg}`);
+      } else {
+        Alert.alert("Erro", errMsg);
+      }
     } finally {
       setIsSendingBroadcast(false);
     }

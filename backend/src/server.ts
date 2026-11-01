@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import path from "path";
-import { prisma } from "./utils/prisma";
+import { prisma, ensureDatabaseSchema } from "./utils/prisma";
 import bcrypt from "bcryptjs";
 import {
   handleLogin,
@@ -257,42 +257,6 @@ app.post("/api/test/ai-analysis", authMiddleware, async (req: any, res) => {
     });
   }
 });
-
-// Garante que novas tabelas e índices de performance existam automaticamente no PostgreSQL em produção
-async function ensureDatabaseSchema() {
-  try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "app_notifications" (
-        "id" TEXT NOT NULL,
-        "userId" TEXT,
-        "targetPlan" TEXT NOT NULL DEFAULT 'all',
-        "title" TEXT NOT NULL,
-        "body" TEXT NOT NULL,
-        "icon" TEXT NOT NULL DEFAULT '🔔',
-        "type" TEXT NOT NULL DEFAULT 'broadcast',
-        "isRead" BOOLEAN NOT NULL DEFAULT false,
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT "app_notifications_pkey" PRIMARY KEY ("id"),
-        CONSTRAINT "app_notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
-      );
-    `);
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "app_notifications_userId_createdAt_idx" ON "app_notifications"("userId", "createdAt" DESC);
-    `);
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "app_notifications_targetPlan_createdAt_idx" ON "app_notifications"("targetPlan", "createdAt" DESC);
-    `);
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "workouts_userId_date_idx" ON "workouts"("userId", "date" DESC);
-    `);
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "calendar_events_userId_date_idx" ON "calendar_events"("userId", "date" DESC);
-    `);
-    console.log("💾 Schema incremental (app_notifications + índices) verificado com sucesso.");
-  } catch (err) {
-    console.warn("Schema auto-sync warning:", err);
-  }
-}
 
 // Garante apenas as contas explícitas de administrador no startup (sem correspondência parcial de substring)
 async function ensureAdminUser() {
