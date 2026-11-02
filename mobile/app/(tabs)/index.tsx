@@ -124,6 +124,17 @@ export default function HomeScreen() {
       const res = await apiService.get("/user/notifications");
       if (res && res.success && Array.isArray(res.notifications)) {
         setServerNotifications(res.notifications);
+        const latest = res.notifications[0];
+        if (latest && latest.id && !latest.isRead) {
+          const storageKey = "@sidekick:last_popped_notif_id";
+          const lastPoppedId = await AsyncStorage.getItem(storageKey);
+          if (lastPoppedId !== String(latest.id)) {
+            await AsyncStorage.setItem(storageKey, String(latest.id));
+            notificationService
+              .sendTestNotification(latest.title, latest.body)
+              .catch(() => {});
+          }
+        }
       }
     } catch (e) {
       console.log("[Notifications] fetch skipped:", e);
