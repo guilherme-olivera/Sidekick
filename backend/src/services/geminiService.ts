@@ -3,20 +3,38 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 const CANDIDATE_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-3.5-flash",
-  "gemini-3.7-flash",
-  "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
-  "gemini-flash-latest",
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
   "gemini-flash-lite-latest",
+  "gemini-flash-latest",
 ];
 
+const MODEL_CALL_TIMEOUT_MS = 12000;
+
+function withModelTimeout<T>(promise: Promise<T>, timeoutMs = MODEL_CALL_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Model timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    promise
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 // Helper to wrap API calls with automatic retry on Google 503 Service Unavailable / 429 Rate Limit
-async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 2, delay = 600): Promise<T> {
+async function callGeminiWithRetry<T>(fn: () => Promise<T>, retries = 1, delay = 400): Promise<T> {
   const startTime = Date.now();
   try {
-    const result = await fn();
+    const result = await withModelTimeout(fn(), MODEL_CALL_TIMEOUT_MS);
     const duration = Date.now() - startTime;
     console.log(`[GEMINI] ⚡ API call resolved in ${duration}ms`);
     return result;
