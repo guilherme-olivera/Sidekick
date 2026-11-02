@@ -11,12 +11,12 @@ const TAB_BAR_LEFT = (SCREEN_WIDTH - TAB_BAR_WIDTH) / 2;
 const DarkTheme = {
   dark: true,
   colors: {
-    primary: "#ff6b6b",
-    background: "#0a0a0a",
-    card: "#1a1a1a",
-    text: "#ffffff",
-    border: "#333333",
-    notification: "#ff6b6b",
+    primary: "#FF5A36",
+    background: "#0B0F17",
+    card: "#131924",
+    text: "#F8FAFC",
+    border: "#222B3B",
+    notification: "#FF5A36",
   },
 };
 
@@ -27,8 +27,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#ff6b6b",
-        tabBarInactiveTintColor: "#888888",
+        tabBarActiveTintColor: "#FF5A36",
+        tabBarInactiveTintColor: "#64748B",
         tabBarShowLabel: false,
         tabBarStyle: {
           position: "absolute",
@@ -37,17 +37,32 @@ export default function TabLayout() {
           right: 44,
           height: 56,
           borderRadius: 28,
-          backgroundColor: "rgba(18, 18, 22, 0.96)",
+          backgroundColor: "rgba(19, 25, 36, 0.96)",
           borderWidth: 1.5,
-          borderColor: "rgba(255, 107, 107, 0.35)",
+          borderColor: "rgba(255, 90, 54, 0.32)",
           borderTopWidth: 1.5,
-          borderTopColor: "rgba(255, 107, 107, 0.35)",
+          borderTopColor: "rgba(255, 90, 54, 0.32)",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.5,
           shadowRadius: 12,
           elevation: 12,
           paddingBottom: 0,
+          paddingTop: 0,
+        },
+        tabBarItemStyle: {
+          height: 53,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingVertical: 0,
+          margin: 0,
+        },
+        tabBarIconStyle: {
+          width: 40,
+          height: 40,
+          justifyContent: "center",
+          alignItems: "center",
+          margin: 0,
         },
         headerShown: false,
       }}
@@ -97,14 +112,13 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 10 : 0,
   },
   iconWrapperActive: {
-    backgroundColor: "rgba(255, 107, 107, 0.15)",
+    backgroundColor: "rgba(255, 90, 54, 0.18)",
   },
 });

@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   slowServerText: {
-    color: "#ffa94d",
+    color: "#F59E0B",
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   modalBtnConfirmText: {
-    color: "#0a0a0c",
+    color: "#0B0F17",
     fontSize: 14,
     fontWeight: "700",
   },

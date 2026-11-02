@@ -67,19 +67,20 @@ const getAvatarUri = (avatarPath?: string | null): string | undefined => {
 };
 
 const Colors = {
-  dark: "#0a0a0a",
-  darkCard: "#1a1a1a",
-  darkBorder: "#333333",
+  dark: "#0B0F17",
+  darkCard: "#131924",
+  darkBorder: "#222B3B",
   text: "#ffffff",
-  textSecondary: "#b0b0b0",
-  primary: "#ff6b6b",
-  success: "#51cf66",
-  warning: "#ffa94d",
+  textSecondary: "#94A3B8",
+  primary: "#FF5A36",
+  success: "#10B981",
+  warning: "#F59E0B",
   inactive: "#555555",
 };
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
 const DAY_NUMBERS = [1, 2, 3, 4, 5, 6, 0]; // Mapping DAYS to Date.getDay()
+let sessionBaselineTriggeredUserId: string | null = null;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -183,7 +184,43 @@ export default function HomeScreen() {
   const [chatInputText, setChatInputText] = useState("");
   const [chatIsTyping, setChatIsTyping] = useState(false);
   const [chatSuggestions, setChatSuggestions] = useState<string[]>([]);
+  const [chatKeyboardHeight, setChatKeyboardHeight] = useState(0);
   const chatFlatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setChatKeyboardHeight(e.endCoordinates?.height || 0);
+      setTimeout(() => {
+        chatFlatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setChatKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const renderFormattedChatText = (rawText?: string | null) => {
+    if (!rawText) return null;
+    const parts = String(rawText).split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+        return (
+          <Text key={idx} style={{ fontWeight: "800", color: "#ffffff" }}>
+            {part.slice(2, -2)}
+          </Text>
+        );
+      }
+      return <Text key={idx}>{part}</Text>;
+    });
+  };
   const templateScrollRef = useRef<ScrollView>(null);
   const indexModalScrollRef = useRef<ScrollView>(null);
 
@@ -726,11 +763,18 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const checkAndTriggerBaseline = async () => {
-      if (isStravaConnected && !isLoading) {
+      if (
+        user?.id &&
+        user?.profile?.isConfigured &&
+        isStravaConnected &&
+        !isLoading &&
+        sessionBaselineTriggeredUserId !== user.id
+      ) {
+        sessionBaselineTriggeredUserId = user.id;
         try {
           const res = await apiService.get("/user/history-analysis");
           if (res && res.success && !res.analysis) {
-            // No history analysis yet! Trigger baseline generation
+            // No history analysis yet! Trigger baseline generation once per session
             triggerBaselineGeneration();
           }
         } catch (e) {
@@ -739,7 +783,7 @@ export default function HomeScreen() {
       }
     };
     checkAndTriggerBaseline();
-  }, [isStravaConnected, isLoading]);
+  }, [user?.id, user?.profile?.isConfigured, isStravaConnected, isLoading]);
 
   const handleCloseNewConquestsModal = async () => {
     setNewConquestsModalVisible(false);
@@ -752,7 +796,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const checkNewAchievements = async () => {
-      if (isStravaConnected && !isLoading && !baselineModalVisible) {
+      if (user?.profile?.isConfigured && isStravaConnected && !isLoading && !baselineModalVisible) {
         try {
           const res = await apiService.get("/user/achievements/new");
           if (res && res.success && res.newConquests && res.newConquests.length > 0) {
@@ -765,7 +809,7 @@ export default function HomeScreen() {
       }
     };
     checkNewAchievements();
-  }, [isStravaConnected, isLoading, baselineModalVisible]);
+  }, [user?.profile?.isConfigured, isStravaConnected, isLoading, baselineModalVisible]);
 
   const handleMoodSelect = async (moodId: string, emoji: string) => {
     await setMood(moodId, emoji);
@@ -966,7 +1010,9 @@ export default function HomeScreen() {
         {/* Header Welcome */}
         <View style={styles.headerContainer}>
           <View style={styles.headerTextGroup}>
-            <Text style={styles.greeting}>Olá, {user?.name}! 👋</Text>
+            <Text style={styles.greeting} numberOfLines={1}>
+              Olá, {user?.name?.trim().split(" ")[0] || "Atleta"}! 👋
+            </Text>
             <Text style={styles.subtitle}>Bem-vindo ao seu Dashboard</Text>
           </View>
           <TouchableOpacity
@@ -991,7 +1037,7 @@ export default function HomeScreen() {
         {user?.readiness && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>🔋 ATHLETIC READINESS</Text>
+              <Text style={styles.sectionTitle}>🔋 PRONTIDÃO ATLÉTICA</Text>
             </View>
             <View style={styles.readinessCardNew}>
               <TouchableOpacity 
@@ -1005,17 +1051,28 @@ export default function HomeScreen() {
                 {/* Circular Gauge Arc on Left */}
                 <View style={{ alignItems: "center", width: 110 }}>
                   <View style={styles.readinessGaugeContainer}>
-                    <View style={styles.readinessGaugeBackground} />
-                    <View 
-                      style={[
-                        styles.readinessGaugeActiveArc,
-                        {
-                          borderLeftColor: user.readiness.score >= 35 ? user.readiness.color : "transparent",
-                          borderTopColor: user.readiness.score >= 65 ? user.readiness.color : "transparent",
-                          borderRightColor: user.readiness.score >= 85 ? user.readiness.color : "transparent",
-                        }
-                      ]} 
-                    />
+                    <Svg width={88} height={88} viewBox="0 0 88 88" style={{ position: "absolute" }}>
+                      <Circle
+                        cx={44}
+                        cy={44}
+                        r={36}
+                        stroke="rgba(255, 255, 255, 0.08)"
+                        strokeWidth={8}
+                        fill="none"
+                      />
+                      <Circle
+                        cx={44}
+                        cy={44}
+                        r={36}
+                        stroke={user.readiness.color || Colors.primary}
+                        strokeWidth={8}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 36}`}
+                        strokeDashoffset={`${2 * Math.PI * 36 * (1 - Math.max(0.08, Math.min(100, user.readiness.score || 0) / 100))}`}
+                        transform="rotate(-90 44 44)"
+                      />
+                    </Svg>
                     <View style={styles.readinessGaugeValueContainer}>
                       <Text style={styles.readinessGaugeScore}>{user.readiness.score}</Text>
                       <Text style={styles.readinessGaugeOutOf}>/ 100</Text>
@@ -1040,7 +1097,17 @@ export default function HomeScreen() {
                       styles.readinessSubVal,
                       { color: user.readiness.score >= 80 ? Colors.success : user.readiness.score >= 60 ? Colors.warning : Colors.primary }
                     ]}>
-                      {currentMood ? currentMood.toUpperCase() : "NORMAL"}
+                      {currentMood === "happy"
+                        ? "EXCELENTE"
+                        : currentMood === "normal"
+                        ? "NORMAL"
+                        : currentMood === "sad"
+                        ? "NEUTRO"
+                        : currentMood === "tired"
+                        ? "CANSADO"
+                        : currentMood === "sick"
+                        ? "ESGOTADO"
+                        : "NORMAL"}
                     </Text>
                   </View>
                   <View style={styles.readinessSubBox}>
@@ -1065,7 +1132,7 @@ export default function HomeScreen() {
                 const acwrInfo = user.readiness.acwr || {
                   ratio: "0.00",
                   label: "Adaptação Ótima (Seguro)",
-                  color: "#51cf66",
+                  color: "#10B981",
                 };
                 return (
                   <View style={{
@@ -1119,11 +1186,11 @@ export default function HomeScreen() {
                 <Text style={styles.telemetryActivityName}>Distância (km) por dia</Text>
                 <View style={styles.telemetryBullets}>
                   <View style={styles.bulletItem}>
-                    <View style={[styles.bulletCircle, { backgroundColor: "#ff6b6b" }]} />
+                    <View style={[styles.bulletCircle, { backgroundColor: "#FF5A36" }]} />
                     <Text style={styles.bulletText}>Esta semana: {volumeData.thisWeekTotalStr}</Text>
                   </View>
                   <View style={styles.bulletItem}>
-                    <View style={[styles.bulletCircle, { backgroundColor: "#a0a0b0" }]} />
+                    <View style={[styles.bulletCircle, { backgroundColor: "#94A3B8" }]} />
                     <Text style={styles.bulletText}>Anterior: {volumeData.lastWeekTotalStr}</Text>
                   </View>
                 </View>
@@ -1134,34 +1201,34 @@ export default function HomeScreen() {
                 <Svg width="100%" height="130" viewBox="0 0 700 130" style={styles.svgCanvas}>
                   <Defs>
                     <LinearGradient id="coralGradient" x1="0" y1="0" x2="0" y2="1">
-                      <Stop offset="0%" stopColor="#ff6b6b" stopOpacity="0.25" />
-                      <Stop offset="100%" stopColor="#ff6b6b" stopOpacity="0.0" />
+                      <Stop offset="0%" stopColor="#FF5A36" stopOpacity="0.25" />
+                      <Stop offset="100%" stopColor="#FF5A36" stopOpacity="0.0" />
                     </LinearGradient>
                     <LinearGradient id="greyGradient" x1="0" y1="0" x2="0" y2="1">
-                      <Stop offset="0%" stopColor="#a0a0b0" stopOpacity="0.15" />
-                      <Stop offset="100%" stopColor="#a0a0b0" stopOpacity="0.0" />
+                      <Stop offset="0%" stopColor="#94A3B8" stopOpacity="0.15" />
+                      <Stop offset="100%" stopColor="#94A3B8" stopOpacity="0.0" />
                     </LinearGradient>
                   </Defs>
 
                   {/* Horizontal gridlines */}
-                  <Line x1="50" y1="15" x2="650" y2="15" stroke="#22222b" strokeWidth="1" />
-                  <Line x1="50" y1="41.6" x2="650" y2="41.6" stroke="#22222b" strokeWidth="1" />
-                  <Line x1="50" y1="68.3" x2="650" y2="68.3" stroke="#22222b" strokeWidth="1" />
-                  <Line x1="50" y1="95" x2="650" y2="95" stroke="#22222b" strokeWidth="1" />
+                  <Line x1="50" y1="15" x2="650" y2="15" stroke="#1E293B" strokeWidth="1" />
+                  <Line x1="50" y1="41.6" x2="650" y2="41.6" stroke="#1E293B" strokeWidth="1" />
+                  <Line x1="50" y1="68.3" x2="650" y2="68.3" stroke="#1E293B" strokeWidth="1" />
+                  <Line x1="50" y1="95" x2="650" y2="95" stroke="#1E293B" strokeWidth="1" />
 
                   {/* Y Axis Labels */}
-                  <SvgText x="42" y="18" fill="#a0a0b0" fontSize="10" fontWeight="600" textAnchor="end">{volumeData.yLabels[0]}</SvgText>
-                  <SvgText x="42" y="44.6" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[1]}</SvgText>
-                  <SvgText x="42" y="71.3" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[2]}</SvgText>
-                  <SvgText x="42" y="98" fill="#a0a0b0" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[3]}</SvgText>
+                  <SvgText x="42" y="18" fill="#94A3B8" fontSize="10" fontWeight="600" textAnchor="end">{volumeData.yLabels[0]}</SvgText>
+                  <SvgText x="42" y="44.6" fill="#94A3B8" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[1]}</SvgText>
+                  <SvgText x="42" y="71.3" fill="#94A3B8" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[2]}</SvgText>
+                  <SvgText x="42" y="98" fill="#94A3B8" fontSize="9" fontWeight="600" textAnchor="end">{volumeData.yLabels[3]}</SvgText>
 
                   {/* Fills under path */}
                   <Path d={volumeData.lastWeekArea} fill="url(#greyGradient)" />
                   <Path d={volumeData.coralArea} fill="url(#coralGradient)" />
 
                   {/* Comparative line paths */}
-                  <Path d={volumeData.lastWeekPath} fill="none" stroke="#a0a0b0" strokeWidth="2.5" strokeDasharray="3 3" />
-                  <Path d={volumeData.coralPath} fill="none" stroke="#ff6b6b" strokeWidth="3" />
+                  <Path d={volumeData.lastWeekPath} fill="none" stroke="#94A3B8" strokeWidth="2.5" strokeDasharray="3 3" />
+                  <Path d={volumeData.coralPath} fill="none" stroke="#FF5A36" strokeWidth="3" />
 
                   {/* Column highlight for selected day */}
                   {selectedSplitIndex !== null && (
@@ -1170,7 +1237,7 @@ export default function HomeScreen() {
                       y="10"
                       width="90"
                       height="90"
-                      fill="rgba(255, 107, 107, 0.22)"
+                      fill="rgba(255, 90, 54, 0.22)"
                       rx="6"
                     />
                   )}
@@ -1182,8 +1249,8 @@ export default function HomeScreen() {
                       cx={pt.x.toFixed(1)} 
                       cy={pt.y.toFixed(1)} 
                       r={selectedSplitIndex === i ? "6" : "4"}
-                      fill={selectedSplitIndex === i ? "#ffffff" : "#a0a0b0"} 
-                      stroke="#1a1a1a" 
+                      fill={selectedSplitIndex === i ? "#ffffff" : "#94A3B8"} 
+                      stroke="#131924" 
                       strokeWidth="1.5" 
                     />
                   ))}
@@ -1194,8 +1261,8 @@ export default function HomeScreen() {
                       cx={pt.x.toFixed(1)} 
                       cy={pt.y.toFixed(1)} 
                       r={selectedSplitIndex === i ? "7" : "5"}
-                      fill={selectedSplitIndex === i ? "#ffffff" : "#ff6b6b"} 
-                      stroke="#1a1a1a" 
+                      fill={selectedSplitIndex === i ? "#ffffff" : "#FF5A36"} 
+                      stroke="#131924" 
                       strokeWidth="1.5" 
                     />
                   ))}
@@ -1209,7 +1276,7 @@ export default function HomeScreen() {
                         key={`x-${idx}`}
                         x={x.toFixed(1)}
                         y="118"
-                        fill={isSelected ? "#ff6b6b" : "#a0a0b0"}
+                        fill={isSelected ? "#FF5A36" : "#94A3B8"}
                         fontSize={isSelected ? "11" : "10"}
                         fontWeight={isSelected ? "900" : "600"}
                         textAnchor="middle"
@@ -1250,14 +1317,14 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                     <Text style={styles.chartTooltipText}>
-                      Esta semana: <Text style={{ color: "#ff6b6b", fontWeight: "800" }}>{volumeData.thisWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>  •  Anterior: <Text style={{ color: "#a0a0b0", fontWeight: "800" }}>{volumeData.lastWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>
+                      Esta semana: <Text style={{ color: "#FF5A36", fontWeight: "800" }}>{volumeData.thisWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>  •  Anterior: <Text style={{ color: "#94A3B8", fontWeight: "800" }}>{volumeData.lastWeekDaily[selectedSplitIndex].toFixed(1)} km</Text>
                       {"\n"}
                       Diferença: <Text style={{ color: (volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? Colors.success : Colors.warning, fontWeight: "800" }}>
                         {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]) >= 0 ? "+" : ""}
                         {(volumeData.thisWeekDaily[selectedSplitIndex] - volumeData.lastWeekDaily[selectedSplitIndex]).toFixed(1)} km
                       </Text>
                       {volumeData.thisWeekDaily[selectedSplitIndex] === 0 && volumeData.lastWeekDaily[selectedSplitIndex] === 0 && (
-                        <Text style={{ color: "#888899", fontSize: 10, fontStyle: "italic" }}>  (Dia de Descanso / Sem Treinos)</Text>
+                        <Text style={{ color: "#64748B", fontSize: 10, fontStyle: "italic" }}>  (Dia de Descanso / Sem Treinos)</Text>
                       )}
                     </Text>
                   </TouchableOpacity>
@@ -1275,7 +1342,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
             <Text style={styles.sectionTitle}>⏱️ PREVISÕES DE DESEMPENHO</Text>
-            <Text style={{ fontSize: 11, color: "#888888", fontStyle: "italic" }}>Projeção Riegel</Text>
+            <Text style={{ fontSize: 11, color: "#64748B", fontStyle: "italic" }}>Projeção Riegel</Text>
           </View>
           
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, width: "100%" }}>
@@ -1298,10 +1365,10 @@ export default function HomeScreen() {
                   key={key}
                   style={{
                     flex: 1,
-                    minWidth: 120,
-                    backgroundColor: "#16161a",
+                    minWidth: "46%",
+                    backgroundColor: "#131924",
                     borderRadius: 14,
-                    padding: 12,
+                    padding: 13,
                     borderWidth: 1,
                     borderColor: "rgba(255, 255, 255, 0.08)",
                   }}
@@ -1311,9 +1378,9 @@ export default function HomeScreen() {
                       paddingHorizontal: 7,
                       paddingVertical: 2,
                       borderRadius: 6,
-                      backgroundColor: "rgba(255, 107, 107, 0.15)",
+                      backgroundColor: "rgba(255, 90, 54, 0.15)",
                       borderWidth: 1,
-                      borderColor: "rgba(255, 107, 107, 0.3)",
+                      borderColor: "rgba(255, 90, 54, 0.3)",
                     }}>
                       <Text style={{ fontSize: 10, fontWeight: "900", color: Colors.primary }}>{label}</Text>
                     </View>
@@ -1333,7 +1400,7 @@ export default function HomeScreen() {
                     {time}
                   </Text>
 
-                  <Text style={{ fontSize: 10, color: "#888888", fontWeight: "500" }}>
+                  <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "500" }}>
                     {pace}
                   </Text>
                 </View>
@@ -1467,7 +1534,7 @@ export default function HomeScreen() {
                         onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
                         style={{ marginRight: 20, padding: 5 }}
                       >
-                        <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
+                        <FontAwesome name="share-alt" size={20} color="#FF5A36" />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => setSelectedWorkoutIdForDetail(null)} style={{ padding: 5 }}>
                         <Text style={styles.modalCloseButton}>✕</Text>
@@ -1488,7 +1555,7 @@ export default function HomeScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
                         <TouchableOpacity onPress={() => setEffortModalVisible(false)} style={{ padding: 5 }}>
-                          <Text style={{ color: '#b0b0b0', fontSize: 18 }}>✕</Text>
+                          <Text style={{ color: '#94A3B8', fontSize: 18 }}>✕</Text>
                         </TouchableOpacity>
                       </View>
                       <Text style={styles.effortModalSubtitle}>
@@ -1572,10 +1639,10 @@ export default function HomeScreen() {
                               {
                                 color:
                                   selectedWorkoutDetail.intensity === "high"
-                                    ? "#ff6b6b"
+                                    ? "#FF5A36"
                                     : selectedWorkoutDetail.intensity === "moderate"
-                                    ? "#ffa94d"
-                                    : "#51cf66",
+                                    ? "#F59E0B"
+                                    : "#10B981",
                               },
                             ]}
                           >
@@ -1680,7 +1747,10 @@ export default function HomeScreen() {
                           <Text style={styles.modalIaTitle}>🧠 Análise do Sidekick (IA)</Text>
                           <View style={styles.modalNarrativeContainer}>
                             <Text style={styles.modalNarrativeText}>
-                              {selectedWorkoutDetail.aiNarrative}
+                              {renderFormattedChatText(selectedWorkoutDetail.aiNarrative)}
+                            </Text>
+                            <Text style={styles.aiDisclaimerText}>
+                              ⚠️ A IA pode cometer falhas. As análises têm caráter informativo e não substituem a orientação de um profissional de educação física ou médico.
                             </Text>
                           </View>
                         </View>
@@ -1771,11 +1841,11 @@ export default function HomeScreen() {
         <TouchableWithoutFeedback onPress={() => setReadinessInfoModalVisible(false)}>
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 20 }}>
             <TouchableWithoutFeedback>
-              <View style={{ backgroundColor: "#1a1a1a", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, borderWidth: 1, borderColor: "#333333" }}>
+              <View style={{ backgroundColor: "#131924", borderRadius: 20, padding: 24, width: "100%", maxWidth: 440, borderWidth: 1, borderColor: "#222B3B" }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                   <Text style={{ fontSize: 18, fontWeight: "bold", color: "#ffffff" }}>🔋 Entendendo sua Prontidão</Text>
                   <TouchableOpacity onPress={() => setReadinessInfoModalVisible(false)} style={{ padding: 4 }}>
-                    <FontAwesome name="times" size={20} color="#888888" />
+                    <FontAwesome name="times" size={20} color="#64748B" />
                   </TouchableOpacity>
                 </View>
                 
@@ -1784,8 +1854,8 @@ export default function HomeScreen() {
                     A <Text style={{ fontWeight: "bold", color: Colors.primary }}>Prontidão Atlética (Readiness Score)</Text> mede a capacidade de regeneração do seu corpo para encarar novos treinos sem risco de sobrecarga ou lesão.
                   </Text>
 
-                  <View style={{ backgroundColor: "#222222", borderRadius: 12, padding: 14, marginBottom: 12 }}>
-                    <Text style={{ fontSize: 13, fontWeight: "bold", color: "#51cf66", marginBottom: 6 }}>📈 Como é calculada?</Text>
+                  <View style={{ backgroundColor: "#182030", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "bold", color: "#10B981", marginBottom: 6 }}>📈 Como é calculada?</Text>
                     <Text style={{ fontSize: 12, color: "#bbbbbb", lineHeight: 18 }}>
                       • <Text style={{ color: "#ffffff", fontWeight: "600" }}>Status Diário / Disposição</Text>: Sua percepção de energia registrada no check-in diário.{"\n"}
                       • <Text style={{ color: "#ffffff", fontWeight: "600" }}>Fadiga Residual</Text>: O impacto dos treinos diminui exponencialmente ao longo de 96h.{"\n"}
@@ -1793,10 +1863,10 @@ export default function HomeScreen() {
                     </Text>
                   </View>
 
-                  <View style={{ backgroundColor: "#222222", borderRadius: 12, padding: 14, marginBottom: 12 }}>
-                    <Text style={{ fontSize: 13, fontWeight: "bold", color: "#ffa94d", marginBottom: 6 }}>⚖️ Índice ACWR (Risco de Lesão)</Text>
+                  <View style={{ backgroundColor: "#182030", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "bold", color: "#F59E0B", marginBottom: 6 }}>⚖️ Índice ACWR (Risco de Lesão)</Text>
                     <Text style={{ fontSize: 12, color: "#bbbbbb", lineHeight: 18 }}>
-                      Compara o volume da sua semana atual (Carga Aguda) com a média das últimas 4 semanas (Carga Crônica). O valor seguro fica entre <Text style={{ color: "#51cf66", fontWeight: "bold" }}>0.8 e 1.3</Text>.
+                      Compara o volume da sua semana atual (Carga Aguda) com a média das últimas 4 semanas (Carga Crônica). O valor seguro fica entre <Text style={{ color: "#10B981", fontWeight: "bold" }}>0.8 e 1.3</Text>.
                     </Text>
                   </View>
                 </ScrollView>
@@ -1965,7 +2035,7 @@ export default function HomeScreen() {
 
       {/* Modal: Baseline Welcome Narrative */}
       <Modal
-        visible={baselineModalVisible}
+        visible={baselineModalVisible && !!user?.profile?.isConfigured}
         animationType="fade"
         transparent={true}
         onRequestClose={() => {
@@ -2005,7 +2075,10 @@ export default function HomeScreen() {
                   </View>
 
                   <Text style={styles.baselineAnalysisBodyText}>
-                    {baselineAnalysisText}
+                    {renderFormattedChatText(baselineAnalysisText)}
+                  </Text>
+                  <Text style={styles.aiDisclaimerText}>
+                    ⚠️ A IA pode cometer falhas. Verifique informações importantes e consulte um profissional.
                   </Text>
                 </View>
               )}
@@ -2026,16 +2099,16 @@ export default function HomeScreen() {
 
       {/* Modal: New Achievements/PRs Congratulation */}
       <Modal
-        visible={newConquestsModalVisible}
+        visible={newConquestsModalVisible && !!user?.profile?.isConfigured}
         animationType="slide"
         transparent={true}
         onRequestClose={handleCloseNewConquestsModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '75%', borderColor: '#ffd70050', borderWidth: 1.5 }]}>
+          <View style={[styles.modalContent, { maxHeight: '75%', borderColor: '#F59E0B50', borderWidth: 1.5 }]}>
             {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: '#ffd700' }]}>🏆 NOVO RECORDE PESSOAL!</Text>
+              <Text style={[styles.modalTitle, { color: '#F59E0B' }]}>🏆 NOVO RECORDE PESSOAL!</Text>
               <TouchableOpacity onPress={handleCloseNewConquestsModal} style={{ padding: 5 }}>
                 <Text style={styles.modalCloseButton}>✕</Text>
               </TouchableOpacity>
@@ -2050,7 +2123,7 @@ export default function HomeScreen() {
               </View>
 
               {newAchievements.map((item, idx) => {
-                const badgeColor = item.rank === 1 ? '#ffd700' : item.rank === 2 ? '#e0e0e0' : '#cd7f32';
+                const badgeColor = item.rank === 1 ? '#F59E0B' : item.rank === 2 ? '#e0e0e0' : '#cd7f32';
                 const badgeLabel = item.rank === 1 ? "Ouro 🥇" : item.rank === 2 ? "Prata 🥈" : "Bronze 🥉";
                 return (
                   <View key={idx} style={[styles.newConquestCard, { borderColor: badgeColor + '30' }]}>
@@ -2087,7 +2160,7 @@ export default function HomeScreen() {
 
       {/* Modal: Daily Mood Check popover */}
       <Modal
-        visible={currentMood === undefined && !dismissedMoodModal && !isLoading && !baselineModalVisible && !newConquestsModalVisible}
+        visible={!!user && !!user?.profile?.isConfigured && currentMood === undefined && !dismissedMoodModal && !isLoading && !baselineModalVisible && !newConquestsModalVisible}
         animationType="fade"
         transparent={true}
         onRequestClose={() => setDismissedMoodModal(true)}
@@ -2146,14 +2219,29 @@ export default function HomeScreen() {
         visible={chatModalVisible}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent={true}
         onRequestClose={() => setChatModalVisible(false)}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          enabled={Platform.OS === "ios"}
         >
           <View style={styles.chatModalOverlay}>
-            <View style={styles.chatModalContent}>
+            <View
+              style={[
+                styles.chatModalContent,
+                {
+                  height: chatKeyboardHeight > 0 ? "94%" : "86%",
+                  paddingBottom:
+                    Platform.OS === "android"
+                      ? chatKeyboardHeight > 0
+                        ? chatKeyboardHeight + 18
+                        : Math.max(insets.bottom + 24, 52)
+                      : Math.max(insets.bottom + 16, 36),
+                },
+              ]}
+            >
               {/* Chat Header */}
               <View style={styles.chatModalHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -2185,7 +2273,8 @@ export default function HomeScreen() {
                 data={chatMessages}
                 keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingVertical: 10 }}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingVertical: 10, paddingBottom: 16 }}
                 renderItem={({ item }) => {
                   const isUser = item.sender === "user";
                   return (
@@ -2198,7 +2287,9 @@ export default function HomeScreen() {
                         </View>
                       )}
                       <View style={[styles.chatMsgBubble, isUser ? styles.chatMsgUserBubble : styles.chatMsgBotBubble]}>
-                        <Text style={styles.chatMsgText}>{item.text}</Text>
+                        <Text style={styles.chatMsgText}>
+                          {renderFormattedChatText(item.text)}
+                        </Text>
                         <Text style={styles.chatMsgTime}>{item.timestamp}</Text>
                       </View>
                     </View>
@@ -2213,7 +2304,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <View style={[styles.chatMsgBubble, styles.chatMsgBotBubble, { paddingVertical: 8, paddingHorizontal: 12 }]}>
-                        <ActivityIndicator size="small" color="#ff6b6b" />
+                        <ActivityIndicator size="small" color="#FF5A36" />
                       </View>
                     </View>
                   ) : null
@@ -2240,20 +2331,20 @@ export default function HomeScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  backgroundColor: 'rgba(255, 107, 107, 0.15)',
+                  backgroundColor: 'rgba(255, 90, 54, 0.15)',
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                   borderRadius: 12,
                   marginBottom: 8,
                   borderWidth: 1,
-                  borderColor: 'rgba(255, 107, 107, 0.35)',
+                  borderColor: 'rgba(255, 90, 54, 0.35)',
                 }}>
-                  <Text style={{ fontSize: 11, color: '#ff6b6b', fontWeight: '700' }}>
+                  <Text style={{ fontSize: 11, color: '#FF5A36', fontWeight: '700' }}>
                     ⚠️ Falha no envio da mensagem
                   </Text>
                   <TouchableOpacity
                     style={{
-                      backgroundColor: '#ff6b6b',
+                      backgroundColor: '#FF5A36',
                       paddingHorizontal: 12,
                       paddingVertical: 5,
                       borderRadius: 8,
@@ -2281,6 +2372,11 @@ export default function HomeScreen() {
                   value={chatInputText}
                   onChangeText={setChatInputText}
                   multiline={false}
+                  onFocus={() => {
+                    setTimeout(() => {
+                      chatFlatListRef.current?.scrollToEnd({ animated: true });
+                    }, 180);
+                  }}
                   onSubmitEditing={() => handleSendChatMessage()}
                 />
                 <TouchableOpacity
@@ -2290,6 +2386,9 @@ export default function HomeScreen() {
                   <Text style={styles.chatSendButtonText}>➔</Text>
                 </TouchableOpacity>
               </View>
+              <Text style={styles.chatDisclaimerText}>
+                ⚠️ A IA pode cometer falhas. Consulte sempre um profissional de saúde ou educação física.
+              </Text>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -2411,8 +2510,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   moodBarOptionButtonSelected: {
-    backgroundColor: "rgba(255, 107, 107, 0.1)",
-    borderColor: "rgba(255, 107, 107, 0.3)",
+    backgroundColor: "rgba(255, 90, 54, 0.1)",
+    borderColor: "rgba(255, 90, 54, 0.3)",
   },
   moodBarOptionEmoji: {
     fontSize: 22,
@@ -2492,13 +2591,13 @@ const styles = StyleSheet.create({
   newConquestBadgeWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 215, 0, 0.05)",
+    backgroundColor: "rgba(245, 158, 11, 0.05)",
     borderRadius: 12,
     padding: 12,
     marginBottom: 20,
     gap: 12,
     borderWidth: 1,
-    borderColor: "rgba(255, 215, 0, 0.2)",
+    borderColor: "rgba(245, 158, 11, 0.2)",
   },
   newConquestMascotEmoji: {
     fontSize: 32,
@@ -2538,7 +2637,7 @@ const styles = StyleSheet.create({
   newConquestCardTime: {
     fontSize: 18,
     fontWeight: "900",
-    color: "#ffd700",
+    color: "#F59E0B",
   },
   newConquestCardWorkout: {
     fontSize: 11,
@@ -2830,9 +2929,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#1d1d1f",
+    borderBottomColor: "#1E293B",
     borderTopWidth: 1,
-    borderTopColor: "#1d1d1f",
+    borderTopColor: "#1E293B",
   },
   modalMetricCard: {
     width: "30%",
@@ -3144,7 +3243,7 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
     borderWidth: 8,
-    borderColor: "#22222b",
+    borderColor: "#1E293B",
     borderBottomColor: "transparent",
     transform: [{ rotate: "-135deg" }],
   },
@@ -3188,7 +3287,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#161622",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
   },
   infoButtonText: {
     fontSize: 12,
@@ -3272,7 +3371,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#222",
+    borderTopColor: "#182030",
     alignItems: "center",
     width: "100%",
   },
@@ -3284,16 +3383,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     gap: 8,
   },
   chartTooltipLabel: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 11,
     fontWeight: "800",
     textTransform: "uppercase",
     borderRightWidth: 1,
-    borderRightColor: "#333",
+    borderRightColor: "#222B3B",
     paddingRight: 8,
   },
   chartTooltipText: {
@@ -3416,7 +3515,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   effortModalButtonTextConfirm: {
-    color: "#0a0a0a",
+    color: "#0B0F17",
     fontSize: 14,
     fontWeight: "700",
   },
@@ -3504,7 +3603,7 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   carouselSelectorArrowText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -3526,7 +3625,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#444",
   },
   carouselDotActive: {
-    backgroundColor: "#ff6b6b",
+    backgroundColor: "#FF5A36",
     width: 16,
   },
 
@@ -3570,7 +3669,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   classicPRBadge: {
-    backgroundColor: "#ffd700",
+    backgroundColor: "#F59E0B",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -3587,7 +3686,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cleanPRBadge: {
-    backgroundColor: "#ffd700",
+    backgroundColor: "#F59E0B",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
@@ -3662,7 +3761,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#0d0d12",
     borderWidth: 1,
-    borderColor: "#222",
+    borderColor: "#182030",
     justifyContent: "space-between",
   },
   cleanHeader: {
@@ -3677,7 +3776,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   cleanBadge: {
-    backgroundColor: "#333",
+    backgroundColor: "#222B3B",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
@@ -3697,13 +3796,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   cleanStatVal: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 54,
     fontWeight: "900",
     lineHeight: 58,
   },
   cleanStatLbl: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 2,
@@ -3885,12 +3984,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -2,
     right: -2,
-    backgroundColor: "#111",
+    backgroundColor: "#0E131D",
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -4047,5 +4146,22 @@ const styles = StyleSheet.create({
     color: Colors.dark,
     fontSize: 18,
     fontWeight: "700",
+  },
+  chatDisclaimerText: {
+    color: "#64748B",
+    fontSize: 10.5,
+    textAlign: "center",
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+  aiDisclaimerText: {
+    color: "#64748B",
+    fontSize: 10.5,
+    fontStyle: "italic",
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.08)",
+    lineHeight: 15,
   },
 });

@@ -36,6 +36,21 @@ const formatPace = (speedKmH: number | null | undefined) => {
   return `${minutes}:${secondsStr} /km`;
 };
 
+const renderFormattedAiText = (text: string) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <Text key={idx} style={{ fontWeight: "800", color: "#ffffff" }}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    return part;
+  });
+};
+
 export default function CalendarScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -396,7 +411,7 @@ export default function CalendarScreen() {
                             </View>
                             <Text style={[
                               styles.eventSource,
-                              event.isWorkout ? { color: "#51cf66" } : { color: "#ff922b" }
+                              event.isWorkout ? { color: "#10B981" } : { color: "#ff922b" }
                             ]}>
                               {event.isWorkout ? "Treino" : "Lembrete"}
                             </Text>
@@ -513,7 +528,7 @@ export default function CalendarScreen() {
                         onPress={() => handleGenerateShareCard(selectedWorkoutDetail)} 
                         style={{ marginRight: 20, padding: 5 }}
                       >
-                        <FontAwesome name="share-alt" size={20} color="#ff6b6b" />
+                        <FontAwesome name="share-alt" size={20} color="#FF5A36" />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={handleCloseDetailModal} style={{ padding: 5 }}>
                         <Text style={styles.workoutModalCloseButton}>✕</Text>
@@ -534,7 +549,7 @@ export default function CalendarScreen() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                           <Text style={styles.effortModalTitle}>Como foi o seu treino? 🤔</Text>
                           <TouchableOpacity onPress={() => setEffortModalVisible(false)} style={{ padding: 5 }}>
-                            <Text style={{ color: '#b0b0b0', fontSize: 18 }}>✕</Text>
+                            <Text style={{ color: '#94A3B8', fontSize: 18 }}>✕</Text>
                           </TouchableOpacity>
                         </View>
                         <Text style={styles.effortModalSubtitle}>
@@ -627,10 +642,10 @@ export default function CalendarScreen() {
                               {
                                 color:
                                   selectedWorkoutDetail.intensity === "high"
-                                    ? "#ff6b6b"
+                                    ? "#FF5A36"
                                     : selectedWorkoutDetail.intensity === "moderate"
-                                    ? "#ffa94d"
-                                    : "#51cf66",
+                                    ? "#F59E0B"
+                                    : "#10B981",
                               },
                             ]}
                           >
@@ -730,23 +745,37 @@ export default function CalendarScreen() {
                               style={{
                                 flexDirection: "row",
                                 alignItems: "center",
-                                backgroundColor: "#222",
+                                backgroundColor: "#182030",
                                 paddingHorizontal: 12,
                                 paddingVertical: 6,
                                 borderRadius: 12,
                                 borderWidth: 1,
-                                borderColor: "#333",
+                                borderColor: "#222B3B",
                               }}
                               onPress={() => handleToggleSpeech(selectedWorkoutDetail.aiNarrative!)}
                             >
-                              <Text style={{ color: "#ff6b6b", fontSize: 13, fontWeight: "700" }}>
+                              <Text style={{ color: "#FF5A36", fontSize: 13, fontWeight: "700" }}>
                                 {isSpeaking ? "⏹️ Parar" : "🔊 Ouvir"}
                               </Text>
                             </TouchableOpacity>
                           </View>
                           <View style={styles.workoutModalNarrativeContainer}>
                             <Text style={styles.workoutModalNarrativeText}>
-                              {selectedWorkoutDetail.aiNarrative}
+                              {renderFormattedAiText(selectedWorkoutDetail.aiNarrative)}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 10.5,
+                                color: "#64748B",
+                                fontStyle: "italic",
+                                marginTop: 12,
+                                paddingTop: 8,
+                                borderTopWidth: 1,
+                                borderTopColor: "rgba(255, 255, 255, 0.08)",
+                                lineHeight: 15,
+                              }}
+                            >
+                              ⚠️ A IA pode cometer falhas. As análises têm caráter informativo e não substituem a orientação de um profissional de educação física ou médico.
                             </Text>
                           </View>
                         </View>
@@ -770,11 +799,11 @@ export default function CalendarScreen() {
             ) : (
               <View style={{ padding: 24, alignItems: 'center' }}>
                 <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Treino não encontrado</Text>
-                <Text style={{ color: '#b0b0b0', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>
+                <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>
                   Não foi possível carregar as informações deste treino.
                 </Text>
-                <TouchableOpacity onPress={handleCloseDetailModal} style={{ backgroundColor: '#ff6b6b', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
-                  <Text style={{ color: '#0a0a0a', fontWeight: '800' }}>Fechar ✕</Text>
+                <TouchableOpacity onPress={handleCloseDetailModal} style={{ backgroundColor: '#FF5A36', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+                  <Text style={{ color: '#0B0F17', fontWeight: '800' }}>Fechar ✕</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -795,7 +824,7 @@ export default function CalendarScreen() {
             <View style={styles.shareModalHeader}>
               <Text style={styles.shareModalTitle}>Visualização dos Stories</Text>
               <TouchableOpacity onPress={() => setShareCardVisible(false)}>
-                <Text style={{ color: "#b0b0b0", fontSize: 22 }}>✕</Text>
+                <Text style={{ color: "#94A3B8", fontSize: 22 }}>✕</Text>
               </TouchableOpacity>
             </View>
 
@@ -894,7 +923,7 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
   },
   header: {
     paddingHorizontal: 16,
@@ -914,7 +943,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "92%",
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
@@ -932,15 +961,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   modalSubtitle: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 12,
   },
   closeIcon: {
     fontSize: 22,
-    color: "#ff6b6b",
+    color: "#FF5A36",
   },
   input: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     color: "#fff",
     padding: 12,
     borderRadius: 8,
@@ -960,18 +989,18 @@ const styles = StyleSheet.create({
   },
   typePicker: {
     paddingVertical: 8,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#222",
+    borderColor: "#182030",
   },
   typeOption: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 12,
     marginBottom: 4,
   },
   typeOptionActive: {
-    color: "#51cf66",
+    color: "#10B981",
   },
   modalActions: {
     flexDirection: "row",
@@ -981,9 +1010,9 @@ const styles = StyleSheet.create({
   eventList: {
     marginBottom: 12,
     borderRadius: 12,
-    backgroundColor: "#0f1411",
+    backgroundColor: "#0E131D",
     borderWidth: 1,
-    borderColor: "#223225",
+    borderColor: "#222B3B",
     padding: 8,
   },
   eventRow: {
@@ -992,7 +1021,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     marginBottom: 8,
-    backgroundColor: "#171f1a",
+    backgroundColor: "#182030",
     borderRadius: 10,
   },
   eventTitle: {
@@ -1002,7 +1031,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   eventSubtitle: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 12,
     marginBottom: 4,
     maxWidth: 180,
@@ -1013,11 +1042,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   eventMeta: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 12,
   },
   emptyText: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     marginBottom: 12,
   },
   sectionLabel: {
@@ -1027,7 +1056,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   saveButton: {
-    backgroundColor: "#51cf66",
+    backgroundColor: "#10B981",
     padding: 14,
     borderRadius: 10,
     flex: 1,
@@ -1048,11 +1077,11 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   cancelText: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontWeight: "700",
   },
   deleteButton: {
-    backgroundColor: "#ff6b6b",
+    backgroundColor: "#FF5A36",
     padding: 12,
     borderRadius: 8,
   },
@@ -1068,7 +1097,7 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   smallWorkoutDot: {
-    backgroundColor: "#51cf66",
+    backgroundColor: "#10B981",
   },
   smallReminderDot: {
     backgroundColor: "#ff922b",
@@ -1079,7 +1108,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   workoutModalContent: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 20,
@@ -1087,7 +1116,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     maxHeight: "85%",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
   },
   workoutModalHeader: {
     flexDirection: "row",
@@ -1106,12 +1135,12 @@ const styles = StyleSheet.create({
   },
   workoutModalSubtitle: {
     fontSize: 12,
-    color: "#b0b0b0",
+    color: "#94A3B8",
     textTransform: 'capitalize',
   },
   workoutModalCloseButton: {
     fontSize: 24,
-    color: "#b0b0b0",
+    color: "#94A3B8",
     padding: 4,
   },
   workoutModalScroll: {
@@ -1123,7 +1152,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   workoutIntensityLabelDetail: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 14,
     marginRight: 8,
   },
@@ -1143,9 +1172,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#1d1d1f",
+    borderBottomColor: "#1E293B",
     borderTopWidth: 1,
-    borderTopColor: "#1d1d1f",
+    borderTopColor: "#1E293B",
   },
   workoutModalMetricCard: {
     width: "30%",
@@ -1164,7 +1193,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   workoutModalMetricSubLabel: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 8,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -1175,7 +1204,7 @@ const styles = StyleSheet.create({
   workoutModalIaSection: {
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#333",
+    borderTopColor: "#222B3B",
     paddingTop: 16,
   },
   workoutModalIaTitle: {
@@ -1185,36 +1214,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   workoutModalNarrativeContainer: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderLeftWidth: 3,
-    borderLeftColor: "#ff6b6b",
+    borderLeftColor: "#FF5A36",
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 8,
     marginBottom: 16,
   },
   workoutModalNarrativeText: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 14,
     lineHeight: 20,
   },
   workoutModalIaEmpty: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     borderStyle: "dashed",
   },
   workoutModalIaEmptyText: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 13,
     textAlign: "center",
   },
   workoutModalAnalyzeButton: {
-    backgroundColor: "#ff6b6b",
+    backgroundColor: "#FF5A36",
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
@@ -1232,14 +1261,14 @@ const styles = StyleSheet.create({
   workoutModalCloseAction: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     borderRadius: 10,
     paddingVertical: 12,
     marginTop: 16,
     alignItems: "center",
   },
   workoutModalCloseActionText: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -1251,10 +1280,10 @@ const styles = StyleSheet.create({
   },
   effortModalContent: {
     width: "90%",
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     padding: 20,
   },
   effortModalTitle: {
@@ -1265,7 +1294,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   effortModalSubtitle: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 13,
     lineHeight: 18,
     marginBottom: 20,
@@ -1285,16 +1314,16 @@ const styles = StyleSheet.create({
   },
   effortRatingButton: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
     marginHorizontal: 3,
   },
   effortRatingButtonActive: {
-    borderColor: "#ff6b6b",
+    borderColor: "#FF5A36",
     backgroundColor: "#2a1f1f",
   },
   effortRatingEmoji: {
@@ -1307,16 +1336,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   effortRatingDesc: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
     marginBottom: 12,
   },
   effortInput: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1340,33 +1369,33 @@ const styles = StyleSheet.create({
   effortModalButtonCancel: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     marginRight: 8,
   },
   effortModalButtonConfirm: {
-    backgroundColor: "#ff6b6b",
+    backgroundColor: "#FF5A36",
   },
   effortModalButtonTextCancel: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 14,
     fontWeight: "600",
   },
   effortModalButtonTextConfirm: {
-    color: "#0a0a0a",
+    color: "#0B0F17",
     fontSize: 14,
     fontWeight: "700",
   },
   inputLabel: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 6,
     marginTop: 12,
   },
   workoutModalShareStoriesButton: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
@@ -1385,10 +1414,10 @@ const styles = StyleSheet.create({
   },
   shareModalContent: {
     width: "95%",
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     padding: 16,
     maxHeight: "90%",
   },
@@ -1398,7 +1427,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "#222B3B",
     paddingBottom: 10,
   },
   shareModalTitle: {
@@ -1409,10 +1438,10 @@ const styles = StyleSheet.create({
   storiesCardFrame: {
     width: 290,
     height: 480,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: "#ff6b6b",
+    borderColor: "#FF5A36",
     padding: 20,
     justifyContent: "space-between",
     position: "relative",
@@ -1430,7 +1459,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   storiesCardWatermark: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 10.5,
     opacity: 0.5,
   },
@@ -1444,9 +1473,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderWidth: 1,
-    borderColor: "#ff6b6b",
+    borderColor: "#FF5A36",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1459,15 +1488,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   storiesCompanionSub: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 11,
   },
   storiesSpeechBubble: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     marginTop: 15,
     flex: 1,
     justifyContent: "center",
@@ -1480,21 +1509,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   storiesWorkoutBox: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     marginTop: 16,
     opacity: 0.95,
   },
   storiesWorkoutTitle: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 14,
     fontWeight: "700",
   },
   storiesWorkoutDate: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 10.5,
     marginBottom: 10,
   },
@@ -1506,7 +1535,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   storiesStatLabel: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     fontSize: 10,
   },
   storiesStatValue: {
@@ -1515,7 +1544,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   shareSaveButton: {
-    backgroundColor: "#ff6b6b",
+    backgroundColor: "#FF5A36",
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1524,17 +1553,17 @@ const styles = StyleSheet.create({
     width: 290,
   },
   shareSaveButtonText: {
-    color: "#0a0a0a",
+    color: "#0B0F17",
     fontSize: 15,
     fontWeight: "800",
   },
   carouselSelectorArrowText: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
   carouselSelectorRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: 290, marginBottom: 12 },
-  carouselSelectorArrow: { padding: 8, backgroundColor: "#22222b", borderRadius: 8 },
+  carouselSelectorArrow: { padding: 8, backgroundColor: "#1E293B", borderRadius: 8 },
   carouselSelectorTitle: { color: "#ffffff", fontSize: 13, fontWeight: "700" },
   cleanHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" },
-  cleanLogo: { color: "#ff6b6b", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
+  cleanLogo: { color: "#FF5A36", fontSize: 14, fontWeight: "800", letterSpacing: 1 },
   carouselIndicatorRow: { flexDirection: "row", gap: 6, marginTop: 12 },
-  carouselDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#333333" },
-  carouselDotActive: { width: 16, backgroundColor: "#ff6b6b" },
+  carouselDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#222B3B" },
+  carouselDotActive: { width: 16, backgroundColor: "#FF5A36" },
 });

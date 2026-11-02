@@ -13,14 +13,14 @@ import { useRouter } from "expo-router";
 const { width, height } = Dimensions.get("window");
 
 const Colors = {
-  dark: "#0a0a0a",
-  darkCard: "#1a1a1a",
-  darkBorder: "#333333",
-  text: "#ffffff",
-  textSecondary: "#b0b0b0",
-  primary: "#ff6b6b",
-  success: "#51cf66",
-  gold: "#ffd700",
+  dark: "#0B0F17",
+  darkCard: "#131924",
+  darkBorder: "#222B3B",
+  text: "#F8FAFC",
+  textSecondary: "#94A3B8",
+  primary: "#FF5A36",
+  success: "#10B981",
+  gold: "#F59E0B",
 };
 
 interface Slide {
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     }),
   },
   buttonText: {
-    color: "#0a0a0a",
+    color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
   },

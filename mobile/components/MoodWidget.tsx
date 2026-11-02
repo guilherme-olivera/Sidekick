@@ -9,12 +9,12 @@ import {
 } from "react-native";
 
 const Colors = {
-  dark: "#0a0a0a",
-  darkCard: "#1a1a1a",
-  darkBorder: "#333333",
+  dark: "#0B0F17",
+  darkCard: "#131924",
+  darkBorder: "#222B3B",
   text: "#ffffff",
-  textSecondary: "#b0b0b0",
-  primary: "#ff6b6b",
+  textSecondary: "#94A3B8",
+  primary: "#FF5A36",
 };
 
 const MOOD_OPTIONS = [

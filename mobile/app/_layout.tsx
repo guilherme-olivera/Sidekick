@@ -160,7 +160,7 @@ function RootLayoutNav() {
       }
 
       if (isConfigured) {
-        if (currentSegment !== '(tabs)' && currentSegment !== 'modal') {
+        if (currentSegment !== '(tabs)' && currentSegment !== 'modal' && currentSegment !== 'onboarding') {
           router.replace('/(tabs)');
         }
       } else {
@@ -179,7 +179,7 @@ function RootLayoutNav() {
       <View
         style={{
           flex: 1,
-          backgroundColor: '#0a0a0a',
+          backgroundColor: '#0B0F17',
           justifyContent: 'center',
           alignItems: 'center',
         }}
@@ -197,7 +197,7 @@ function RootLayoutNav() {
         />
         <Animated.Text
           style={{
-            color: '#ff6b6b',
+            color: '#FF5A36',
             fontSize: 12,
             fontWeight: '700',
             letterSpacing: 3,

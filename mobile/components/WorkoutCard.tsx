@@ -2,13 +2,13 @@ import React from "react";
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 
 const Colors = {
-  dark: "#0a0a0a",
-  darkCard: "#1a1a1a",
-  darkBorder: "#333333",
-  text: "#ffffff",
-  textSecondary: "#b0b0b0",
-  primary: "#ff6b6b",
-  success: "#51cf66",
+  dark: "#0B0F17",
+  darkCard: "#131924",
+  darkBorder: "#222B3B",
+  text: "#F8FAFC",
+  textSecondary: "#94A3B8",
+  primary: "#FF5A36",
+  success: "#10B981",
 };
 
 interface Workout {
@@ -52,11 +52,11 @@ const getTypeEmoji = (type: string) => {
 const getIntensityColor = (intensity: string) => {
   switch (intensity) {
     case "low":
-      return { bg: "#1f3a42", text: "#51cf66" };
+      return { bg: "rgba(16, 185, 129, 0.14)", text: "#10B981" };
     case "moderate":
-      return { bg: "#422c1f", text: "#ffa94d" };
+      return { bg: "rgba(245, 158, 11, 0.14)", text: "#F59E0B" };
     case "high":
-      return { bg: "#421f1f", text: "#ff6b6b" };
+      return { bg: "rgba(255, 90, 54, 0.14)", text: "#FF5A36" };
     default:
       return { bg: Colors.darkCard, text: Colors.textSecondary };
   }
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#222",
+    borderColor: "#182030",
     width: "48%",
     gap: 8,
   },
@@ -366,15 +366,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   iaMiniBadge: {
-    backgroundColor: "#171f1a",
-    borderColor: "#51cf66",
+    backgroundColor: "#182030",
+    borderColor: "#10B981",
     borderWidth: 1,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
   },
   iaMiniBadgeText: {
-    color: "#51cf66",
+    color: "#10B981",
     fontSize: 9,
     fontWeight: "bold",
   },

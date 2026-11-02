@@ -21,15 +21,15 @@ import { useStrava } from "@/src/contexts/StravaContext";
 import { apiService, API_BASE_URL } from "@/src/services/apiService";
 
 const Colors = {
-  dark: "#0a0a0a",
-  darkCard: "#1a1a1a",
-  darkBorder: "#333333",
-  text: "#ffffff",
-  textSecondary: "#b0b0b0",
-  primary: "#ff6b6b",
-  success: "#51cf66",
-  warning: "#ffa94d",
-  gold: "#ffd700",
+  dark: "#0B0F17",
+  darkCard: "#131924",
+  darkBorder: "#222B3B",
+  text: "#F8FAFC",
+  textSecondary: "#94A3B8",
+  primary: "#FF5A36",
+  success: "#10B981",
+  warning: "#F59E0B",
+  gold: "#F59E0B",
 };
 
 export default function OnboardingScreen() {
@@ -406,10 +406,10 @@ export default function OnboardingScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: "#16161a",
+              backgroundColor: "#131924",
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "rgba(255, 107, 107, 0.28)",
+              borderColor: "rgba(255, 90, 54, 0.28)",
               padding: 12,
               marginBottom: 20,
               gap: 12,
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
   backButton: {
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: "#222",
+    backgroundColor: "#182030",
     borderRadius: 6,
   },
   backButtonText: {
@@ -1114,7 +1114,7 @@ const styles = StyleSheet.create({
   },
   gridCardActive: {
     borderColor: Colors.primary,
-    backgroundColor: "#2c1c1c",
+    backgroundColor: "rgba(255, 90, 54, 0.14)",
   },
   gridCardText: {
     color: Colors.textSecondary,
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
   },
   listCardActive: {
     borderColor: Colors.primary,
-    backgroundColor: "#2c1c1c",
+    backgroundColor: "rgba(255, 90, 54, 0.14)",
   },
   listCardInfo: {
     flex: 1,
@@ -1210,7 +1210,7 @@ const styles = StyleSheet.create({
   },
   distanceCardActive: {
     borderColor: Colors.primary,
-    backgroundColor: "#2c1c1c",
+    backgroundColor: "rgba(255, 90, 54, 0.14)",
   },
   customDistanceInput: {
     marginTop: 12,
@@ -1240,8 +1240,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   baselineNoticeContainer: {
-    backgroundColor: "rgba(255, 107, 107, 0.08)",
-    borderColor: "rgba(255, 107, 107, 0.2)",
+    backgroundColor: "rgba(255, 90, 54, 0.08)",
+    borderColor: "rgba(255, 90, 54, 0.2)",
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   navButtonSecondary: {
-    backgroundColor: "#222",
+    backgroundColor: "#182030",
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 24,
@@ -1365,7 +1365,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   athleteImagePlaceholder: {
-    backgroundColor: "#222",
+    backgroundColor: "#182030",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1484,7 +1484,7 @@ const styles = StyleSheet.create({
   },
   mascotModalContent: {
     width: "90%",
-    backgroundColor: "#111116",
+    backgroundColor: Colors.darkCard,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 24,
@@ -1506,7 +1506,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#1c1c24",
+    backgroundColor: "#182030",
     borderWidth: 2,
     borderColor: Colors.primary + "33",
     alignItems: "center",
@@ -1524,7 +1524,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   speechBubble: {
-    backgroundColor: "#1c1c24",
+    backgroundColor: "#182030",
     borderRadius: 16,
     padding: 18,
     width: "100%",
@@ -1547,7 +1547,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   mascotModalBtnText: {
-    color: "#0a0a0c",
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
   },

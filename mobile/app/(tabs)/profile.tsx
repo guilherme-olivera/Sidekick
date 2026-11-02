@@ -34,15 +34,15 @@ import { router } from "expo-router";
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from "react-native-svg";
 
 const Colors = {
-  dark: "#0a0a0a",
-  darkCard: "#1a1a1a",
-  darkBorder: "#333333",
+  dark: "#0B0F17",
+  darkCard: "#131924",
+  darkBorder: "#222B3B",
   text: "#ffffff",
-  textSecondary: "#b0b0b0",
-  primary: "#ff6b6b",
-  success: "#51cf66",
-  warning: "#ffa94d",
-  gold: "#ffd700",
+  textSecondary: "#94A3B8",
+  primary: "#FF5A36",
+  success: "#10B981",
+  warning: "#F59E0B",
+  gold: "#F59E0B",
 };
 
 const PRMedal = ({ active = false }) => (
@@ -59,7 +59,7 @@ const PRMedal = ({ active = false }) => (
     <Path 
       d="M 15 4 L 18 16 L 21 4" 
       fill="none" 
-      stroke={active ? "#ffa94d" : "#777777"} 
+      stroke={active ? "#F59E0B" : "#777777"} 
       strokeWidth="2.5" 
       strokeLinecap="round" 
       strokeLinejoin="round" 
@@ -69,7 +69,7 @@ const PRMedal = ({ active = false }) => (
       cx={18} 
       cy={22} 
       r={9} 
-      fill="#0a0a0c" 
+      fill="#0B0F17" 
       stroke={active ? "#fc4c02" : "#555555"} 
       strokeWidth="2" 
     />
@@ -88,6 +88,21 @@ const PRMedal = ({ active = false }) => (
 );
 
 type SportTab = "run" | "strength" | "cycling" | "walk";
+
+const renderFormattedAiText = (text: string) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <Text key={idx} style={{ fontWeight: "800", color: "#ffffff" }}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    return part;
+  });
+};
 
 export default function ProfileScreen() {
   const { user, logout, deleteAccount, isLoading, refreshUser } = useAuth();
@@ -928,7 +943,7 @@ export default function ProfileScreen() {
       id: "partner",
       title: "Parceria Fechada",
       description: `Deu um nome ao seu companheiro digital (${companionNameStr}).`,
-      emoji: "🦖",
+      emoji: user?.profile?.companionAvatar || "🦖",
       unlocked: !!user?.profile?.companionName,
     },
     {
@@ -1165,6 +1180,18 @@ export default function ProfileScreen() {
     allTime = ytdTime;
   }
 
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
+  const [fallbackAvatarError, setFallbackAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadError(false);
+    setFallbackAvatarError(false);
+  }, [user?.avatar, user?.stravaAthleteProfile]);
+
+  const primaryAvatarUri = !avatarLoadError ? getAvatarUri(user?.avatar) : undefined;
+  const fallbackAvatarUri = !fallbackAvatarError ? getAvatarUri(user?.stravaAthleteProfile) : undefined;
+  const effectiveAvatarUri = primaryAvatarUri || fallbackAvatarUri;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -1190,10 +1217,14 @@ export default function ProfileScreen() {
             >
               {uploadingAvatar ? (
                 <ActivityIndicator color={Colors.primary} size="small" />
-              ) : user?.avatar ? (
+              ) : effectiveAvatarUri ? (
                 <Image
-                  source={{ uri: getAvatarUri(user.avatar) }}
+                  source={{ uri: effectiveAvatarUri }}
                   style={styles.avatarImageNew}
+                  onError={() => {
+                    if (primaryAvatarUri) setAvatarLoadError(true);
+                    else setFallbackAvatarError(true);
+                  }}
                 />
               ) : (
                 <Text style={styles.avatarPlaceholderNew}>👤</Text>
@@ -1204,17 +1235,19 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             <View style={styles.headerInfoCol}>
-              <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
-                <Text style={styles.profileNameNew}>{user?.name || "Atleta"}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+                <Text style={styles.profileNameNew} numberOfLines={1}>
+                  {user?.name?.trim() || "Atleta"}
+                </Text>
                 {user?.planType === "premium" ? (
                   <TouchableOpacity
                     style={{
-                      backgroundColor: "rgba(255, 215, 0, 0.16)",
+                      backgroundColor: "rgba(245, 158, 11, 0.16)",
                       borderColor: Colors.gold,
                       borderWidth: 1,
                       borderRadius: 10,
                       paddingHorizontal: 8,
-                      paddingVertical: 2,
+                      paddingVertical: 3,
                     }}
                     onPress={() => setIsRedeemModalVisible(true)}
                     activeOpacity={0.8}
@@ -1226,12 +1259,12 @@ export default function ProfileScreen() {
                 ) : (
                   <TouchableOpacity
                     style={{
-                      backgroundColor: "rgba(255, 107, 107, 0.14)",
+                      backgroundColor: "rgba(255, 90, 54, 0.14)",
                       borderColor: Colors.primary,
                       borderWidth: 1,
                       borderRadius: 10,
                       paddingHorizontal: 8,
-                      paddingVertical: 2,
+                      paddingVertical: 3,
                     }}
                     onPress={() => setIsRedeemModalVisible(true)}
                     activeOpacity={0.8}
@@ -1243,64 +1276,70 @@ export default function ProfileScreen() {
                 )}
               </View>
               {user?.planType === "premium" && user?.premiumUntil && (
-                <Text style={{ color: Colors.gold, fontSize: 10, fontWeight: "600", marginBottom: 4 }}>
+                <Text style={{ color: Colors.gold, fontSize: 11, fontWeight: "600" }}>
                   {new Date(user.premiumUntil).getFullYear() >= 2090
                     ? "Acesso Vitalício ♾️"
                     : `Ativo até ${new Date(user.premiumUntil).toLocaleDateString("pt-BR")}`}
                 </Text>
               )}
               {user?.planType !== "premium" && user?.aiUsage && (
-                <Text style={{ color: Colors.textSecondary, fontSize: 10, marginBottom: 4 }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 11 }}>
                   🤖 IA Hoje: {user.aiUsage.used}/{user.aiUsage.limit} análises usadas
                 </Text>
               )}
-              <TouchableOpacity
-                style={styles.customizeCompanionBtnNew}
-                onPress={() => {
-                  setCompanionName(user?.profile?.companionName || "");
-                  setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
-                  setIsCompanionModalVisible(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.customizeCompanionTextNew}>
-                  {user?.profile?.companionAvatar || "🦖"} Personalizar {user?.profile?.companionName || "Sidekick"}
-                </Text>
-              </TouchableOpacity>
             </View>
 
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {isAdmin && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.settingsGearBtn, { backgroundColor: "rgba(255, 215, 0, 0.15)", borderColor: Colors.gold }]}
-                    onPress={() => {
-                      loadAdminOverview();
-                      setIsAdminModalVisible(true);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.settingsGearIcon}>👑</Text>
-                  </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsGearBtn}
+              onPress={() => setIsSettingsModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.settingsGearIcon}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
 
-                  <TouchableOpacity
-                    style={styles.settingsGearBtn}
-                    onPress={() => setIsBroadcastModalVisible(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.settingsGearIcon}>📢</Text>
-                  </TouchableOpacity>
-                </>
-              )}
+          {/* Barra de Ações Rápidas (Personalizar Sidekick + Atalhos Admin) */}
+          <View style={styles.headerQuickActionsRow}>
+            <TouchableOpacity
+              style={styles.customizeCompanionBtnNew}
+              onPress={() => {
+                setCompanionName(user?.profile?.companionName || "");
+                setCompanionAvatar(user?.profile?.companionAvatar || "🤖");
+                setIsCompanionModalVisible(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.customizeCompanionTextNew} numberOfLines={1}>
+                {user?.profile?.companionAvatar || "🦖"} Personalizar {user?.profile?.companionName || "Sidekick"}
+              </Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.settingsGearBtn}
-                onPress={() => setIsSettingsModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.settingsGearIcon}>⚙️</Text>
-              </TouchableOpacity>
-            </View>
+            {isAdmin && (
+              <>
+                <TouchableOpacity
+                  style={styles.adminQuickPillGold}
+                  onPress={() => {
+                    loadAdminOverview();
+                    setIsAdminModalVisible(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.adminQuickPillGoldText} numberOfLines={1}>
+                    👑 Gestão VIP
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.adminQuickPill}
+                  onPress={() => setIsBroadcastModalVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.adminQuickPillText} numberOfLines={1}>
+                    📢 Push
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -1395,8 +1434,8 @@ export default function ProfileScreen() {
             {/* BOTÃO SOLICITADO PELO USUÁRIO: LOGO ABAIXO DO CARD DE METAS */}
             <TouchableOpacity
               style={{
-                backgroundColor: "#1f1f24",
-                borderColor: "#fc4c02",
+                backgroundColor: Colors.darkCard,
+                borderColor: Colors.primary,
                 borderWidth: 1.5,
                 borderRadius: 16,
                 paddingVertical: 14,
@@ -1406,7 +1445,7 @@ export default function ProfileScreen() {
                 justifyContent: "center",
                 marginBottom: 16,
                 marginTop: 4,
-                shadowColor: "#fc4c02",
+                shadowColor: Colors.primary,
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.25,
                 shadowRadius: 8,
@@ -1442,7 +1481,9 @@ export default function ProfileScreen() {
               {/* Weekly IA Progress Narrative */}
               <View style={styles.iaNarrativeSectionNew}>
                 <View style={styles.iaNarrativeHeaderNew}>
-                  <Text style={styles.iaNarrativeTitleNew}>🦖 Feedback do seu Sidekick</Text>
+                  <Text style={styles.iaNarrativeTitleNew}>
+                    {user?.profile?.companionAvatar || "🦖"} Feedback de {user?.profile?.companionName || "seu Sidekick"}
+                  </Text>
                 </View>
 
                 {updatingHistoryAnalysis ? (
@@ -1454,7 +1495,7 @@ export default function ProfileScreen() {
                   </View>
                 ) : historyAnalysis ? (
                   <View style={styles.iaNarrativeBoxNew}>
-                    <Text style={styles.iaNarrativeTextNew}>{historyAnalysis}</Text>
+                    <Text style={styles.iaNarrativeTextNew}>{renderFormattedAiText(historyAnalysis)}</Text>
                     {historyAnalysisUpdatedAt && (
                       <Text style={styles.iaNarrativeTimeNew}>
                         Relatório atualizado em: {new Date(historyAnalysisUpdatedAt).toLocaleDateString("pt-BR", {
@@ -1466,6 +1507,20 @@ export default function ProfileScreen() {
                         })}
                       </Text>
                     )}
+                    <Text
+                      style={{
+                        fontSize: 10.5,
+                        color: "#64748B",
+                        fontStyle: "italic",
+                        marginTop: 10,
+                        paddingTop: 8,
+                        borderTopWidth: 1,
+                        borderTopColor: "rgba(255, 255, 255, 0.07)",
+                        lineHeight: 15,
+                      }}
+                    >
+                      ⚠️ A IA pode cometer falhas. O relatório tem caráter informativo e não substitui um profissional de educação física ou médico.
+                    </Text>
                   </View>
                 ) : (
                   <View style={styles.iaNarrativeBoxNew}>
@@ -1509,15 +1564,15 @@ export default function ProfileScreen() {
                       y1={20}
                       x2={p.x}
                       y2={110}
-                      stroke="#222222"
+                      stroke="#182030"
                       strokeWidth="1"
                     />
                   ))}
 
                   {/* Horizontal grid lines */}
-                  <Line x1={35} y1={20} x2={305} y2={20} stroke="#222222" strokeWidth="1" />
-                  <Line x1={35} y1={65} x2={305} y2={65} stroke="#222222" strokeWidth="1" />
-                  <Line x1={35} y1={110} x2={305} y2={110} stroke="#333333" strokeWidth="1.5" />
+                  <Line x1={35} y1={20} x2={305} y2={20} stroke="#182030" strokeWidth="1" />
+                  <Line x1={35} y1={65} x2={305} y2={65} stroke="#182030" strokeWidth="1" />
+                  <Line x1={35} y1={110} x2={305} y2={110} stroke="#222B3B" strokeWidth="1.5" />
 
                   {/* Y Axis Labels */}
                   <SvgText x={28} y={23} fill="#666666" fontSize="8" fontWeight="700" textAnchor="end">
@@ -1538,7 +1593,7 @@ export default function ProfileScreen() {
                         y1={110 - (averageMonthlyDistance / maxMonthlyDistance) * 90}
                         x2={305}
                         y2={110 - (averageMonthlyDistance / maxMonthlyDistance) * 90}
-                        stroke="#ff6b6b"
+                        stroke="#FF5A36"
                         strokeDasharray="3 3"
                         strokeWidth="1"
                         opacity={0.6}
@@ -1546,7 +1601,7 @@ export default function ProfileScreen() {
                       <SvgText
                         x={305}
                         y={110 - (averageMonthlyDistance / maxMonthlyDistance) * 90 - 4}
-                        fill="#ff6b6b"
+                        fill="#FF5A36"
                         fontSize="8"
                         fontWeight="700"
                         textAnchor="end"
@@ -1588,8 +1643,8 @@ export default function ProfileScreen() {
                           cx={p.x}
                           cy={p.y}
                           r={isCurrent ? 4.5 : 3.5}
-                          fill="#0a0a0c"
-                          stroke={isCurrent ? "#fc4c02" : "#ff6b6b"}
+                          fill="#0B0F17"
+                          stroke={isCurrent ? "#fc4c02" : "#FF5A36"}
                           strokeWidth={isCurrent ? 2.5 : 1.5}
                         />
                       </React.Fragment>
@@ -1953,17 +2008,25 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                  <ScrollView
+                    style={{ maxHeight: 450 }}
+                    contentContainerStyle={{ paddingBottom: 8 }}
+                    showsVerticalScrollIndicator={true}
+                  >
                     {/* Section: Conta */}
                     <View style={styles.settingsSection}>
                       <Text style={styles.settingsSectionTitle}>Sua Conta</Text>
                       <View style={styles.settingsInfoRow}>
                         <Text style={styles.settingsInfoLabel}>Nome:</Text>
-                        <Text style={styles.settingsInfoVal}>{user?.name}</Text>
+                        <Text style={styles.settingsInfoVal} numberOfLines={1} ellipsizeMode="tail">
+                          {user?.name}
+                        </Text>
                       </View>
                       <View style={styles.settingsInfoRow}>
                         <Text style={styles.settingsInfoLabel}>E-mail:</Text>
-                        <Text style={styles.settingsInfoVal}>{user?.email}</Text>
+                        <Text style={styles.settingsInfoVal} numberOfLines={1} ellipsizeMode="tail">
+                          {user?.email}
+                        </Text>
                       </View>
                     </View>
 
@@ -2063,7 +2126,7 @@ export default function ProfileScreen() {
                         }}
                       >
                         <Text style={styles.settingsOptionIcon}>🗑️</Text>
-                        <Text style={[styles.settingsOptionText, { color: "#ff6b6b" }]}>Excluir Minha Conta</Text>
+                        <Text style={[styles.settingsOptionText, { color: "#FF5A36" }]}>Excluir Minha Conta</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -2099,9 +2162,9 @@ export default function ProfileScreen() {
                     </View>
                   </ScrollView>
 
-                  <View style={styles.settingsActionsRow}>
+                  <View style={styles.settingsFooterContainer}>
                     {isAdmin && (
-                      <>
+                      <View style={styles.settingsActionsRow}>
                         <TouchableOpacity
                           style={styles.settingsDiagBtn}
                           onPress={() => {
@@ -2109,7 +2172,9 @@ export default function ProfileScreen() {
                             setIsBroadcastModalVisible(true);
                           }}
                         >
-                          <Text style={styles.settingsDiagBtnText}>📢 Notificação Push</Text>
+                          <Text style={styles.settingsDiagBtnText} numberOfLines={1}>
+                            📢 Push Admin
+                          </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -2119,9 +2184,11 @@ export default function ProfileScreen() {
                             runDiagnostics();
                           }}
                         >
-                          <Text style={styles.settingsDiagBtnText}>🛠️ Diagnóstico</Text>
+                          <Text style={styles.settingsDiagBtnText} numberOfLines={1}>
+                            🛠️ Diagnóstico
+                          </Text>
                         </TouchableOpacity>
-                      </>
+                      </View>
                     )}
 
                     <TouchableOpacity
@@ -2133,7 +2200,7 @@ export default function ProfileScreen() {
                       disabled={isLoading}
                     >
                       <Text style={styles.settingsLogoutBtnText}>
-                        {isLoading ? "Saindo..." : "Log Out"}
+                        {isLoading ? "Saindo..." : "🚪 Sair da Conta (Log Out)"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -2238,21 +2305,36 @@ export default function ProfileScreen() {
                       onPress={() => setBroadcastFilter("all")}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.filterChipText, broadcastFilter === "all" && styles.filterChipTextActive]}>👥 Todos</Text>
+                      <Text
+                        style={[styles.filterChipText, broadcastFilter === "all" && styles.filterChipTextActive]}
+                        numberOfLines={1}
+                      >
+                        👥 Todos
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.filterChip, broadcastFilter === "free" && styles.filterChipActive]}
                       onPress={() => setBroadcastFilter("free")}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.filterChipText, broadcastFilter === "free" && styles.filterChipTextActive]}>🆓 Apenas Free</Text>
+                      <Text
+                        style={[styles.filterChipText, broadcastFilter === "free" && styles.filterChipTextActive]}
+                        numberOfLines={1}
+                      >
+                        🆓 Free
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.filterChip, broadcastFilter === "premium" && styles.filterChipActive]}
                       onPress={() => setBroadcastFilter("premium")}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.filterChipText, broadcastFilter === "premium" && styles.filterChipTextActive]}>👑 Apenas Premium</Text>
+                      <Text
+                        style={[styles.filterChipText, broadcastFilter === "premium" && styles.filterChipTextActive]}
+                        numberOfLines={1}
+                      >
+                        👑 Premium
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
@@ -2330,9 +2412,9 @@ export default function ProfileScreen() {
 
                 <View
                   style={{
-                    backgroundColor: "rgba(255, 215, 0, 0.08)",
+                    backgroundColor: "rgba(245, 158, 11, 0.08)",
                     borderWidth: 1,
-                    borderColor: "rgba(255, 215, 0, 0.35)",
+                    borderColor: "rgba(245, 158, 11, 0.35)",
                     borderRadius: 12,
                     padding: 12,
                     marginBottom: 16,
@@ -2408,51 +2490,81 @@ export default function ProfileScreen() {
                   </View>
 
                   {/* Admin Subtabs Selector */}
-                  <View style={{ flexDirection: "row", backgroundColor: "#111", borderRadius: 12, padding: 4, marginBottom: 16 }}>
+                  <View style={{ flexDirection: "row", backgroundColor: "#0E131D", borderRadius: 12, padding: 4, marginBottom: 16, gap: 4 }}>
                     <TouchableOpacity
                       style={{
                         flex: 1,
-                        paddingVertical: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 6,
                         borderRadius: 8,
                         backgroundColor: adminTab === "grant" ? Colors.gold : "transparent",
                         alignItems: "center",
+                        justifyContent: "center",
                       }}
                       onPress={() => setAdminTab("grant")}
                     >
-                      <Text style={{ color: adminTab === "grant" ? "#000" : Colors.textSecondary, fontWeight: "800", fontSize: 11 }}>
-                        ✉️ E-mail Direto
+                      <Text
+                        style={{
+                          color: adminTab === "grant" ? "#000" : Colors.textSecondary,
+                          fontWeight: "800",
+                          fontSize: 11,
+                          textAlign: "center",
+                        }}
+                        numberOfLines={1}
+                      >
+                        ✉️ E-mail
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={{
                         flex: 1,
-                        paddingVertical: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 6,
                         borderRadius: 8,
                         backgroundColor: adminTab === "vip" ? Colors.gold : "transparent",
                         alignItems: "center",
+                        justifyContent: "center",
                       }}
                       onPress={() => setAdminTab("vip")}
                     >
-                      <Text style={{ color: adminTab === "vip" ? "#000" : Colors.textSecondary, fontWeight: "800", fontSize: 11 }}>
-                        ⚡ Gerar Código VIP
+                      <Text
+                        style={{
+                          color: adminTab === "vip" ? "#000" : Colors.textSecondary,
+                          fontWeight: "800",
+                          fontSize: 11,
+                          textAlign: "center",
+                        }}
+                        numberOfLines={1}
+                      >
+                        ⚡ Código VIP
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={{
                         flex: 1,
-                        paddingVertical: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 6,
                         borderRadius: 8,
                         backgroundColor: adminTab === "overview" ? Colors.gold : "transparent",
                         alignItems: "center",
+                        justifyContent: "center",
                       }}
                       onPress={() => {
                         setAdminTab("overview");
                         loadAdminOverview();
                       }}
                     >
-                      <Text style={{ color: adminTab === "overview" ? "#000" : Colors.textSecondary, fontWeight: "800", fontSize: 11 }}>
+                      <Text
+                        style={{
+                          color: adminTab === "overview" ? "#000" : Colors.textSecondary,
+                          fontWeight: "800",
+                          fontSize: 11,
+                          textAlign: "center",
+                        }}
+                        numberOfLines={1}
+                      >
                         📊 Visão Geral
                       </Text>
                     </TouchableOpacity>
@@ -2489,7 +2601,7 @@ export default function ProfileScreen() {
                           <TouchableOpacity
                             key={item.days}
                             style={{
-                              backgroundColor: grantDurationDays === item.days ? "rgba(255,215,0,0.2)" : "#1a1a1a",
+                              backgroundColor: grantDurationDays === item.days ? "rgba(245, 158, 11,0.2)" : "#131924",
                               borderWidth: 1,
                               borderColor: grantDurationDays === item.days ? Colors.gold : Colors.darkBorder,
                               borderRadius: 8,
@@ -2527,7 +2639,7 @@ export default function ProfileScreen() {
                       {/* Exibição do Código Gerado no E-mail Direto */}
                       {generatedVipCode && (
                         <View style={{
-                          backgroundColor: "rgba(255, 215, 0, 0.12)",
+                          backgroundColor: "rgba(245, 158, 11, 0.12)",
                           borderWidth: 1.5,
                           borderColor: Colors.gold,
                           borderRadius: 12,
@@ -2549,7 +2661,7 @@ export default function ProfileScreen() {
                             width: "100%",
                             marginBottom: 10,
                             borderWidth: 1,
-                            borderColor: "#333",
+                            borderColor: "#222B3B",
                           }}>
                             <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>
                               MENSAGEM PRONTA:
@@ -2580,7 +2692,7 @@ export default function ProfileScreen() {
                             <TouchableOpacity
                               style={{
                                 flex: 1,
-                                backgroundColor: copiedCodeSuccess ? Colors.success : "#222",
+                                backgroundColor: copiedCodeSuccess ? Colors.success : "#182030",
                                 borderWidth: 1,
                                 borderColor: copiedCodeSuccess ? Colors.success : Colors.gold,
                                 paddingVertical: 9,
@@ -2620,7 +2732,7 @@ export default function ProfileScreen() {
                           <TouchableOpacity
                             key={item.days}
                             style={{
-                              backgroundColor: vipDurationDays === item.days ? "rgba(255,215,0,0.2)" : "#1a1a1a",
+                              backgroundColor: vipDurationDays === item.days ? "rgba(245, 158, 11,0.2)" : "#131924",
                               borderWidth: 1,
                               borderColor: vipDurationDays === item.days ? Colors.gold : Colors.darkBorder,
                               borderRadius: 8,
@@ -2666,7 +2778,7 @@ export default function ProfileScreen() {
                       {/* Exibição do Código Gerado no Gerador VIP */}
                       {generatedVipCode && (
                         <View style={{
-                          backgroundColor: "rgba(255, 215, 0, 0.12)",
+                          backgroundColor: "rgba(245, 158, 11, 0.12)",
                           borderWidth: 1.5,
                           borderColor: Colors.gold,
                           borderRadius: 12,
@@ -2687,7 +2799,7 @@ export default function ProfileScreen() {
                             width: "100%",
                             marginBottom: 10,
                             borderWidth: 1,
-                            borderColor: "#333",
+                            borderColor: "#222B3B",
                           }}>
                             <Text style={{ color: Colors.textSecondary, fontSize: 10, fontWeight: "600", marginBottom: 2 }}>
                               MENSAGEM DE COMPARTILHAMENTO:
@@ -2718,7 +2830,7 @@ export default function ProfileScreen() {
                             <TouchableOpacity
                               style={{
                                 flex: 1,
-                                backgroundColor: copiedCodeSuccess ? Colors.success : "#222",
+                                backgroundColor: copiedCodeSuccess ? Colors.success : "#182030",
                                 borderWidth: 1,
                                 borderColor: copiedCodeSuccess ? Colors.success : Colors.gold,
                                 paddingVertical: 9,
@@ -2752,7 +2864,7 @@ export default function ProfileScreen() {
                           {adminOverview?.premiumUsers && adminOverview.premiumUsers.length > 0 ? (
                             adminOverview.premiumUsers.map((u: any) => (
                               <View key={u.id} style={{
-                                backgroundColor: "#161616",
+                                backgroundColor: "#0E131D",
                                 borderWidth: 1,
                                 borderColor: Colors.darkBorder,
                                 borderRadius: 8,
@@ -2780,7 +2892,7 @@ export default function ProfileScreen() {
                           {adminOverview?.vipCodes && adminOverview.vipCodes.length > 0 ? (
                             adminOverview.vipCodes.map((v: any) => (
                               <View key={v.id} style={{
-                                backgroundColor: "#161616",
+                                backgroundColor: "#0E131D",
                                 borderWidth: 1,
                                 borderColor: v.isUsed ? "#444" : Colors.gold,
                                 borderRadius: 8,
@@ -2800,7 +2912,7 @@ export default function ProfileScreen() {
                                 </View>
                                 <TouchableOpacity
                                   style={{
-                                    backgroundColor: v.isUsed ? "#333" : Colors.gold,
+                                    backgroundColor: v.isUsed ? "#222B3B" : Colors.gold,
                                     paddingHorizontal: 8,
                                     paddingVertical: 4,
                                     borderRadius: 6,
@@ -3008,19 +3120,19 @@ export default function ProfileScreen() {
               </View>
 
               {selectedBadge && (
-                <ViewShot ref={trophyViewShotRef} options={{ format: "png", quality: 0.95 }} style={{ width: 280, backgroundColor: "#0a0a0c", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 2, borderColor: "#ffd700", marginVertical: 10 }}>
+                <ViewShot ref={trophyViewShotRef} options={{ format: "png", quality: 0.95 }} style={{ width: 280, backgroundColor: "#0B0F17", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 2, borderColor: "#F59E0B", marginVertical: 10 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                     <Text style={{ fontSize: 22 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
                     <View>
-                      <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>SIDEKICK • CONQUISTA</Text>
+                      <Text style={{ color: "#F59E0B", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>SIDEKICK • CONQUISTA</Text>
                       <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{user?.profile?.companionName || "Rocky"}</Text>
                     </View>
                   </View>
 
                   <Text style={{ fontSize: 54, marginVertical: 8 }}>{selectedBadge.emoji}</Text>
 
-                  <View style={{ backgroundColor: "rgba(255, 215, 0, 0.15)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: "#ffd700", marginBottom: 8 }}>
-                    <Text style={{ color: "#ffd700", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>
+                  <View style={{ backgroundColor: "rgba(245, 158, 11, 0.15)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: "#F59E0B", marginBottom: 8 }}>
+                    <Text style={{ color: "#F59E0B", fontSize: 10, fontWeight: "900", letterSpacing: 1 }}>
                       🏆 TROFÉU DESBLOQUEADO
                     </Text>
                   </View>
@@ -3041,14 +3153,14 @@ export default function ProfileScreen() {
 
               <View style={{ flexDirection: "row", gap: 10, marginTop: 15, width: "100%" }}>
                 <TouchableOpacity
-                  style={{ flex: 1, backgroundColor: "#222", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
+                  style={{ flex: 1, backgroundColor: "#182030", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
                   onPress={() => setShareModalVisible(false)}
                 >
                   <Text style={{ color: "#fff", fontWeight: "600" }}>Cancelar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={{ flex: 1.5, backgroundColor: "#ffd700", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                  style={{ flex: 1.5, backgroundColor: "#F59E0B", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
                   onPress={handleShareTrophyImage}
                 >
                   <FontAwesome name="instagram" size={16} color="#000" />
@@ -3076,7 +3188,7 @@ export default function ProfileScreen() {
               </View>
 
               {selectedPrForShare && (
-                <ViewShot ref={prViewShotRef} options={{ format: "png", quality: 0.95 }} style={{ width: 280, backgroundColor: "#0a0a0c", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 2, borderColor: "#fc4c02", marginVertical: 10 }}>
+                <ViewShot ref={prViewShotRef} options={{ format: "png", quality: 0.95 }} style={{ width: 280, backgroundColor: "#0B0F17", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 2, borderColor: "#fc4c02", marginVertical: 10 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                     <Text style={{ fontSize: 22 }}>{user?.profile?.companionAvatar || "🦖"}</Text>
                     <View>
@@ -3108,7 +3220,7 @@ export default function ProfileScreen() {
 
               <View style={{ flexDirection: "row", gap: 10, marginTop: 15, width: "100%" }}>
                 <TouchableOpacity
-                  style={{ flex: 1, backgroundColor: "#222", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
+                  style={{ flex: 1, backgroundColor: "#182030", paddingVertical: 12, borderRadius: 12, alignItems: "center" }}
                   onPress={() => setPrShareModalVisible(false)}
                 >
                   <Text style={{ color: "#fff", fontWeight: "600" }}>Cancelar</Text>
@@ -3134,11 +3246,11 @@ export default function ProfileScreen() {
           onRequestClose={() => setShareGoalsModalVisible(false)}
         >
           <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 16 }}>
-            <View style={{ backgroundColor: "#18181c", borderRadius: 20, padding: 20, width: "100%", maxWidth: 420, alignItems: "center", borderWidth: 1, borderColor: "#333333" }}>
+            <View style={{ backgroundColor: "#18181c", borderRadius: 20, padding: 20, width: "100%", maxWidth: 420, alignItems: "center", borderWidth: 1, borderColor: "#222B3B" }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", alignItems: "center", marginBottom: 14 }}>
                 <Text style={{ fontSize: 16, fontWeight: "bold", color: "#ffffff" }}>📲 Stories de Evolução</Text>
                 <TouchableOpacity onPress={() => setShareGoalsModalVisible(false)}>
-                  <Text style={{ color: "#888888", fontSize: 20 }}>✕</Text>
+                  <Text style={{ color: "#64748B", fontSize: 20 }}>✕</Text>
                 </TouchableOpacity>
               </View>
 
@@ -3177,7 +3289,7 @@ export default function ProfileScreen() {
                       <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: "700" }}>SIDEKICK EVOLUTION</Text>
                     </View>
                   </View>
-                  <View style={{ backgroundColor: "rgba(255, 107, 107, 0.2)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
+                  <View style={{ backgroundColor: "rgba(255, 90, 54, 0.2)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: Colors.primary }}>
                     <Text style={{ color: Colors.primary, fontSize: 10, fontWeight: "bold" }}>Lvl {currentLevel}</Text>
                   </View>
                 </View>
@@ -3196,7 +3308,7 @@ export default function ProfileScreen() {
                   </Text>
 
                   <View style={{ width: "100%", backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 10, marginBottom: 8 }}>
-                    <Text style={{ color: "#888888", fontSize: 10, marginBottom: 2 }}>Frequência Semanal</Text>
+                    <Text style={{ color: "#64748B", fontSize: 10, marginBottom: 2 }}>Frequência Semanal</Text>
                     <Text style={{ color: Colors.success, fontSize: 13, fontWeight: "bold" }}>
                       {currentWeekData.weeklyWorkouts.length} de {user?.profile?.weeklyFrequency || 3} treinos nesta semana
                     </Text>
@@ -3396,7 +3508,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#222",
+    borderBottomColor: "#182030",
   },
   statRowLabel: {
     color: Colors.textSecondary,
@@ -3509,7 +3621,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   logoutButton: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 12,
@@ -3519,12 +3631,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   logoutButtonText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 16,
     fontWeight: "600",
   },
   adjustButton: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 12,
@@ -3590,7 +3702,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   athleteImagePlaceholder: {
-    backgroundColor: "#222",
+    backgroundColor: "#182030",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3639,7 +3751,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   disconnectButton: {
-    backgroundColor: "#222",
+    backgroundColor: "#182030",
     borderRadius: 10,
     paddingVertical: 14,
     flex: 1,
@@ -3648,7 +3760,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.darkBorder,
   },
   disconnectButtonText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 14,
     fontWeight: "700",
   },
@@ -3698,7 +3810,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   generateHistoryButtonText: {
-    color: "#0a0a0a",
+    color: "#0B0F17",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -3747,9 +3859,9 @@ const styles = StyleSheet.create({
   },
   customizeCompanionBtn: {
     marginTop: 14,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -3790,7 +3902,7 @@ const styles = StyleSheet.create({
   chartTrack: {
     width: 24,
     height: 80,
-    backgroundColor: "#111",
+    backgroundColor: "#0E131D",
     borderRadius: 6,
     justifyContent: "flex-end",
     overflow: "hidden",
@@ -3834,12 +3946,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modalInput: {
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     color: "#fff",
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     marginBottom: 16,
     width: "100%",
     fontSize: 14,
@@ -3863,15 +3975,15 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#0B0F17",
     borderWidth: 2,
-    borderColor: "#333",
+    borderColor: "#222B3B",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarOptionSelected: {
     borderColor: Colors.primary,
-    backgroundColor: "#222",
+    backgroundColor: "#182030",
   },
   modalActions: {
     flexDirection: "row",
@@ -3882,28 +3994,41 @@ const styles = StyleSheet.create({
   modalBtn: {
     flex: 1,
     height: 46,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   modalBtnCancel: {
+    minHeight: 46,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
-    marginRight: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBtnConfirm: {
+    minHeight: 46,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBtnCancelText: {
     color: Colors.textSecondary,
     fontSize: 14,
     fontWeight: "600",
+    textAlign: "center",
   },
   modalBtnConfirmText: {
-    color: "#0a0a0c",
+    color: "#0B0F17",
     fontSize: 14,
     fontWeight: "700",
+    textAlign: "center",
   },
   shareCardContent: {
     width: "85%",
@@ -3922,7 +4047,7 @@ const styles = StyleSheet.create({
   },
   shareCard: {
     width: "100%",
-    backgroundColor: "#08080a",
+    backgroundColor: "#0E131D",
     borderWidth: 1.5,
     borderColor: Colors.primary + "44",
     borderRadius: 16,
@@ -3972,19 +4097,19 @@ const styles = StyleSheet.create({
   diagnosticErrorBox: {
     backgroundColor: "#2c1515",
     borderWidth: 1,
-    borderColor: "#ff6b6b55",
+    borderColor: "#FF5A3655",
     borderRadius: 12,
     padding: 16,
     marginVertical: 10,
   },
   diagnosticErrorText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontWeight: "700",
     fontSize: 15,
     marginBottom: 4,
   },
   diagnosticErrorDetail: {
-    color: "#ff8787",
+    color: "#FF7A5C",
     fontFamily: Platform.OS === "ios" ? "CourierNewPSMT" : "monospace",
     fontSize: 12,
     marginTop: 4,
@@ -3998,7 +4123,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   diagnosticItem: {
-    backgroundColor: "#0d0d0f",
+    backgroundColor: "#0E131D",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 12,
@@ -4018,7 +4143,7 @@ const styles = StyleSheet.create({
   diagnosticButton: {
     height: 50,
     borderRadius: 12,
-    backgroundColor: "#1c1c24",
+    backgroundColor: "#182030",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     justifyContent: "center",
@@ -4159,7 +4284,7 @@ const styles = StyleSheet.create({
   },
   editBadgeIconNew: {
     fontSize: 10,
-    color: "#0a0a0c",
+    color: "#0B0F17",
   },
   headerInfoCol: {
     flex: 1,
@@ -4172,30 +4297,72 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
+  headerQuickActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+    width: "100%",
+  },
   customizeCompanionBtnNew: {
-    marginTop: 6,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#182030",
     borderWidth: 1,
-    borderColor: "#333",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    alignSelf: "flex-start",
+    borderColor: "#222B3B",
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   customizeCompanionTextNew: {
     color: Colors.primary,
-    fontSize: 10,
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+  adminQuickPillGold: {
+    backgroundColor: "rgba(245, 158, 11, 0.14)",
+    borderWidth: 1,
+    borderColor: Colors.gold,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminQuickPillGoldText: {
+    color: Colors.gold,
+    fontSize: 11.5,
+    fontWeight: "800",
+  },
+  adminQuickPill: {
+    backgroundColor: "#182030",
+    borderWidth: 1,
+    borderColor: Colors.darkBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminQuickPillText: {
+    color: Colors.text,
+    fontSize: 11.5,
     fontWeight: "700",
   },
   settingsGearBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Colors.darkCard,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
+    marginLeft: 8,
   },
   settingsGearIcon: {
     fontSize: 18,
@@ -4204,7 +4371,7 @@ const styles = StyleSheet.create({
   // Sub Tab Bar Styles
   subTabBarContainer: {
     flexDirection: "row",
-    backgroundColor: "#141418",
+    backgroundColor: "#0E131D",
     borderRadius: 14,
     padding: 4,
     marginVertical: 14,
@@ -4220,15 +4387,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   subTabItemActive: {
-    backgroundColor: "#FF5500", // Cor Laranja Padrão do Sistema
-    shadowColor: "#FF5500",
+    backgroundColor: "#FF5A36", // Cor Laranja Padrão do Sistema
+    shadowColor: "#FF5A36",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
   },
   subTabText: {
-    color: "#888888",
+    color: "#64748B",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -4311,7 +4478,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backgroundColor: "#1c1c24",
+    backgroundColor: "#182030",
     borderWidth: 1,
     borderColor: Colors.darkBorder,
   },
@@ -4360,7 +4527,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   iaNarrativeGenBtnTextNew: {
-    color: "#0a0a0c",
+    color: "#0B0F17",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -4533,9 +4700,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   trophyHexagonLockedNew: {
-    backgroundColor: "#111",
+    backgroundColor: "#0E131D",
     borderWidth: 1.5,
-    borderColor: "#333",
+    borderColor: "#222B3B",
   },
   trophyEmojiNew: {
     fontSize: 26,
@@ -4588,8 +4755,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: Colors.darkBorder,
   },
@@ -4605,27 +4772,28 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   settingsSection: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   settingsSectionTitle: {
     color: Colors.primary,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   settingsInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 6,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#222",
+    borderBottomColor: "#182030",
+    gap: 8,
   },
   settingsInfoLabel: {
     color: Colors.textSecondary,
     fontSize: 13,
-    width: 65,
+    width: 60,
   },
   settingsInfoVal: {
     color: Colors.text,
@@ -4640,8 +4808,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
-    padding: 12,
-    marginVertical: 4,
+    paddingVertical: 9.5,
+    paddingHorizontal: 12,
+    marginVertical: 3,
     gap: 12,
   },
   settingsOptionIcon: {
@@ -4656,7 +4825,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#161616",
+    backgroundColor: "#0E131D",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
@@ -4675,10 +4844,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#ff6b6b33",
+    borderColor: "#FF5A3633",
   },
   settingsStravaBtnMiniText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 10,
     fontWeight: "700",
   },
@@ -4693,39 +4862,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  settingsFooterContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.darkBorder,
+    gap: 10,
+  },
   settingsActionsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
-    gap: 12,
+    gap: 10,
   },
   settingsDiagBtn: {
     flex: 1,
-    backgroundColor: "#2c2c35",
+    minHeight: 44,
+    backgroundColor: "#182030",
     borderWidth: 1,
-    borderColor: "#444",
+    borderColor: "#2A364B",
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     alignItems: "center",
+    justifyContent: "center",
   },
   settingsDiagBtnText: {
     color: Colors.text,
-    fontSize: 13.5,
-    fontWeight: "600",
+    fontSize: 12.5,
+    fontWeight: "700",
+    textAlign: "center",
   },
   settingsLogoutBtn: {
-    flex: 1,
+    width: "100%",
+    minHeight: 46,
     backgroundColor: "#2c1c1c",
     borderWidth: 1,
-    borderColor: "#ff6b6b33",
+    borderColor: "#FF5A3644",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
+    justifyContent: "center",
   },
   settingsLogoutBtnText: {
-    color: "#ff6b6b",
-    fontSize: 13.5,
+    color: "#FF5A36",
+    fontSize: 14,
     fontWeight: "700",
+    textAlign: "center",
   },
   showMoreTrophiesBtn: {
     marginTop: 14,
@@ -4739,7 +4921,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   showMoreTrophiesText: {
-    color: "#ffd700",
+    color: "#F59E0B",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -4834,25 +5016,30 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     flex: 1,
+    minHeight: 42,
     backgroundColor: Colors.dark,
     borderWidth: 1,
     borderColor: Colors.darkBorder,
     borderRadius: 10,
     paddingVertical: 10,
+    paddingHorizontal: 6,
     alignItems: "center",
+    justifyContent: "center",
   },
   filterChipActive: {
-    backgroundColor: "rgba(255, 215, 0, 0.15)",
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
     borderColor: Colors.primary,
   },
   filterChipText: {
     color: Colors.textSecondary,
     fontSize: 12,
     fontWeight: "600",
+    textAlign: "center",
   },
   filterChipTextActive: {
     color: Colors.primary,
     fontWeight: "800",
+    textAlign: "center",
   },
   broadcastInputLabel: {
     color: Colors.text,

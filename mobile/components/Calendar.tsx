@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   navText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
     fontSize: 22,
   },
   monthLabel: {
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   weekDay: {
-    color: "#b0b0b0",
+    color: "#94A3B8",
     textAlign: "center",
     fontSize: 12,
   },
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#131924",
   },
   dateText: {
     color: "#ffffff",
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   todayText: {
-    color: "#ff6b6b",
+    color: "#FF5A36",
   },
   eventDot: {
     width: 6,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   workoutDot: {
-    backgroundColor: "#51cf66",
+    backgroundColor: "#10B981",
   },
   reminderDot: {
     backgroundColor: "#ff922b",
@@ -207,13 +207,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   workoutEventDay: {
-    backgroundColor: "#112a18",
-    borderColor: "#2b8a3e",
+    backgroundColor: "rgba(16, 185, 129, 0.14)",
+    borderColor: "#10B981",
     borderWidth: 1,
   },
   reminderEventDay: {
-    backgroundColor: "#2b1a0a",
-    borderColor: "#d9480f",
+    backgroundColor: "rgba(245, 158, 11, 0.14)",
+    borderColor: "#F59E0B",
     borderWidth: 1,
   },
   bothEventsDay: {
@@ -223,11 +223,11 @@ const styles = StyleSheet.create({
   },
   eventDay: {
     backgroundColor: "#2d5e3a",
-    borderColor: "#51cf66",
+    borderColor: "#10B981",
   },
   todayActive: {
     borderWidth: 2,
-    borderColor: "#ff6b6b",
+    borderColor: "#FF5A36",
   },
   eventText: {
     color: "#ffffff",
