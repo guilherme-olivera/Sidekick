@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import path from "path";
+import axios from "axios";
 import { prisma, ensureDatabaseSchema } from "./utils/prisma";
 import bcrypt from "bcryptjs";
 import {
@@ -132,6 +133,37 @@ app.get("/api/strava/stats", authMiddleware, getStravaStatsHandler);
 
 // Serve public landing page
 app.use(express.static(path.join(process.cwd(), "public/landing")));
+
+// Direct APK download with custom filename (Sidekick-v2.0.apk)
+app.get(["/download/apk", "/apk"], async (req, res) => {
+  const apkUrl =
+    "https://expo.dev/artifacts/eas/8WmR01ATl-LFptM41gXwpNsBnb0fEyLbzhhp5MwLb8A.apk";
+  try {
+    const response = await axios({
+      method: "GET",
+      url: apkUrl,
+      responseType: "stream",
+      timeout: 30000,
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="Sidekick-v2.0.apk"'
+    );
+    res.setHeader("Content-Type", "application/vnd.android.package-archive");
+    if (response.headers["content-length"]) {
+      res.setHeader(
+        "Content-Length",
+        String(response.headers["content-length"])
+      );
+    }
+
+    response.data.pipe(res);
+  } catch (error) {
+    console.error("Erro ao transmitir APK nomeado, usando fallback:", error);
+    res.redirect(apkUrl);
+  }
+});
 
 app.get("/", async (req, res, next) => {
   if (req.query.code) {

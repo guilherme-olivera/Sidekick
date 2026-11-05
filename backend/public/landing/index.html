@@ -4,29 +4,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sidekick — Seu Companheiro</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0B0F17">
+  <meta name="description" content="Sidekick — Seu companheiro inteligente de treinos integrado ao Strava. Torne sua jornada esportiva mais leve, animada e motivada, acompanhando sua prontidão sem cobranças excessivas ou fórmulas mágicas.">
+  <title>Sidekick — Seu Companheiro de Treino Mais Leve & Animado</title>
   <link rel="stylesheet" href="/style.css">
   <link rel="icon" type="image/png" href="/sidekick-logo.png">
 </head>
 
 <body>
   <!-- Ambient Glow Effects -->
-  <div class="glow-bg bg-1"></div>
-  <div class="glow-bg bg-2"></div>
+  <div class="glow-bg bg-1" aria-hidden="true"></div>
+  <div class="glow-bg bg-2" aria-hidden="true"></div>
 
   <!-- Header -->
   <header>
     <div class="container header-inner">
       <a href="/" class="logo">
-        <img src="/sidekick-logo.png" alt="Sidekick Logo"> <span>Sidekick</span>
+        <img src="/sidekick-logo.png" alt="Sidekick Logo" width="48" height="48"> 
+        <span>Sidekick</span>
       </a>
       <ul class="nav-links">
         <li><a href="#recursos">Recursos</a></li>
+        <li><a href="#chat-demo">Chat do Companheiro</a></li>
         <li><a href="#showcase">Módulos</a></li>
-        <li><a href="#download">Baixar App</a></li>
+        <li><a href="#planos">Planos</a></li>
+        <li><a href="#faq">Dúvidas</a></li>
         <li><a href="/support.html">Suporte</a></li>
       </ul>
-      <a href="#download" class="btn-primary">Começar Agora</a>
+      <div class="header-cta-group">
+        <a href="#download" class="btn-primary">Baixar APK</a>
+      </div>
     </div>
   </header>
 
@@ -34,94 +42,270 @@
   <section class="hero">
     <div class="container hero-inner-split">
       <div class="hero-content">
-        <span class="badge-version">⚡ Versão 2.0 Prontidão & Conquistas</span>
-        <h1>Seu treino sob a ótica da <br><span>ciência fisiológica</span></h1>
+        <div class="badge-version">
+          <span class="badge-dot"></span>
+          <span>Versão 2.0 • Seu Companheiro de Treino & Bem-Estar</span>
+        </div>
+        <h1>Sua jornada de treinos muito mais <br><span class="text-gradient">leve, motivada & animada</span></h1>
         <p class="hero-subtitle">
-          O Sidekick conecta-se diretamente com o seu <strong>Strava</strong> para analisar seus treinos sob conceitos
-          avançados de performance (métricas de prontidão profunda, zonas de esforço e fadiga). Treine inteligente,
-          previna lesões com cross-training e comemore medalhas exclusivas.
+          O Sidekick conecta-se diretamente ao seu <strong>Strava</strong> para comemorar cada conquista com você, ajudar a ouvir os sinais do corpo com a <strong>Prontidão Diária</strong> e manter sua rotina viva com o apoio do seu <strong>Companheiro Inteligente (Gemini)</strong> — sem cobranças excessivas, sem fórmulas mágicas e sem promessas vazias.
         </p>
         <div class="hero-actions">
-          <a href="#download" class="btn-primary btn-large">Começar Agora</a>
-          <a href="#recursos" class="btn-secondary btn-large">Conhecer Recursos</a>
+          <a href="/download/apk" download="Sidekick-v2.0.apk" class="btn-primary btn-large">
+            <span>📲 Baixar APK Android</span>
+          </a>
+          <a href="#chat-demo" class="btn-secondary btn-large">Ver Mascote em Ação</a>
+        </div>
+        <div class="hero-meta">
+          <span>✓ 100% Integrado ao Strava</span>
+          <span>✓ Companheiro Amigo com Gemini</span>
+          <span>✓ Sem neuras ou cobranças tóxicas</span>
         </div>
       </div>
       <div class="hero-visual">
         <div class="hero-visual-inner">
           <div class="phone-mockup phone-1">
             <div class="phone-screen">
-              <img src="/app_dashboard.png" alt="Tela do Dashboard de Prontidão do Sidekick">
+              <img 
+                src="/app_dashboard.png" 
+                alt="Dashboard de Prontidão e Treinos do Sidekick"
+                fetchpriority="high"
+                decoding="async"
+                width="250" 
+                height="520"
+              >
             </div>
             <div class="phone-label">Dashboard</div>
           </div>
           <div class="phone-mockup phone-2">
             <div class="phone-screen">
-              <img src="/app_profile.png" alt="Tela de Evolução e Metas do Sidekick">
+              <img 
+                src="/app_profile.png" 
+                alt="Mural de Evolução e Metas do Atleta no Sidekick"
+                loading="lazy"
+                decoding="async"
+                width="250" 
+                height="520"
+              >
             </div>
-            <div class="phone-label">Evolução</div>
+            <div class="phone-label">Evolução & Metas</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Features Icons Grid -->
+  <!-- Stats / Highlights Bar -->
+  <section class="stats-bar">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-number">⚡ 100%</div>
+          <div class="stat-label">Sincronização Direta Strava API</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">🔋 0-100%</div>
+          <div class="stat-label">Prontidão para Ouvir seu Corpo</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">🦖 Gemini</div>
+          <div class="stat-label">Companheiro Amigo & Motivador</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">🏆 12+</div>
+          <div class="stat-label">Medalhas e Conquistas Divertidas</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Friendly Philosophy Notice -->
+  <section class="health-disclaimer-section">
+    <div class="container">
+      <div class="health-disclaimer-box">
+        <div class="health-disclaimer-icon">🤝</div>
+        <div class="health-disclaimer-text">
+          <h4>Aqui não há milagres nem cobrança tóxica</h4>
+          <p>
+            Não somos treinadores e não somos médicos. O Sidekick nasceu para ser aquele parceiro de treino fiel que te incentiva nos dias difíceis, comemora seus pequenos passos e te lembra de beber água e descansar. A sua saúde, bem-estar e o prazer pelo movimento estão sempre em primeiro lugar.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid -->
   <section class="features" id="recursos">
     <div class="container">
       <div class="section-header">
-        <h2>Por que o Sidekick é diferente?</h2>
-        <p class="section-subtitle">Combinamos inteligência artificial e ciência esportiva real para otimizar a sua
-          rotina de treinos.</p>
+        <span class="section-tag">POR QUE É DIFERENTE</span>
+        <h2>O esporte no seu ritmo, sem complicações</h2>
+        <p class="section-subtitle">
+          Constância de verdade nasce de uma rotina prazerosa. Conheça as ferramentas feitas para deixar seu dia a dia esportivo mais divertido e sustentável.
+        </p>
       </div>
 
       <div class="grid-features">
         <!-- Feature 1 -->
         <div class="card-feature">
-          <div class="feature-icon">🔋</div>
-          <h3>Prontidão Atlética (Readiness)</h3>
-          <p>Seu score de prontidão profunda de 0 a 100%. Calculado a partir do seu volume de treino semanal,
-            estresse diário, sono e histórico de fadiga acumulada.</p>
+          <div class="feature-icon-wrapper">
+            <span class="feature-icon">🔋</span>
+          </div>
+          <h3>Prontidão Amigável (Readiness)</h3>
+          <p>Um termômetro intuitivo para entender como seu corpo acordou hoje — considerando seus últimos treinos, sono e nível de energia, para você dosar o ritmo sem culpa.</p>
         </div>
 
         <!-- Feature 2 -->
         <div class="card-feature">
-          <div class="feature-icon">🧠</div>
-          <h3>Zonas de Esforço Fisiológico</h3>
-          <p>Análises detalhadas de ritmo de limiar aeróbico, zonas de intensidade cardíaca e estimativas de queima
-            calórica e de gordura para otimizar seus treinos.</p>
+          <div class="feature-icon-wrapper">
+            <span class="feature-icon">🦖</span>
+          </div>
+          <h3>Companheiro IA Divertido & Acolhedor</h3>
+          <p>Esqueça broncas frias. O Rock e sua turma te dão aquela injeção de ânimo nos dias de preguiça e celebram cada treino com bom humor e mensagens personalizadas.</p>
         </div>
 
         <!-- Feature 3 -->
         <div class="card-feature">
-          <div class="feature-icon">🦖</div>
-          <h3>Personalidade da IA</h3>
-          <p>Escolha o estilo de feedback do seu parceiro (Rocky Balboa, Dino etc.). De cobranças firmes e diretas a
-            orientações descontraídas ou focadas em consistência.</p>
+          <div class="feature-icon-wrapper">
+            <span class="feature-icon">📊</span>
+          </div>
+          <h3>Histórico Visual Descomplicado</h3>
+          <p>Acompanhe sua distância, pace e evolução recente de forma simples e colorida, sem gráficos intimidadoramente complexos ou pressão por números extremos.</p>
         </div>
 
         <!-- Feature 4 -->
         <div class="card-feature">
-          <div class="feature-icon">🩹</div>
-          <h3>Sugestão de Cross-Training</h3>
-          <p>Reportou dores ou cansaço acumulado? O app sugere alternativas inteligentes de baixo impacto (remada,
-            natação, ciclismo indoor) para acelerar a recuperação.</p>
+          <div class="feature-icon-wrapper">
+            <span class="feature-icon">🩹</span>
+          </div>
+          <h3>Respeito aos Sinais do Corpo</h3>
+          <p>Sentiu o corpo pedir calma? O Sidekick te lembra que descansar também faz parte do processo e sugere opções leves, como uma caminhada relaxante ou hidratação extra.</p>
         </div>
 
         <!-- Feature 5 -->
         <div class="card-feature">
-          <div class="feature-icon">📅</div>
-          <h3>Agenda & Calendário Unificado</h3>
-          <p>Veja seus treinos sincronizados do Strava, crie lembretes e acompanhe a consistência de frequência semanal
-            em um visual limpo e interativo.</p>
+          <div class="feature-icon-wrapper">
+            <span class="feature-icon">📅</span>
+          </div>
+          <h3>Rotina no Seu Próprio Tempo</h3>
+          <p>Planeje seus dias de atividade física com flexibilidade. Se imprevistos acontecerem, reajuste com tranquilidade: o que vale é a constância a longo prazo.</p>
         </div>
 
         <!-- Feature 6 -->
         <div class="card-feature">
-          <div class="feature-icon">🏅</div>
-          <h3>Mural de Troféus do Strava</h3>
-          <p>Colecione medalhas e recordes pessoais com visual limpo e profissional esportivo. Compartilhe seus feitos
-            diretamente no Instagram com templates exclusivos.</p>
+          <div class="feature-icon-wrapper">
+            <span class="feature-icon">🏆</span>
+          </div>
+          <h3>Celebre Cada Pequena Vitória</h3>
+          <p>Completou sua meta semanal ou fez seu treino mais longo? Desbloqueie troféus exclusivos e compartilhe cards direto nos Stories para inspirar a sua galera.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Chat Simulator Section -->
+  <section class="chat-demo-section" id="chat-demo">
+    <div class="container">
+      <div class="chat-demo-layout">
+        
+        <!-- Left Column: Copy & Interactive Prompts -->
+        <div class="chat-demo-info">
+          <span class="section-tag">SIMULAÇÃO INTERATIVA</span>
+          <h2>Veja seu Companheiro em ação na tela do celular</h2>
+          <p class="section-subtitle">
+            O Sidekick não responde com mensagens automáticas sem graça. Ele olha como foi sua atividade no Strava, confere seu nível de disposição e troca uma ideia sincera, descontraída e motivadora com você.
+          </p>
+
+          <div class="chat-prompts-box">
+            <div class="chat-prompts-header">
+              <span class="chat-prompts-title">💬 Toque em uma situação para ver como o mascote reage:</span>
+            </div>
+            <div class="chat-prompts-list" id="chat-prompts-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <div class="chat-demo-controls">
+            <button id="toggle-autoplay-btn" class="btn-control" type="button">
+              <span id="autoplay-icon">⏸️</span>
+              <span id="autoplay-text">Pausar simulação automática</span>
+            </button>
+            <span class="chat-engine-note">⚡ Powered by Google Gemini • Amizade, Respeito & Motivação</span>
+          </div>
+        </div>
+
+        <!-- Right Column: Interactive Smartphone Mockup with Chat -->
+        <div class="chat-demo-visual">
+          <div class="chat-phone-mockup">
+            <!-- Dynamic Island Notch -->
+            <div class="chat-notch"></div>
+
+            <!-- Phone Top Status Bar -->
+            <div class="chat-phone-header">
+              <div class="companion-avatar-circle">🦖</div>
+              <div class="companion-meta">
+                <span class="companion-title">Rock • Companheiro Sidekick</span>
+                <span class="companion-live-status">
+                  <span class="status-pulse"></span> Sempre pronto para apoiar
+                </span>
+              </div>
+              <span class="companion-badge-pill">Gemini</span>
+            </div>
+
+            <!-- Chat Messages Scroll Area -->
+            <div class="chat-messages-container" id="chat-messages-scroll">
+              <div class="chat-date-chip">Hoje • Pós-Treino Strava</div>
+
+              <!-- User Bubble -->
+              <div class="chat-msg user" id="user-msg-container">
+                <div class="chat-bubble-user">
+                  <p id="user-msg-text">Carregando pergunta...</p>
+                  <span class="chat-bubble-time" id="user-msg-time">18:42</span>
+                </div>
+              </div>
+
+              <!-- Typing Indicator -->
+              <div class="chat-typing-row" id="typing-indicator" style="display: none;">
+                <div class="typing-avatar">🦖</div>
+                <div class="typing-bubble">
+                  <div class="typing-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                  </div>
+                  <span class="typing-caption">Rock está digitando um incentivo pra você...</span>
+                </div>
+              </div>
+
+              <!-- Bot Bubble -->
+              <div class="chat-msg bot" id="bot-msg-container">
+                <div class="bot-avatar-col">🦖</div>
+                <div class="chat-bubble-bot">
+                  <div class="bot-bubble-header">
+                    <span class="bot-sender-name">Rock • Seu Parceiro de Treino</span>
+                    <span class="bot-status-tag" id="bot-status-tag">Prontidão: 44%</span>
+                  </div>
+                  <div class="bot-bubble-body" id="bot-msg-text">
+                    Carregando resposta...
+                  </div>
+                  <div class="bot-bubble-disclaimer">
+                    ⚠️ O Sidekick é um companheiro motivacional de IA. Não prescrevemos treinos e não substituímos médicos ou educadores físicos.
+                  </div>
+                  <span class="chat-bubble-time-bot" id="bot-msg-time">18:42</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulated Phone Input Footer -->
+            <div class="chat-phone-footer">
+              <div class="chat-input-fake">
+                <span class="chat-input-placeholder">Conte ao Rock como foi seu treino hoje...</span>
+                <span class="chat-input-send-icon">🚀</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -129,80 +313,218 @@
   <!-- Deep Feature Showcase Section -->
   <section class="showcase" id="showcase">
     <div class="container">
-
-      <!-- Showcase Row 1 -->
+      
+      <!-- Showcase Row 1: Prontidão -->
       <div class="showcase-row">
         <div class="showcase-text">
-          <span class="showcase-badge">🔋 MÓDULO DE RECUPERAÇÃO</span>
-          <h3>Painel de Prontidão Fisiológica</h3>
+          <span class="showcase-badge coral">🔋 MÓDULO DE PRONTIDÃO</span>
+          <h3>Aprenda a ouvir o seu corpo com leveza</h3>
           <p>
-            Não treine às cegas. O Sidekick calcula sua capacidade diária de absorver esforço cruzando a sua
-            variabilidade de frequência cardíaca (HRV), qualidade de sono, nível de estresse corporal reportado e fadiga
-            muscular residual.
+            Sem fórmulas mágicas ou metas sufocantes. O Sidekick interpreta as horas de sono reportadas e o esforço registrado no Strava para te dar aquele toque amigo: hoje vale a pena forçar ou é dia de desacelerar e curtir um merecido descanso?
           </p>
           <ul class="showcase-list">
-            <li>Visualização de recuperação em horas</li>
-            <li>Status de estresse e fadiga física</li>
-            <li>Histórico de volume e progresso diário</li>
+            <li>Score de prontidão diária de 0 a 100% sem mistério</li>
+            <li>Acompanhamento de sono, cansaço e bem-estar em 3 segundos</li>
+            <li>Incentivos da IA contextualizados ao seu momento</li>
           </ul>
         </div>
         <div class="showcase-media">
           <div class="phone-mockup showcase-phone">
             <div class="phone-screen">
-              <img src="/app_dashboard.png" alt="Detalhamento da Prontidão do Treino">
+              <img 
+                src="/app_dashboard.png" 
+                alt="Detalhamento do Painel de Prontidão do Sidekick"
+                loading="lazy"
+                decoding="async"
+                width="260"
+                height="540"
+              >
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Showcase Row 2 -->
+      <!-- Showcase Row 2: Gamificação e Troféus -->
       <div class="showcase-row reverse">
         <div class="showcase-text">
-          <span class="showcase-badge orange">🏅 SISTEMA DE GAMIFICAÇÃO</span>
-          <h3>Mural de Troféus e Conquistas Premium</h3>
+          <span class="showcase-badge gold">🏅 GAMIFICAÇÃO & MEDALHAS</span>
+          <h3>Comemore cada conquista, sem cobrança tóxica</h3>
           <p>
-            Alcançou um marco importante? Suas conquistas são comemoradas com medalhas sofisticadas inspiradas no design
-            de performance do Strava.
+            Completou sua semana de caminhadas ou bateu seu recorde de distância? Cada passo merece festa! Conquiste troféus animados no aplicativo e gere cartões para compartilhar nos Stories com a sua comunidade.
           </p>
           <ul class="showcase-list">
-            <li>Progresso de medalhas em níveis Bronze, Prata e Ouro</li>
-            <li>Melhores marcas automáticas (1km, 5km, 10km, 21km, 42km)</li>
-            <li>Fácil compartilhamento com cartões temáticos esportivos</li>
+            <li>Identificação automática de Recordes Pessoais (PR)</li>
+            <li>Níveis dinâmicos de experiência para valorizar a constância</li>
+            <li>Cartões estilizados prontos para compartilhar nas redes</li>
           </ul>
         </div>
         <div class="showcase-media">
           <div class="phone-mockup showcase-phone">
             <div class="phone-screen">
-              <img src="/app_conquests.png" alt="Detalhamento do Mural de Medalhas">
+              <img 
+                src="/app_conquests.png" 
+                alt="Mural de Conquistas e Medalhas no Sidekick"
+                loading="lazy"
+                decoding="async"
+                width="260"
+                height="540"
+              >
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Showcase Row 3 -->
+      <!-- Showcase Row 3: Evolução & Metas -->
       <div class="showcase-row">
         <div class="showcase-text">
-          <span class="showcase-badge green">📈 EVOLUÇÃO & METAS</span>
-          <h3>Planejamento e Foco no Alvo</h3>
+          <span class="showcase-badge coral">📈 EVOLUÇÃO & METAS</span>
+          <h3>Constância e bem-estar no seu próprio ritmo</h3>
           <p>
-            Mantenha-se disciplinado. Configure sua meta de frequência semanal de treinos, distância acumulada e veja o
-            seu nível de experiência de atleta subir conforme acumula treinos no banco de dados.
+            Trace metas amigáveis de dias ativos na semana e acompanhe seus passos ao longo dos meses. O objetivo aqui não é o esgotamento, mas sim longevidade, saúde mental e diversão no esporte.
           </p>
           <ul class="showcase-list">
-            <li>Definição direta de metas de provas (Ex: Maratonas)</li>
-            <li>Calculadora de XP por treino sincronizado</li>
-            <li>Feedback contextualizado sobre o andamento da meta</li>
+            <li>Metas flexíveis de frequência e quilometragem semanal</li>
+            <li>Linha do tempo consolidada para celebrar seu caminho percorrido</li>
+            <li>Lembretes suaves para manter o hábito sem sobrecarga mental</li>
           </ul>
         </div>
         <div class="showcase-media">
           <div class="phone-mockup showcase-phone">
             <div class="phone-screen">
-              <img src="/app_profile.png" alt="Perfil e Nível de Atleta do Aplicativo">
+              <img 
+                src="/app_profile.png" 
+                alt="Tela de Perfil e Estatísticas no Sidekick"
+                loading="lazy"
+                decoding="async"
+                width="260"
+                height="540"
+              >
             </div>
           </div>
         </div>
       </div>
 
+    </div>
+  </section>
+
+  <!-- Plan Comparison Section -->
+  <section class="plans-section" id="planos">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">TRANSPARÊNCIA TOTAL</span>
+        <h2>Planos feitos para o seu ritmo</h2>
+        <p class="section-subtitle">Comece gratuitamente e evolua para o plano Premium quando quiser ter seu companheiro disponível sem limites.</p>
+      </div>
+
+      <div class="plans-grid">
+        <!-- Free Plan -->
+        <div class="plan-card">
+          <div class="plan-header">
+            <h3>Plano Free</h3>
+            <div class="plan-price">R$ 0 <span>/ para sempre</span></div>
+            <p class="plan-desc">Perfeito para quem quer se divertir, manter a constância e registrar seus treinos.</p>
+          </div>
+          <ul class="plan-features">
+            <li>✓ Sincronização automática com o Strava</li>
+            <li>✓ Cálculo diário de Prontidão (Readiness)</li>
+            <li>✓ Mensagens de apoio e incentivo diário com IA</li>
+            <li>✓ Mural de Troféus e Conquistas Pessoais</li>
+            <li>✓ Calendário e agendamento flexível de treinos</li>
+          </ul>
+          <a href="#download" class="btn-secondary plan-btn">Começar Grátis</a>
+        </div>
+
+        <!-- Premium Plan -->
+        <div class="plan-card featured">
+          <div class="plan-badge-featured">👑 MAIS COMPLETO</div>
+          <div class="plan-header">
+            <h3>Plano Premium</h3>
+            <div class="plan-price">VIP <span>/ código ou assinatura</span></div>
+            <p class="plan-desc">Para quem quer bater papo ilimitado com o mascote e personalizar a experiência ao máximo.</p>
+          </div>
+          <ul class="plan-features">
+            <li>✓ <strong>Tudo do plano Free</strong></li>
+            <li>✓ <strong>Bate-papo ilimitado</strong> com seu Companheiro de IA a qualquer hora</li>
+            <li>✓ Projeções e estimativas amigáveis de tempo para seus desafios</li>
+            <li>✓ Personalização visual e comportamental dos mascotes</li>
+            <li>✓ Acesso prioritário a novos módulos e novidades do app</li>
+          </ul>
+          <a href="#download" class="btn-primary plan-btn">Experimentar Premium</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive FAQ Section -->
+  <section class="faq-section" id="faq">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">TIRE SUAS DÚVIDAS</span>
+        <h2>Perguntas Frequentes</h2>
+        <p class="section-subtitle">Tudo o que você precisa saber sobre o Sidekick, nossa filosofia e a integração com o Strava.</p>
+      </div>
+
+      <div class="faq-accordion">
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>O Sidekick substitui um treinador ou um médico?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="faq-answer">
+            <p><strong>Não, de forma alguma!</strong> O Sidekick é um companheiro motivacional e gamificado para tornar seus treinos mais leves, divertidos e consistentes. Nós <strong>não prescrevemos treinos</strong>, não diagnosticamos dores ou lesões e <strong>não oferecemos milagres ou promessas de resultados</strong>. Para montagem de planilhas de treino e avaliação física, consulte sempre um educador físico credenciado. Para qualquer dor persistente ou dúvida de saúde, consulte um médico.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>Como o Sidekick se conecta com o Strava?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="faq-answer">
+            <p>A sincronização é 100% oficial e segura via Strava API. Você autoriza a conexão em apenas um toque durante o onboarding ou nas configurações do app. Assim que você termina uma atividade no Strava, o Sidekick a importa automaticamente para que seu companheiro possa comemorar seu treino com você.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>Como é calculado o meu score de Prontidão?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="faq-answer">
+            <p>Ele funciona como um lembrete para você ouvir seu próprio corpo. O algoritmo cruza o esforço recente registrado no Strava com as informações de bem-estar que você preenche rapidamente no app: como foi sua noite de sono, seu nível de disposição e sensação de cansaço muscular. O resultado é um percentual simples para te ajudar a escolher se hoje é dia de correr animado ou de relaxar.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>Como funciona o Companheiro de IA (Google Gemini)?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="faq-answer">
+            <p>O Sidekick utiliza a inteligência artificial do Google Gemini para agir como um amigo de treino bem-humorado, compreensivo e sempre disponível. Ele lê seus treinos sincronizados e troca mensagens amigáveis de apoio, parabenizando pelo esforço, incentivando a hidratação e lembrando você da importância do descanso, tudo com um tom leve e descontraído.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>Como instalar o APK no meu celular Android?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="faq-answer">
+            <p>Basta tocar no botão "Baixar APK Android" ou escanear o QR Code desta página com a câmera do seu celular. Após o download, abra o arquivo <code>.apk</code> e confirme a instalação (se o Android solicitar, autorize a instalação a partir do navegador). O app é assinado e verificado diretamente pelo Expo Application Services (EAS).</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">
+            <span>Preciso pagar para usar o aplicativo?</span>
+            <span class="faq-icon" aria-hidden="true">+</span>
+          </summary>
+          <div class="faq-answer">
+            <p>Não! O Sidekick conta com um plano Free completo com sincronização Strava, prontidão diária, conquistas, medalhas e apoio diário do seu companheiro de IA. O plano Premium desbloqueia conversas ilimitadas e novidades exclusivas para quem quer apoiar o projeto.</p>
+          </div>
+        </details>
+      </div>
     </div>
   </section>
 
@@ -211,37 +533,38 @@
     <div class="container">
       <div class="download-card">
         <div class="download-content">
-          <h2>Pronto para elevar o seu nível físico?</h2>
+          <div class="download-pill">⚡ DOWNLOAD DISPONÍVEL</div>
+          <h2>Bora deixar sua rotina de treinos mais leve e divertida?</h2>
           <p>
-            Baixe o Sidekick gratuitamente para celular e sincronize sua conta do Strava em segundos. Disponível para
-            iOS e Android.
+            Baixe o Sidekick agora no seu Android, sincronize seu Strava em 1 minuto e tenha um parceiro sempre animado para comemorar cada passo com você.
           </p>
-          <div class="download-badges">
-            <a href="https://apps.apple.com" target="_blank" class="badge-button app-store">
-              <span class="badge-sub">Disponível na</span>
-              <span class="badge-main">App Store</span>
-            </a>
-            <a href="https://play.google.com" target="_blank" class="badge-button play-store">
-              <span class="badge-sub">Disponível no</span>
-              <span class="badge-main">Google Play</span>
+          <div class="download-cta-row">
+            <a href="/download/apk" download="Sidekick-v2.0.apk" class="btn-primary btn-large btn-download-primary">
+              <span class="btn-download-icon">⬇️</span>
+              <span class="btn-download-text">
+                <strong>Baixar APK Android</strong>
+                <small>Versão 2.0 • Verificado pelo EAS • Instalação Rápida</small>
+              </span>
             </a>
           </div>
-          <div class="web-portal-action">
-            <p>Prefere usar pelo navegador? <a href="/login" class="web-link">Acessar versão Web &rarr;</a></p>
+          <div class="download-security-notice">
+            <span>🔒 Arquivo oficial assinado e gerado com segurança pelo Expo Application Services.</span>
           </div>
         </div>
         <div class="download-qr">
           <div class="qr-box">
-            <!-- Simulated premium QR code container -->
-            <div class="qr-dots">
-              <div class="qr-square sq-1"></div>
-              <div class="qr-square sq-2"></div>
-              <div class="qr-square sq-3"></div>
-              <div class="qr-logo-container">
-                <img src="/sidekick-logo.png" alt="Sidekick Logo QR">
-              </div>
+            <div class="qr-image-wrapper">
+              <img 
+                src="/qr_apk_download.png" 
+                alt="QR Code para Download Direto do APK Sidekick" 
+                loading="lazy"
+                decoding="async"
+                width="180" 
+                height="180"
+              >
             </div>
-            <p class="qr-label">Aponte a câmera para baixar 📱</p>
+            <p class="qr-label">Aponte a câmera para baixar direto 📱</p>
+            <span class="qr-sublabel">Instalação direta para celulares Android</span>
           </div>
         </div>
       </div>
@@ -252,32 +575,238 @@
   <footer>
     <div class="container footer-inner">
       <a href="/" class="footer-logo">
-        <img src="/sidekick-logo.png" alt="Sidekick Logo"> <span>Sidekick</span>
+        <img src="/sidekick-logo.png" alt="Sidekick Logo" width="40" height="40"> 
+        <span>Sidekick</span>
       </a>
       <div class="footer-links">
+        <a href="#recursos">Recursos</a>
+        <a href="#chat-demo">Chat do Companheiro</a>
+        <a href="#planos">Planos</a>
+        <a href="#faq">Dúvidas Frequentes</a>
         <a href="/terms.html">Termos de Uso</a>
         <a href="/privacy.html">Política de Privacidade</a>
         <a href="/support.html">Ajuda & Suporte</a>
       </div>
       <p class="copyright">
-        &copy; 2026 Sidekick App. Todos os direitos reservados.
+        &copy; 2026 Sidekick App. Todos os direitos reservados. Feito com carinho para tornar sua rotina esportiva mais leve e motivada. Integrado ao Strava e alimentado por Google Gemini.
       </p>
     </div>
   </footer>
 
+  <!-- Interactive Scripts -->
   <script>
-    // Smooth scrolling for anchors
+    // Smooth scrolling for navigation anchors
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
       anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({
-            behavior: 'smooth'
-          });
+        const targetId = this.getAttribute('href');
+        if (targetId && targetId !== '#') {
+          const target = document.querySelector(targetId);
+          if (target) {
+            e.preventDefault();
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
         }
       });
     });
+
+    // ==========================================
+    // Interactive Chat Simulation Logic (Sidekick IA)
+    // Warm, friendly, non-medical companion
+    // ==========================================
+    const chatScenarios = [
+      {
+        id: "pos-treino",
+        chip: "🏃‍♂️ Devo forçar treino amanhã?",
+        time: "18:42",
+        question: "Fiz 14km hoje no sol e cheguei bem cansado. Vale a pena forçar outro treino pesado amanhã?",
+        statusTag: "Prontidão: 44% • Dia de Cuidar de Você",
+        answer: "Mandou bem demais nos 14km! 🦖🔥 Baita dedicação!\n\nMas ó, dei uma olhada no seu Strava e vi que o corpo gastou bastante energia hoje. Sua prontidão estimada tá em 44%.\n\nNada de loucura amanhã! Que tal um descanso merecido ou só uma caminhadinha leve tomando uma água de coco gelada? O segredo pra seguir animado no esporte a longo prazo é saber a hora certa de descansar. Se cuida! 💧💙"
+      },
+      {
+        id: "meta-10k",
+        chip: "⚡ Correr 10km sem neura",
+        time: "19:15",
+        question: "Tô querendo correr 10km no próximo mês! Acha que consigo chegar lá sem neura e sem pressão?",
+        statusTag: "Objetivo: 10km • No Seu Ritmo",
+        answer: "Com certeza, passo a passo e curtindo o processo! 🦖✨\n\nOlhando seus treinos recentes sincronizados, sua consistência tá muito legal. Você não precisa de fórmula mágica nem pressa:\n\n• Curta o caminho, sem se comparar com o ritmo de ninguém\n• Alterne dias de corrida gostosa com dias de descanso\n• Eu vou estar aqui comemorando cada novo quilômetro com você! Bora pra cima com alegria! 🚀🎉"
+      },
+      {
+        id: "dor-joelho",
+        chip: "🩹 Senti um incômodo no joelho",
+        time: "10:30",
+        question: "Senti uma fisgada no joelho descendo a serra hoje. O que você acha que devo fazer?",
+        statusTag: "Atenção aos Sinais • Hora de Descansar",
+        answer: "Opa, corpo acendeu um alerta, a gente ouve com carinho! 🛑🦖\n\nComo seu companheiro de treino, meu conselho amigo é:\n• Nada de forçar corrida de impacto agora; dê uma pausa de alguns dias.\n• Coloque um gelinho e deixe o joelho repousar.\n\n⚠️ Lembrete importante: Eu sou seu parceiro motivacional de IA, mas não sou médico nem fisioterapeuta! Se o incômodo continuar ao andar ou demorar a passar, consulte um profissional de saúde, combinado? Sua integridade vem sempre em primeiro lugar! 🩺🤝"
+      },
+      {
+        id: "sono-ruim",
+        chip: "🔋 Dormi mal e tô sem energia",
+        time: "06:45",
+        question: "Dormi super mal hoje e acordei sem energia. Se eu não for correr hoje, perco meu foco?",
+        statusTag: "Prontidão: 38% • Autocuidado Primeiro",
+        answer: "De jeito nenhum, tira essa culpa da cabeça! 🦖❤️\n\nConsistência de verdade não significa treinar todo santo dia até a exaustão; significa saber cuidar de si pra continuar correndo semana que vem e ano que vem.\n\nCom a energia baixa hoje, forçar a barra só vai te deixar frustrado. Relaxa, bebe bastante água, dorme mais cedo hoje e amanhã você volta com as baterias renovadas. Tamo junto nessa! 😴✨"
+      }
+    ];
+
+    let currentScenarioIndex = 0;
+    let isAutoplayActive = true;
+    let autoplayTimeout = null;
+    let isTyping = false;
+
+    const promptsList = document.getElementById("chat-prompts-list");
+    const userTextEl = document.getElementById("user-msg-text");
+    const userTimeEl = document.getElementById("user-msg-time");
+    const botTextEl = document.getElementById("bot-msg-text");
+    const botTimeEl = document.getElementById("bot-msg-time");
+    const botStatusTag = document.getElementById("bot-status-tag");
+    const typingIndicator = document.getElementById("typing-indicator");
+    const botMsgContainer = document.getElementById("bot-msg-container");
+    const toggleAutoplayBtn = document.getElementById("toggle-autoplay-btn");
+    const autoplayIcon = document.getElementById("autoplay-icon");
+    const autoplayText = document.getElementById("autoplay-text");
+    const messagesScroll = document.getElementById("chat-messages-scroll");
+
+    // Format linebreaks and markdown bold
+    function formatBotResponse(text) {
+      return text
+        .replace(/\n\n/g, '<div class="msg-para-spacer"></div>')
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    // Render Scenario Chips
+    function renderPromptChips() {
+      if (!promptsList) return;
+      promptsList.innerHTML = "";
+      chatScenarios.forEach((sc, idx) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chat-prompt-pill" + (idx === currentScenarioIndex ? " active" : "");
+        chip.textContent = sc.chip;
+        chip.addEventListener("click", () => {
+          selectScenario(idx, true);
+        });
+        promptsList.appendChild(chip);
+      });
+    }
+
+    // Update active chip state
+    function updateActiveChip() {
+      const pills = document.querySelectorAll(".chat-prompt-pill");
+      pills.forEach((p, idx) => {
+        p.classList.toggle("active", idx === currentScenarioIndex);
+      });
+    }
+
+    // Run scenario simulation
+    function playScenario(scenario) {
+      if (isTyping) return;
+      isTyping = true;
+
+      // 1. Reset bot message and show typing animation for user message
+      botMsgContainer.style.opacity = "0";
+      botMsgContainer.style.transform = "translateY(10px)";
+      typingIndicator.style.display = "none";
+      userTimeEl.textContent = scenario.time;
+      botTimeEl.textContent = scenario.time;
+
+      // Typewriter effect on user question
+      let charIndex = 0;
+      userTextEl.textContent = "";
+      
+      const typeInterval = setInterval(() => {
+        userTextEl.textContent += scenario.question.charAt(charIndex);
+        charIndex++;
+        if (charIndex >= scenario.question.length) {
+          clearInterval(typeInterval);
+
+          // 2. Show typing indicator from companion
+          setTimeout(() => {
+            typingIndicator.style.display = "flex";
+            if (messagesScroll) {
+              messagesScroll.scrollTop = messagesScroll.scrollHeight;
+            }
+
+            // 3. After 1.3s, reveal Sidekick response
+            setTimeout(() => {
+              typingIndicator.style.display = "none";
+              botStatusTag.textContent = scenario.statusTag;
+              botTextEl.innerHTML = formatBotResponse(scenario.answer);
+              
+              botMsgContainer.style.opacity = "1";
+              botMsgContainer.style.transform = "translateY(0)";
+              isTyping = false;
+
+              if (messagesScroll) {
+                messagesScroll.scrollTop = messagesScroll.scrollHeight;
+              }
+
+              // 4. Schedule next scenario if autoplay is on
+              if (isAutoplayActive) {
+                clearTimeout(autoplayTimeout);
+                autoplayTimeout = setTimeout(() => {
+                  currentScenarioIndex = (currentScenarioIndex + 1) % chatScenarios.length;
+                  updateActiveChip();
+                  playScenario(chatScenarios[currentScenarioIndex]);
+                }, 8500);
+              }
+            }, 1300);
+          }, 300);
+        }
+      }, 16);
+    }
+
+    function selectScenario(index, fromUserClick = false) {
+      currentScenarioIndex = index;
+      updateActiveChip();
+      clearTimeout(autoplayTimeout);
+      
+      if (fromUserClick) {
+        // Pause auto-play temporarily so user can read at their pace
+        isAutoplayActive = false;
+        updateAutoplayButtonUI();
+      }
+      playScenario(chatScenarios[currentScenarioIndex]);
+    }
+
+    function updateAutoplayButtonUI() {
+      if (autoplayIcon && autoplayText) {
+        if (isAutoplayActive) {
+          autoplayIcon.textContent = "⏸️";
+          autoplayText.textContent = "Pausar simulação automática";
+        } else {
+          autoplayIcon.textContent = "▶️";
+          autoplayText.textContent = "Retomar simulação automática";
+        }
+      }
+    }
+
+    if (toggleAutoplayBtn) {
+      toggleAutoplayBtn.addEventListener("click", () => {
+        isAutoplayActive = !isAutoplayActive;
+        updateAutoplayButtonUI();
+        clearTimeout(autoplayTimeout);
+
+        if (isAutoplayActive) {
+          currentScenarioIndex = (currentScenarioIndex + 1) % chatScenarios.length;
+          updateActiveChip();
+          playScenario(chatScenarios[currentScenarioIndex]);
+        }
+      });
+    }
+
+    // Check prefers-reduced-motion
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      isAutoplayActive = false;
+      updateAutoplayButtonUI();
+    }
+
+    // Initialize Chat Simulation
+    renderPromptChips();
+    playScenario(chatScenarios[0]);
   </script>
 </body>
 
